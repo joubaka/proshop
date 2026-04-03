@@ -11,6 +11,7 @@ class ComposerPatches
     public static function apply()
     {
         static::patchCarbonCreator();
+        static::patchFormBuilder();
     }
 
     /**
@@ -40,6 +41,29 @@ class ComposerPatches
 
             file_put_contents($file, $content);
             echo "  > Applied Carbon PHP 8.x compatibility patch\n";
+        }
+    }
+
+    /**
+     * Fix method_exists() receiving null on PHP 8.x in LaravelCollective FormBuilder
+     */
+    private static function patchFormBuilder()
+    {
+        $file = __DIR__ . '/../vendor/laravelcollective/html/src/FormBuilder.php';
+
+        if (!file_exists($file)) {
+            return;
+        }
+
+        $content = file_get_contents($file);
+
+        $search = 'if (method_exists($this->model, \'getFormValue\'))';
+        $replace = 'if ($this->model !== null && method_exists($this->model, \'getFormValue\'))';
+
+        if (strpos($content, $search) !== false && strpos($content, $replace) === false) {
+            $content = str_replace($search, $replace, $content);
+            file_put_contents($file, $content);
+            echo "  > Applied FormBuilder PHP 8.x compatibility patch\n";
         }
     }
 }

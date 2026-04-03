@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4146f8c99a71b35ddb06361943e48c67",
+    "content-hash": "1bb71fe68a1af8023c66f6f19eb03d77",
     "packages": [
         {
             "name": "aloha/twilio",
@@ -454,23 +454,23 @@
         },
         {
             "name": "consoletvs/charts",
-            "version": "6.5.5",
+            "version": "6.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ConsoleTVs/Charts.git",
-                "reference": "0005d14e4fe6715f4146a4dc3b56add768233001"
+                "reference": "7f8a39703ad70cac1b471b27275d2ffc4494e7e5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ConsoleTVs/Charts/zipball/0005d14e4fe6715f4146a4dc3b56add768233001",
-                "reference": "0005d14e4fe6715f4146a4dc3b56add768233001",
+                "url": "https://api.github.com/repos/ConsoleTVs/Charts/zipball/7f8a39703ad70cac1b471b27275d2ffc4494e7e5",
+                "reference": "7f8a39703ad70cac1b471b27275d2ffc4494e7e5",
                 "shasum": ""
             },
             "require": {
                 "balping/json-raw-encoder": "^1.0",
-                "illuminate/console": "^5.0|^6.0|^7.0|^8.0",
-                "illuminate/support": "^5.0|^6.0|^7.0|^8.0",
-                "php": ">=7.0"
+                "illuminate/console": ">=5.6",
+                "illuminate/support": ">=5.6",
+                "php": ">=7.1"
             },
             "type": "library",
             "extra": {
@@ -496,7 +496,17 @@
                 }
             ],
             "description": "The laravel charting package",
-            "time": "2020-09-10T14:20:26+00:00"
+            "support": {
+                "issues": "https://github.com/ConsoleTVs/Charts/issues",
+                "source": "https://github.com/ConsoleTVs/Charts/tree/6.9.0"
+            },
+            "funding": [
+                {
+                    "url": "https://www.patreon.com/ErikCampobadal",
+                    "type": "patreon"
+                }
+            ],
+            "time": "2026-03-18T15:06:07+00:00"
         },
         {
             "name": "defuse/php-encryption",
@@ -9950,11 +9960,12 @@
     ],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^7.1.3"
+        "php": "^7.1.3|^8.0"
     },
-    "platform-dev": []
+    "platform-dev": {},
+    "plugin-api-version": "2.6.0"
 }

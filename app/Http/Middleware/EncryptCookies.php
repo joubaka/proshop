@@ -66,6 +66,10 @@ class EncryptCookies extends BaseEncrypter
                 continue;
             }
 
+            if ($cookie->getValue() === null) {
+                continue;
+            }
+
             $prefixedValue = $this->cookieValuePrefix($cookie->getName()) . $cookie->getValue();
 
             $response->headers->setCookie($this->duplicate(
@@ -92,7 +96,7 @@ class EncryptCookies extends BaseEncrypter
         $appKey = config('app.key');
 
         $rawKey = strncmp($appKey, 'base64:', 7) === 0
-            ? substr(base64_decode(substr($appKey, 7)), 0, 16)
+            ? substr(base64_decode(substr($appKey, 7), true), 0, 16)
             : substr($appKey, 0, 16);
 
         return hash_hmac('sha1', $cookieName, $rawKey) . '|';

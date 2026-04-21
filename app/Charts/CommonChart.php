@@ -2,7 +2,7 @@
 
 namespace App\Charts;
 
-use ConsoleTVs\Charts\Classes\Highcharts\Chart;
+use ConsoleTVs\Charts\Classes\Chartjs\Chart;
 
 class CommonChart extends Chart
 {

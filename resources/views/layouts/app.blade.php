@@ -127,6 +127,8 @@
                 @includeIf($additional_view)
             @endforeach
         @endif
+        {{-- Chart.js (required by CommonChart) --}}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
     </body>
 
 </html>

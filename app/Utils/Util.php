@@ -412,18 +412,23 @@ class Util
             return false;
         }
 
-        Config::set('nexmo.api_key', $sms_settings['nexmo_key']);
-        Config::set('nexmo.api_secret', $sms_settings['nexmo_secret']);
+        $client = new \Vonage\Client(
+            new \Vonage\Client\Credentials\Basic(
+                $sms_settings['nexmo_key'],
+                $sms_settings['nexmo_secret']
+            )
+        );
 
-        $nexmo = app('Nexmo\Client');
         $numbers = explode(',', trim($data['mobile_number']));
 
         foreach ($numbers as $number) {
-            $nexmo->message()->send([
-                'to'   => $number,
-                'from' => $sms_settings['nexmo_from'],
-                'text' => $data['sms_body']
-            ]);
+            $client->sms()->send(
+                new \Vonage\SMS\Message\SMS(
+                    trim($number),
+                    $sms_settings['nexmo_from'],
+                    $data['sms_body']
+                )
+            );
         }
     }
 

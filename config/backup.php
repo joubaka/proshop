@@ -35,7 +35,18 @@ return [
                 /*
                  * Determines if symlinks should be followed.
                  */
-                'followLinks' => false,
+                'follow_links' => false,
+
+                /*
+                 * Determines if it should avoid adding to the backup files that are unreadable.
+                 */
+                'ignore_unreadable_directories' => false,
+
+                /*
+                 * This path is used to make the path of the included files in the backup
+                 * archive relative. Set this to null to use the root of your application.
+                 */
+                'relative_path' => null,
             ],
 
             /*
@@ -93,7 +104,7 @@ return [
         'notifiable' => \Spatie\Backup\Notifications\Notifiable::class,
 
         'mail' => [
-            'to' => null,
+            'to' => env('BACKUP_NOTIFICATION_EMAIL', 'your@example.com'),
         ],
 
         'slack' => [

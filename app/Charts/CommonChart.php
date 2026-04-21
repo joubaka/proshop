@@ -2,17 +2,41 @@
 
 namespace App\Charts;
 
-use ConsoleTVs\Charts\Classes\Chartjs\Chart;
-
-class CommonChart extends Chart
+/**
+ * Stub class — Charts package removed. Methods are no-ops so existing
+ * controller code compiles without the consoletvs/charts package.
+ */
+class CommonChart
 {
-    /**
-     * Initializes the chart.
-     *
-     * @return void
-     */
-    public function __construct()
+    protected $_labels = [];
+    protected $_datasets = [];
+    protected $_options = [];
+
+    public function labels(array $labels): static
     {
-        parent::__construct();
+        $this->_labels = $labels;
+        return $this;
+    }
+
+    public function dataset(string $name, string $type, array $data): static
+    {
+        $this->_datasets[] = compact('name', 'type', 'data');
+        return $this;
+    }
+
+    public function options(array $options): static
+    {
+        $this->_options = $options;
+        return $this;
+    }
+
+    public function container(): string
+    {
+        return '';
+    }
+
+    public function script(): string
+    {
+        return '';
     }
 }

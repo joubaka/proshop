@@ -12,15 +12,11 @@ class AccountTransaction extends Model
     
     protected $guarded = ['id'];
 
-    /**
-     * The attributes that should be mutated to dates.
-     *
-     * @var array
-     */
-    protected $dates = [
-        'operation_date',
-        'created_at',
-        'updated_at'
+    protected $casts = [
+        'operation_date' => 'datetime',
+        'created_at'     => 'datetime',
+        'updated_at'     => 'datetime',
+        'deleted_at'     => 'datetime',
     ];
 
     public function media()

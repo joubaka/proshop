@@ -6,11 +6,9 @@ use App\Mail\ExceptionOccured;
 use Exception;
 use Illuminate\Auth\AuthenticationException;
 use Throwable;
-
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Mail;
-use Symfony\Component\Debug\Exception\FlattenException;
-use Symfony\Component\Debug\ExceptionHandler as SymfonyExceptionHandler;
+use Symfony\Component\ErrorHandler\Exception\FlattenException;
 
 class Handler extends ExceptionHandler
 {
@@ -31,8 +29,6 @@ class Handler extends ExceptionHandler
     /**
      * Report or log an exception.
      *
-     * This is a great spot to send exceptions to Sentry, Bugsnag, etc.
-     *
      * @param  \Throwable  $exception
      * @return void
      */
@@ -40,7 +36,7 @@ class Handler extends ExceptionHandler
     {
         if ($this->shouldReport($exception)) {
             if (config('app.env') == 'demo') {
-                $this->sendEmail($exception); // sends an email in demo server
+                $this->sendEmail($exception);
             }
         }
 
@@ -76,25 +72,22 @@ class Handler extends ExceptionHandler
     }
 
     /**
-     * Sends the exception email in demo server
+     * Sends the exception email in demo server.
      *
-     * @param $exception
+     * @param  \Exception  $exception
      */
     public function sendEmail(Exception $exception)
     {
         try {
-            $e = FlattenException::create($exception);
-
-            $handler = new SymfonyExceptionHandler();
-
-            $html = $handler->getHtml($e);
+            $e = FlattenException::createFromThrowable($exception);
+            $html = nl2br($e->getMessage());
             $email = config('mail.username');
-            
+
             if (!empty($email)) {
                 Mail::to($email)->send(new ExceptionOccured($html));
             }
         } catch (Exception $ex) {
-            dd($ex);
+            // silently fail
         }
     }
 }

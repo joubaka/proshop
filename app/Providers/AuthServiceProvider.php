@@ -26,8 +26,6 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        Passport::routes();
-
         Gate::before(function ($user, $ability) {
             if (in_array($ability, ['backup', 'superadmin', 
                 'manage_modules'])) {

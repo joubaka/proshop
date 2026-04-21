@@ -3,13 +3,10 @@
 namespace App\Exceptions;
 
 use App\Mail\ExceptionOccured;
-use Exception;
 use Illuminate\Auth\AuthenticationException;
-
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Mail;
-use Symfony\Component\Debug\Exception\FlattenException;
-use Symfony\Component\Debug\ExceptionHandler as SymfonyExceptionHandler;
+use Throwable;
 
 class Handler extends ExceptionHandler
 {
@@ -35,11 +32,11 @@ class Handler extends ExceptionHandler
      * @param  \Exception  $exception
      * @return void
      */
-    public function report(Exception $exception)
+    public function report(Throwable $exception)
     {
         if ($this->shouldReport($exception)) {
             if (config('app.env') == 'demo') {
-                $this->sendEmail($exception); // sends an email in demo server
+                $this->sendEmail($exception);
             }
         }
 
@@ -53,7 +50,7 @@ class Handler extends ExceptionHandler
      * @param  \Exception  $exception
      * @return \Illuminate\Http\Response
      */
-    public function render($request, Exception $exception)
+    public function render($request, Throwable $exception)
     {
         return parent::render($request, $exception);
     }
@@ -79,21 +76,17 @@ class Handler extends ExceptionHandler
      *
      * @param $exception
      */
-    public function sendEmail(Exception $exception)
+    public function sendEmail(Throwable $exception)
     {
         try {
-            $e = FlattenException::create($exception);
-
-            $handler = new SymfonyExceptionHandler();
-
-            $html = $handler->getHtml($e);
             $email = config('mail.username');
-            
+
             if (!empty($email)) {
+                $html = (string) $exception;
                 Mail::to($email)->send(new ExceptionOccured($html));
             }
-        } catch (Exception $ex) {
-            dd($ex);
+        } catch (Throwable $ex) {
+            logger()->error($ex);
         }
     }
 }

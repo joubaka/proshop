@@ -2,10 +2,44 @@
 
 namespace App\Http;
 
-use Nwidart\Menus\Presenters\Presenter;
+use App\Menus\MenuItem;
 
-class AdminlteCustomPresenter extends Presenter
+class AdminlteCustomPresenter
 {
+    /** @var MenuItem[] */
+    protected array $items;
+
+    public function __construct(array $items)
+    {
+        $this->items = $items;
+    }
+
+    public function render(): string
+    {
+        $html = $this->getOpenTagWrapper();
+        foreach ($this->items as $item) {
+            if ($item->isDropdown) {
+                $html .= $this->getMenuWithDropDownWrapper($item);
+            } else {
+                $html .= $this->getMenuWithoutDropdownWrapper($item);
+            }
+        }
+        $html .= $this->getCloseTagWrapper();
+        return $html;
+    }
+
+    protected function getChildMenuItems(MenuItem $item): string
+    {
+        $html = '';
+        foreach ($item->getChilds() as $child) {
+            if ($child->isDropdown) {
+                $html .= $this->getMultiLevelDropdownWrapper($child);
+            } else {
+                $html .= $this->getMenuWithoutDropdownWrapper($child);
+            }
+        }
+        return $html;
+    }
     /**
      * {@inheritdoc }.
      */

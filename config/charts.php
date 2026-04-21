@@ -11,5 +11,5 @@ return [
     | while creating the chart to ignore this value.
     |
     */
-    'default_library' => 'Highcharts',
+    'default_library' => 'Chartjs',
 ];

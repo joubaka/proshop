@@ -568,9 +568,14 @@ class ProductController extends Controller
      * @param  \App\Product  $product
      * @return \Illuminate\Http\Response
      */
+<<<<<<< HEAD
     public function show($product)
     {
         $id = $product;
+=======
+    public function show($id)
+    {
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         if (!auth()->user()->can('product.view')) {
             abort(403, 'Unauthorized action.');
         }
@@ -587,9 +592,14 @@ class ProductController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+<<<<<<< HEAD
     public function edit($product)
     {
         $id = $product;
+=======
+    public function edit($id)
+    {
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         if (!auth()->user()->can('product.update')) {
             abort(403, 'Unauthorized action.');
         }
@@ -649,9 +659,14 @@ class ProductController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+<<<<<<< HEAD
     public function update(Request $request, $product)
     {
         $id = $product;
+=======
+    public function update(Request $request, $id)
+    {
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         if (!auth()->user()->can('product.update')) {
             abort(403, 'Unauthorized action.');
         }
@@ -857,9 +872,14 @@ class ProductController extends Controller
      * @param  \App\Product  $product
      * @return \Illuminate\Http\Response
      */
+<<<<<<< HEAD
     public function destroy($product)
     {
         $id = $product;
+=======
+    public function destroy($id)
+    {
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         if (!auth()->user()->can('product.delete')) {
             abort(403, 'Unauthorized action.');
         }

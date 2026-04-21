@@ -40,12 +40,20 @@ class AppServiceProvider extends ServiceProvider
             \App::setLocale(request()->get('lang'));
         }
 
+<<<<<<< HEAD
         //In Laravel 5.6, Blade will double encode special characters by default.
         Blade::withoutDoubleEncoding();
 
         // Bootstrap 3 pagination views are not built-in from Laravel 9+.
         // Custom pagination views are used instead (resources/views/vendor/pagination).
         // Paginator::useBootstrapThree(); // removed in Laravel 9
+=======
+        //In Laravel 5.6, Blade will double encode special characters by default. If you would like to maintain the previous behavior of preventing double encoding, you may add Blade::withoutDoubleEncoding() to your AppServiceProvider boot method.
+        Blade::withoutDoubleEncoding();
+
+        //Laravel 5.6 uses Bootstrap 4 by default. Shift did not update your front-end resources or dependencies as this could impact your UI. If you are using Bootstrap and wish to continue using Bootstrap 3, you should add Paginator::useBootstrapThree() to your AppServiceProvider boot method.
+        Paginator::useBootstrapThree();
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
 
         $asset_v = config('constants.asset_version', 1);
         View::share('asset_v', $asset_v);
@@ -220,11 +228,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
+<<<<<<< HEAD
         $this->app->singleton('menu.manager', function () {
             $manager = new \App\Menus\MenuManager();
             $manager->registerPresenter('adminltecustom', \App\Http\AdminlteCustomPresenter::class);
             return $manager;
         });
+=======
+        //
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
     }
 
     /**

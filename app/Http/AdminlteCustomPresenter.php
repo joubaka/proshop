@@ -2,6 +2,7 @@
 
 namespace App\Http;
 
+<<<<<<< HEAD
 use App\Menus\MenuItem;
 
 class AdminlteCustomPresenter
@@ -40,6 +41,12 @@ class AdminlteCustomPresenter
         }
         return $html;
     }
+=======
+use Nwidart\Menus\Presenters\Presenter;
+
+class AdminlteCustomPresenter extends Presenter
+{
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
     /**
      * {@inheritdoc }.
      */

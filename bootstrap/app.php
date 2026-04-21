@@ -15,6 +15,10 @@ $app = new Illuminate\Foundation\Application(
     realpath(__DIR__.'/../')
 );
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
 /*
 |--------------------------------------------------------------------------
 | Bind Important Interfaces

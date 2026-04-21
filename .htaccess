@@ -1,5 +1,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+<<<<<<< HEAD
     RewriteRule ^(.*)$ public_html/$1 [L]
+=======
+    RewriteRule ^(.*)$ public/$1 [L]
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
 </IfModule>

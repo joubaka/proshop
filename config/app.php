@@ -51,7 +51,11 @@ return [
     |
     */
 
+<<<<<<< HEAD
     'url' => env('APP_URL', 'https://localhost'),
+=======
+    'url' => env('APP_URL', 'http://localhost'),
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
 
     /*
     |--------------------------------------------------------------------------
@@ -157,6 +161,10 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
+<<<<<<< HEAD
+=======
+        Unicodeveloper\Paystack\PaystackServiceProvider::class,
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         /*
          * Package Service Providers...
          */
@@ -172,9 +180,17 @@ return [
         App\Providers\RouteServiceProvider::class,
 
         Collective\Html\HtmlServiceProvider::class,
+<<<<<<< HEAD
         Milon\Barcode\BarcodeServiceProvider::class,
         App\Providers\DropboxServiceProvider::class,
         Unicodeveloper\Paystack\PaystackServiceProvider::class,
+=======
+        //Yajra\Datatables\DatatablesServiceProvider::class,
+        // Spatie\Permission\PermissionServiceProvider::class,
+        Milon\Barcode\BarcodeServiceProvider::class,
+        ConsoleTVs\Charts\ChartsServiceProvider::class,
+        App\Providers\DropboxServiceProvider::class,
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
 
     ],
 
@@ -198,7 +214,10 @@ return [
         'Blade' => Illuminate\Support\Facades\Blade::class,
         'Broadcast' => Illuminate\Support\Facades\Broadcast::class,
         'Bus' => Illuminate\Support\Facades\Bus::class,
+<<<<<<< HEAD
         'Menu' => App\Facades\Menu::class,
+=======
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         'Cache' => Illuminate\Support\Facades\Cache::class,
         'Config' => Illuminate\Support\Facades\Config::class,
         'Cookie' => Illuminate\Support\Facades\Cookie::class,
@@ -232,6 +251,10 @@ return [
         'Carbon' => 'Carbon\Carbon',
         'DNS1D' => Milon\Barcode\Facades\DNS1DFacade::class,
         'DNS2D' => Milon\Barcode\Facades\DNS2DFacade::class,
+<<<<<<< HEAD
+=======
+        'Charts' => ConsoleTVs\Charts\Facades\Charts::class,
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         'Datatables' => Yajra\DataTables\Facades\DataTables::class,
         'Paystack' => Unicodeveloper\Paystack\Facades\Paystack::class,
     ]

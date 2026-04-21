@@ -8,6 +8,7 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 class Kernel extends ConsoleKernel
 {
     /**
+<<<<<<< HEAD
      * The bootstrap classes for the application.
      *
      * @var array
@@ -23,6 +24,8 @@ class Kernel extends ConsoleKernel
     ];
 
     /**
+=======
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
      * The Artisan commands provided by your application.
      *
      * @var array

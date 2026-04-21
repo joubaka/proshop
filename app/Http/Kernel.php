@@ -14,7 +14,11 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $middleware = [
+<<<<<<< HEAD
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
+=======
+        \App\Http\Middleware\CheckForMaintenanceMode::class,
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
@@ -39,7 +43,11 @@ class Kernel extends HttpKernel
 
         'api' => [
             'throttle:60,1',
+<<<<<<< HEAD
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+=======
+            'bindings',
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         ],
     ];
 

@@ -1,14 +1,31 @@
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
+<<<<<<< HEAD
         Options -MultiViews -Indexes
+=======
+        Options -MultiViews
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
     </IfModule>
 
     RewriteEngine On
 
+<<<<<<< HEAD
+=======
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)/$ /$1 [L,R=301]
+
+    # Handle Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+<<<<<<< HEAD
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
@@ -25,5 +42,7 @@
     RewriteRule ^ index.php [L]
 
     # Block sensitive files in uploads
+=======
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
     RewriteRule ^uploads/.*\.(htaccess|htpasswd|ini|phps|fla|psd|log|sh|zip|exe|pl|jsp|asp|htm|sh|cgi|py|php)$ - [NC,F]
 </IfModule>

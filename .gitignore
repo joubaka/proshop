@@ -2,6 +2,7 @@
 /public/hot
 /public/storage
 /storage/*.key
+<<<<<<< HEAD
 /storage/**/*
 !/storage/**/.gitkeep
 /bootstrap/cache/*
@@ -10,11 +11,20 @@
 /.idea
 /.vagrant
 /.vs
+=======
+/storage/
+/vendor
+/.idea
+/.vagrant
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
 Homestead.json
 Homestead.yaml
 npm-debug.log
 .env
+<<<<<<< HEAD
 production.env
+=======
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
 /public/uploads/business_logos
 /public/uploads/documents
 /public/uploads/img

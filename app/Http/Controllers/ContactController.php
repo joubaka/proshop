@@ -631,13 +631,20 @@ class ContactController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+<<<<<<< HEAD
     public function show($contact)
+=======
+    public function show($id)
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
     {
         if (!auth()->user()->can('supplier.view') && !auth()->user()->can('customer.view') && !auth()->user()->can('customer.view_own') && !auth()->user()->can('supplier.view_own')) {
             abort(403, 'Unauthorized action.');
         }
 
+<<<<<<< HEAD
         $id = $contact;
+=======
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         $business_id = request()->session()->get('user.business_id');
         $contact = $this->contactUtil->getContactInfo($business_id, $id);
 
@@ -687,9 +694,14 @@ class ContactController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+<<<<<<< HEAD
     public function edit($contact)
     {
         $id = $contact;
+=======
+    public function edit($id)
+    {
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         if (!auth()->user()->can('supplier.update') && !auth()->user()->can('customer.update') && !auth()->user()->can('customer.view_own') && !auth()->user()->can('supplier.view_own')) {
             abort(403, 'Unauthorized action.');
         }
@@ -745,9 +757,14 @@ class ContactController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+<<<<<<< HEAD
     public function update(Request $request, $contact)
     {
         $id = $contact;
+=======
+    public function update(Request $request, $id)
+    {
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         if (!auth()->user()->can('supplier.update') && !auth()->user()->can('customer.update') && !auth()->user()->can('customer.view_own') && !auth()->user()->can('supplier.view_own')) {
             abort(403, 'Unauthorized action.');
         }
@@ -816,9 +833,14 @@ class ContactController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+<<<<<<< HEAD
     public function destroy($contact)
     {
         $id = $contact;
+=======
+    public function destroy($id)
+    {
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
         if (!auth()->user()->can('supplier.delete') && !auth()->user()->can('customer.delete') && !auth()->user()->can('customer.view_own') && !auth()->user()->can('supplier.view_own')) {
             abort(403, 'Unauthorized action.');
         }

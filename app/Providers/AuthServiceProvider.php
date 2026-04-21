@@ -26,9 +26,13 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
+<<<<<<< HEAD
         Passport::tokensExpireIn(now()->addDays(15));
         Passport::refreshTokensExpireIn(now()->addDays(30));
         Passport::personalAccessTokensExpireIn(now()->addMonths(6));
+=======
+        Passport::routes();
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
 
         Gate::before(function ($user, $ability) {
             if (in_array($ability, ['backup', 'superadmin', 

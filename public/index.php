@@ -7,9 +7,12 @@
  * @author   Taylor Otwell <taylor@laravel.com>
  */
 
+<<<<<<< HEAD
 // Suppress PHP 8.x deprecation notices for Laravel 5.8 compatibility
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 
+=======
+>>>>>>> 19f5e4d41d134205432345c7270c1d029cbe786e
 /*
 |--------------------------------------------------------------------------
 | Register The Auto Loader

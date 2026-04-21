@@ -47,7 +47,7 @@
         "mockery/mockery": "^1.0",
         "mpociot/laravel-apidoc-generator": "^4.8",
         "nunomaduro/collision": "^3.0",
-        "phpunit/phpunit": "^7.5"
+        "phpunit/phpunit": "^9.5"
     },
     "autoload": {
         "files": [
@@ -88,8 +88,27 @@
         "preferred-install": "dist",
         "sort-packages": true,
         "optimize-autoloader": true,
+        "audit": {
+            "block-insecure": false,
+            "ignore": [
+                "PKSA-qstp-ffwg-8hp6",
+                "PKSA-5vz3-q51h-7mg4",
+                "PKSA-7ztm-rpt3-qqzk",
+                "PKSA-4jrs-y99s-q8j6",
+                "PKSA-hbk6-2vfz-8f8n",
+                "PKSA-kj9c-tr41-t8mj",
+                "PKSA-872h-8556-2chm",
+                "PKSA-99tj-gg5v-4g74",
+                "PKSA-y2cr-5h3j-g3ys",
+                "PKSA-2kqm-ps5x-s4f5",
+                "PKSA-4s4z-t146-6123"
+            ]
+        },
         "platform": {
             "php": "7.4.0"
+        },
+        "allow-plugins": {
+            "ocramius/package-versions": true
         }
     },
     "minimum-stability": "dev",

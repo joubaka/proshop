@@ -19,6 +19,38 @@
 |
 */
 
+/*
+|--------------------------------------------------------------------------
+| CVE-2024-52301: Prevent environment manipulation via query string
+|--------------------------------------------------------------------------
+|
+| PHP converts dots and spaces in query-string parameter names to underscores
+| when populating $_GET (e.g. ?APP.ENV=testing sets $_GET['APP_ENV']).
+| Strip any such normalised key before the framework loads.
+| Backport of the fix in laravel/framework 6.20.45 / 7.30.7 / 8.83.28.
+|
+*/
+
+if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] !== '') {
+    foreach (explode('&', $_SERVER['QUERY_STRING']) as $pair) {
+        if ($pair === '') {
+            continue;
+        }
+
+        [$rawKey] = explode('=', $pair, 2);
+        $decodedKey = urldecode($rawKey);
+        $normalizedKey = str_replace(['.', ' '], '_', $decodedKey);
+
+        if ($decodedKey !== $normalizedKey) {
+            unset($_GET[$normalizedKey]);
+
+            if (isset($_REQUEST[$normalizedKey]) && ! isset($_POST[$normalizedKey])) {
+                unset($_REQUEST[$normalizedKey]);
+            }
+        }
+    }
+}
+
 require __DIR__.'/../bootstrap/autoload.php';
 
 /*

@@ -2,7 +2,6 @@
 
 namespace App\Utils;
 
-use \Module;
 use App\Account;
 use App\BusinessLocation;
 use App\Product;
@@ -21,7 +20,7 @@ class ModuleUtil extends Util
      */
     public function isModuleInstalled($module_name)
     {
-        $is_available = Module::has($module_name);
+        $is_available = false; // nwidart/laravel-modules not installed
 
         if ($is_available) {
             //Check if installed by checking the system table {module_name}_version
@@ -55,7 +54,7 @@ class ModuleUtil extends Util
      */
     public function getModuleData($function_name, $arguments = null)
     {
-        $modules = Module::toCollection()->toArray();
+        $modules = []; // nwidart/laravel-modules not installed
         
         $installed_modules = [];
         foreach ($modules as $module => $details) {
@@ -455,18 +454,8 @@ class ModuleUtil extends Util
                     'is_update_available' => null
                 ];
 
-        $is_available = Module::has($module_name);
+        $is_available = false; // nwidart/laravel-modules not installed
 
-        if ($is_available) {
-            //Check if installed by checking the system table {module_name}_version
-            $module_version = System::getProperty(strtolower($module_name) . '_version');
-
-            $output['installed_version'] = $module_version;
-            $output['available_version'] = config(strtolower($module_name) . '.module_version');
-
-            $output['is_update_available'] = Comparator::greaterThan($output['available_version'], $output['installed_version']);
-        }
-        
         return $output;
     }
 

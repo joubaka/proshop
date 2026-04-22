@@ -136,7 +136,7 @@
                             processing: true,
                             serverSide: true,
                             ajax: {
-                                url: '{{action("AccountController@show",[$account->id])}}',
+                                url: '{{action("App\Http\Controllers\AccountController@show",[$account->id])}}',
                                 data: function(d) {
                                     var start = '';
                                     var end = '';
@@ -252,7 +252,7 @@
     function update_account_balance(argument) {
         $('span#account_balance').html('<i class="fas fa-sync fa-spin"></i>');
         $.ajax({
-            url: '{{action("AccountController@getAccountBalance", [$account->id])}}',
+            url: '{{action("App\Http\Controllers\AccountController@getAccountBalance", [$account->id])}}',
             dataType: "json",
             success: function(data){
                 $('span#account_balance').text(__currency_trans_from_en(data.balance, true));

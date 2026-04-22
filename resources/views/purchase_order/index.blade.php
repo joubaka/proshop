@@ -88,7 +88,7 @@
             scrollX:        true,
             scrollCollapse: true,
             ajax: {
-                url: '{{action("PurchaseOrderController@index")}}',
+                url: '{{action("App\Http\Controllers\PurchaseOrderController@index")}}',
                 data: function(d) {
                     if ($('#po_list_filter_location_id').length) {
                         d.location_id = $('#po_list_filter_location_id').val();

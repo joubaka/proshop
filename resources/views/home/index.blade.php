@@ -508,7 +508,7 @@
           scrollCollapse: true,
           aaSorting: [[1, 'desc']],
           "ajax": {
-              "url": '{{action("SellController@index")}}?sale_type=sales_order',
+              "url": '{{action("App\Http\Controllers\SellController@index")}}?sale_type=sales_order',
               "data": function ( d ) {
                     d.for_dashboard_sales_order = true;
 
@@ -543,7 +543,7 @@
                 processing: true,
                 serverSide: true,
                 "ajax": {
-                        "url": "{{action("AccountController@cashFlow")}}",
+                        "url": "{{action("App\Http\Controllers\AccountController@cashFlow")}}",
                         "data": function ( d ) {
                             d.type = 'credit';
                             d.only_payment_recovered = true;
@@ -588,7 +588,7 @@
               scrollX:        true,
               scrollCollapse: true,
               ajax: {
-                  url: '{{action("PurchaseOrderController@index")}}',
+                  url: '{{action("App\Http\Controllers\PurchaseOrderController@index")}}',
                   data: function(d) {
                       d.from_dashboard = true;
 
@@ -622,7 +622,7 @@
             scrollX:        true,
             scrollCollapse: true,
             "ajax": {
-                "url": '{{action("SellController@index")}}',
+                "url": '{{action("App\Http\Controllers\SellController@index")}}',
                 "data": function ( d ) {
                     d.only_pending_shipments = true;
                     if ($('#pending_shipments_location').length > 0) {

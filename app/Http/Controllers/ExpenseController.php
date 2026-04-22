@@ -189,9 +189,9 @@ class ExpenseController extends Controller
                     @endif
                     <li class="divider"></li> 
                     @if($payment_status != "paid")
-                        <li><a href="{{action("TransactionPaymentController@addPayment", [$id])}}" class="add_payment_modal"><i class="fas fa-money-bill-alt" aria-hidden="true"></i> @lang("purchase.add_payment")</a></li>
+                        <li><a href="{{action("App\Http\Controllers\TransactionPaymentController@addPayment", [$id])}}" class="add_payment_modal"><i class="fas fa-money-bill-alt" aria-hidden="true"></i> @lang("purchase.add_payment")</a></li>
                     @endif
-                    <li><a href="{{action("TransactionPaymentController@show", [$id])}}" class="view_payment_modal"><i class="fas fa-money-bill-alt" aria-hidden="true" ></i> @lang("purchase.view_payments")</a></li>
+                    <li><a href="{{action("App\Http\Controllers\TransactionPaymentController@show", [$id])}}" class="view_payment_modal"><i class="fas fa-money-bill-alt" aria-hidden="true" ></i> @lang("purchase.view_payments")</a></li>
                     </ul></div>'
                 )
                 ->removeColumn('id')
@@ -202,7 +202,7 @@ class ExpenseController extends Controller
                 ->editColumn('transaction_date', '{{@format_datetime($transaction_date)}}')
                 ->editColumn(
                     'payment_status',
-                    '<a href="{{ action("TransactionPaymentController@show", [$id])}}" class="view_payment_modal payment-status" data-orig-value="{{$payment_status}}" data-status-name="{{__(\'lang_v1.\' . $payment_status)}}"><span class="label @payment_status($payment_status)">{{__(\'lang_v1.\' . $payment_status)}}
+                    '<a href="{{ action("App\Http\Controllers\TransactionPaymentController@show", [$id])}}" class="view_payment_modal payment-status" data-orig-value="{{$payment_status}}" data-status-name="{{__(\'lang_v1.\' . $payment_status)}}"><span class="label @payment_status($payment_status)">{{__(\'lang_v1.\' . $payment_status)}}
                         </span></a>'
                 )
                 ->addColumn('payment_due', function ($row) {

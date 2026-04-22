@@ -1073,12 +1073,12 @@ class AccountController extends Controller
             if (!empty($row->transaction->type)) {
                 if ($row->transaction->type == 'purchase') {
                     $details = __('lang_v1.purchase') . '<br><b>' . __('purchase.supplier') . ':</b> ' . $row->transaction->contact->full_name_with_business . '<br><b>'.
-                    __('purchase.ref_no') . ':</b> <a href="#" data-href="' . action("PurchaseController@show", [$row->transaction->id]) . '" class="btn-modal" data-container=".view_modal">' . $row->transaction->ref_no . '</a>';
+                    __('purchase.ref_no') . ':</b> <a href="#" data-href="' . action("App\Http\Controllers\PurchaseController@show", [$row->transaction->id]) . '" class="btn-modal" data-container=".view_modal">' . $row->transaction->ref_no . '</a>';
                 }elseif ($row->transaction->type == 'expense') {
                     $details = __('lang_v1.expense') . '<br><b>' . __('purchase.ref_no') . ':</b>' . $row->transaction->ref_no;
                 } elseif ($row->transaction->type == 'sell') {
                     $details = __('sale.sale') . '<br><b>' . __('contact.customer') . ':</b> ' . $row->transaction->contact->full_name_with_business . '<br><b>'.
-                    __('sale.invoice_no') . ':</b> <a href="#" data-href="' . action("SellController@show", [$row->transaction->id]) . '" class="btn-modal" data-container=".view_modal">' . $row->transaction->invoice_no . '</a>';
+                    __('sale.invoice_no') . ':</b> <a href="#" data-href="' . action("App\Http\Controllers\SellController@show", [$row->transaction->id]) . '" class="btn-modal" data-container=".view_modal">' . $row->transaction->invoice_no . '</a>';
                 }
             }
         }

@@ -2207,7 +2207,7 @@ class ReportController extends Controller
                 ->editColumn('amount', function ($row) {
                     return '<span class="display_currency paid-amount" data-currency_symbol = true data-orig-value="' . $row->amount . '">' . $row->amount . '</span>';
                 })
-                ->addColumn('action', '<button type="button" class="btn btn-primary btn-xs view_payment" data-href="{{ action("TransactionPaymentController@viewPayment", [$DT_RowId]) }}">@lang("messages.view")
+                ->addColumn('action', '<button type="button" class="btn btn-primary btn-xs view_payment" data-href="{{ action("App\Http\Controllers\TransactionPaymentController@viewPayment", [$DT_RowId]) }}">@lang("messages.view")
                     </button> @if(!empty($document))<a href="{{asset("/uploads/documents/" . $document)}}" class="btn btn-success btn-xs" download=""><i class="fa fa-download"></i> @lang("purchase.download_document")</a>@endif')
                 ->rawColumns(['ref_no', 'amount', 'method', 'action', 'supplier'])
                 ->make(true);
@@ -2344,7 +2344,7 @@ class ReportController extends Controller
                     $amount = $row->is_return == 1 ? -1 * $row->amount : $row->amount;
                     return '<span class="display_currency paid-amount" data-orig-value="' . $amount . '" data-currency_symbol = true>' . $amount . '</span>';
                 })
-                ->addColumn('action', '<button type="button" class="btn btn-primary btn-xs view_payment" data-href="{{ action("TransactionPaymentController@viewPayment", [$DT_RowId]) }}">@lang("messages.view")
+                ->addColumn('action', '<button type="button" class="btn btn-primary btn-xs view_payment" data-href="{{ action("App\Http\Controllers\TransactionPaymentController@viewPayment", [$DT_RowId]) }}">@lang("messages.view")
                     </button> @if(!empty($document))<a href="{{asset("/uploads/documents/" . $document)}}" class="btn btn-success btn-xs" download=""><i class="fa fa-download"></i> @lang("purchase.download_document")</a>@endif')
                 ->rawColumns(['invoice_no', 'amount', 'method', 'action', 'customer'])
                 ->make(true);

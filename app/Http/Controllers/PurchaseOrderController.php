@@ -204,7 +204,7 @@ class PurchaseOrderController extends Controller
                     if (array_key_exists($row->status, $order_statuses)) {
                         if ($is_admin && $row->status != 'completed') {
                             $status = '<span class="edit-po-status label ' . $order_statuses[$row->status]['class']
-                            . '" data-href="'.action("PurchaseOrderController@getEditPurchaseOrderStatus", ['id' => $row->id]).'">' . $order_statuses[$row->status]['label'] . '</span>';
+                            . '" data-href="'.action("App\Http\Controllers\PurchaseOrderController@getEditPurchaseOrderStatus", ['id' => $row->id]).'">' . $order_statuses[$row->status]['label'] . '</span>';
                         } else {
                             $status = '<span class="label ' . $order_statuses[$row->status]['class']
                             . '" >' . $order_statuses[$row->status]['label'] . '</span>';

@@ -344,7 +344,7 @@ class SellController extends Controller
                                     <ul class="dropdown-menu dropdown-menu-left" role="menu">' ;
 
                         if (auth()->user()->can("sell.view") || auth()->user()->can("direct_sell.view") || auth()->user()->can("view_own_sell_only")) {
-                            $html .= '<li><a href="#" data-href="' . action("SellController@show", [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-eye" aria-hidden="true"></i> ' . __("messages.view") . '</a></li>';
+                            $html .= '<li><a href="#" data-href="' . action("App\Http\Controllers\SellController@show", [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-eye" aria-hidden="true"></i> ' . __("messages.view") . '</a></li>';
                         }
                         if (!$only_shipments) {
                             if ($row->is_direct_sale == 0) {
@@ -490,7 +490,7 @@ class SellController extends Controller
                     $return_due_html = '';
                     if (!empty($row->return_exists)) {
                         $return_due = $row->amount_return - $row->return_paid;
-                        $return_due_html .= '<a href="' . action("TransactionPaymentController@show", [$row->return_transaction_id]) . '" class="view_purchase_return_payment_modal"><span class="sell_return_due" data-orig-value="' . $return_due . '">' . $this->transactionUtil->num_f($return_due, true) . '</span></a>';
+                        $return_due_html .= '<a href="' . action("App\Http\Controllers\TransactionPaymentController@show", [$row->return_transaction_id]) . '" class="view_purchase_return_payment_modal"><span class="sell_return_due" data-orig-value="' . $return_due . '">' . $this->transactionUtil->num_f($return_due, true) . '</span></a>';
                     }
 
                     return $return_due_html;
@@ -554,7 +554,7 @@ class SellController extends Controller
 
                     if ($row->type == 'sales_order') {
                         if ($is_admin && $row->status != 'completed') {
-                            $status = '<span class="edit-so-status label ' . $sales_order_statuses[$row->status]['class'] . '" data-href="'.action("SalesOrderController@getEditSalesOrderStatus", ['id' => $row->id]).'">' . $sales_order_statuses[$row->status]['label'] . '</span>';
+                            $status = '<span class="edit-so-status label ' . $sales_order_statuses[$row->status]['class'] . '" data-href="'.action("App\Http\Controllers\SalesOrderController@getEditSalesOrderStatus", ['id' => $row->id]).'">' . $sales_order_statuses[$row->status]['label'] . '</span>';
                         } else {
                             $status = '<span class="label ' . $sales_order_statuses[$row->status]['class'] . '" >' . $sales_order_statuses[$row->status]['label'] . '</span>';
                         }
@@ -1363,10 +1363,10 @@ class SellController extends Controller
 
                         if($row->sub_status == "quotation") {
                             $html .= '<li>
-                                        <a href="'.action("SellPosController@showInvoiceUrl", [$row->id]).'" class="view_invoice_url"><i class="fas fa-eye"></i>'.__("lang_v1.view_quote_url").'</a>
+                                        <a href="'.action("App\Http\Controllers\SellPosController@showInvoiceUrl", [$row->id]).'" class="view_invoice_url"><i class="fas fa-eye"></i>'.__("lang_v1.view_quote_url").'</a>
                                     </li>
                                     <li>
-                                        <a href="#" data-href="'.action("NotificationController@getTemplate", ["transaction_id" => $row->id,"template_for" => "new_quotation"]).'" class="btn-modal" data-container=".view_modal"><i class="fa fa-envelope" aria-hidden="true"></i>' . __("lang_v1.new_quotation_notification") . '
+                                        <a href="#" data-href="'.action("App\Http\Controllers\NotificationController@getTemplate", ["transaction_id" => $row->id,"template_for" => "new_quotation"]).'" class="btn-modal" data-container=".view_modal"><i class="fa fa-envelope" aria-hidden="true"></i>' . __("lang_v1.new_quotation_notification") . '
                                         </a>
                                     </li>';
                         }

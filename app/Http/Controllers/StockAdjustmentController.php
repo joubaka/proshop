@@ -94,9 +94,9 @@ class StockAdjustmentController extends Controller
             }
             
             return Datatables::of($stock_adjustments)
-                ->addColumn('action', '<button type="button" data-href="{{  action("StockAdjustmentController@show", [$id]) }}" class="btn btn-primary btn-xs btn-modal" data-container=".view_modal"><i class="fa fa-eye" aria-hidden="true"></i> @lang("messages.view")</button>
+                ->addColumn('action', '<button type="button" data-href="{{  action("App\Http\Controllers\StockAdjustmentController@show", [$id]) }}" class="btn btn-primary btn-xs btn-modal" data-container=".view_modal"><i class="fa fa-eye" aria-hidden="true"></i> @lang("messages.view")</button>
                  &nbsp;
-                    <button type="button" data-href="{{  action("StockAdjustmentController@destroy", [$id]) }}" class="btn btn-danger btn-xs delete_stock_adjustment ' . $hide . '"><i class="fa fa-trash" aria-hidden="true"></i> @lang("messages.delete")</button>')
+                    <button type="button" data-href="{{  action("App\Http\Controllers\StockAdjustmentController@destroy", [$id]) }}" class="btn btn-danger btn-xs delete_stock_adjustment ' . $hide . '"><i class="fa fa-trash" aria-hidden="true"></i> @lang("messages.delete")</button>')
                 ->removeColumn('id')
                 ->editColumn(
                     'final_total',

@@ -116,7 +116,7 @@
             processing: true,
             serverSide: true,
             "ajax": {
-                    "url": "{{action("AccountController@cashFlow")}}",
+                    "url": "{{action("App\Http\Controllers\AccountController@cashFlow")}}",
                     "data": function ( d ) {
                         var start = '';
                         var end = '';

@@ -342,8 +342,8 @@ class HomeController extends Controller
                 ->removeColumn('type')
                 ->removeColumn('product_variation')
                 ->removeColumn('variation')
-                ->rawColumns([2])
-                ->make(false);
+                ->rawColumns(['stock'])
+                ->make(true);
         }
     }
 
@@ -415,8 +415,8 @@ class HomeController extends Controller
                 ->removeColumn('id')
                 ->removeColumn('final_total')
                 ->removeColumn('total_paid')
-                ->rawColumns([0, 1, 2, 3])
-                ->make(false);
+                ->rawColumns(['supplier', 'ref_no', 'due', 'action'])
+                ->make(true);
         }
     }
 
@@ -490,8 +490,8 @@ class HomeController extends Controller
                 ->removeColumn('id')
                 ->removeColumn('final_total')
                 ->removeColumn('total_paid')
-                ->rawColumns([0, 1, 2, 3])
-                ->make(false);
+                ->rawColumns(['customer', 'invoice_no', 'due', 'action'])
+                ->make(true);
         }
     }
 

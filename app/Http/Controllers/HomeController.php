@@ -259,7 +259,7 @@ class HomeController extends Controller
             $output['invoice_due'] = $sell_details['invoice_due'];
             $output['total_expense'] = $transaction_totals['total_expense'];
             
-            return $output;
+            return response()->json($output);
         }
     }
 
@@ -322,7 +322,7 @@ class HomeController extends Controller
                 'u.short_name as unit'
             )
                     ->groupBy('variation_location_details.id')
-                    ->orderBy('stock', 'asc');
+                    ->orderBy('variation_location_details.qty_available', 'asc');
 
             return Datatables::of($products)
                 ->editColumn('product', function ($row) {
@@ -402,9 +402,21 @@ class HomeController extends Controller
                     return '<span class="display_currency" data-currency_symbol="true">' .
                     $due . '</span>';
                 })
-                ->addColumn('action', '@can("purchase.create") <a href="{{action("App\Http\Controllers\TransactionPaymentController@addPayment", [$id])}}" class="btn btn-xs btn-success add_payment_modal"><i class="fas fa-money-bill-alt"></i> @lang("purchase.add_payment")</a> @endcan')
+                ->addColumn('action', function ($row) {
+                    if (auth()->user()->can('purchase.create')) {
+                        return '<a href="' . action('App\Http\Controllers\TransactionPaymentController@addPayment', [$row->id]) . '" class="btn btn-xs btn-success add_payment_modal"><i class="fas fa-money-bill-alt"></i> ' . __('purchase.add_payment') . '</a>';
+                    }
+                    return '';
+                })
+                ->editColumn('supplier', function ($row) {
+                    $supplier = '';
+                    if (!empty($row->supplier_business_name)) {
+                        $supplier .= $row->supplier_business_name . ', <br>';
+                    }
+                    $supplier .= $row->supplier;
+                    return $supplier;
+                })
                 ->removeColumn('supplier_business_name')
-                ->editColumn('supplier', '@if(!empty($supplier_business_name)) {{$supplier_business_name}}, <br> @endif {{$supplier}}')
                 ->editColumn('ref_no', function ($row) {
                     if (auth()->user()->can('purchase.view')) {
                         return  '<a href="#" data-href="' . action('App\Http\Controllers\PurchaseController@show', [$row->id]) . '"
@@ -484,8 +496,20 @@ class HomeController extends Controller
                     }
                     return $row->invoice_no;
                 })
-                ->addColumn('action', '@if(auth()->user()->can("sell.create") || auth()->user()->can("direct_sell.access")) <a href="{{action("App\Http\Controllers\TransactionPaymentController@addPayment", [$id])}}" class="btn btn-xs btn-success add_payment_modal"><i class="fas fa-money-bill-alt"></i> @lang("purchase.add_payment")</a> @endif')
-                ->editColumn('customer', '@if(!empty($supplier_business_name)) {{$supplier_business_name}}, <br> @endif {{$customer}}')
+                ->addColumn('action', function ($row) {
+                    if (auth()->user()->can('sell.create') || auth()->user()->can('direct_sell.access')) {
+                        return '<a href="' . action('App\Http\Controllers\TransactionPaymentController@addPayment', [$row->id]) . '" class="btn btn-xs btn-success add_payment_modal"><i class="fas fa-money-bill-alt"></i> ' . __('purchase.add_payment') . '</a>';
+                    }
+                    return '';
+                })
+                ->editColumn('customer', function ($row) {
+                    $customer = '';
+                    if (!empty($row->supplier_business_name)) {
+                        $customer .= $row->supplier_business_name . ', <br>';
+                    }
+                    $customer .= $row->customer;
+                    return $customer;
+                })
                 ->removeColumn('supplier_business_name')
                 ->removeColumn('id')
                 ->removeColumn('final_total')

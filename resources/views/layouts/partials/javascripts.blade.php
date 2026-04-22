@@ -118,7 +118,7 @@
 @endif
 @yield('javascript')
 
-@if(Module::has('Essentials'))
+@if(false)
   @includeIf('essentials::layouts.partials.footer_part')
 @endif
 

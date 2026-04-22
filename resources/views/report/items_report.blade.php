@@ -58,7 +58,7 @@
                     </div>
                 </div>
             </div>
-            @if(Module::has('Manufacturing'))
+            @if(false)
                 <div class="col-md-3">
                     <div class="form-group">
                         <br>

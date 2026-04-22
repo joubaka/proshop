@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Install;
 
-use \Module;
 use App\Http\Controllers\Controller;
 use App\Utils\ModuleUtil;
 use Illuminate\Http\Request;
@@ -35,7 +34,7 @@ class ModulesController extends Controller
         }
 
         //Get list of all modules.
-        $modules = Module::toCollection()->toArray();
+        $modules = []; // nwidart/laravel-modules not installed
 
         foreach ($modules as $module => $details) {
             $modules[$module]['is_installed'] = $this->moduleUtil->isModuleInstalled($details['name']) ? true : false;
@@ -143,18 +142,7 @@ class ModulesController extends Controller
         }
 
         try {
-            $module = Module::find($module_name);
-
-            //php artisan module:disable Blog
-            if ($request->action_type == 'activate') {
-                $module->enable();
-            } elseif ($request->action_type == 'deactivate') {
-                $module->disable();
-            }
-
-            $output = ['success' => true,
-                            'msg' => __("lang_v1.success")
-                        ];
+            throw new \Exception('Module management requires nwidart/laravel-modules package.');
         } catch (\Exception $e) {
             $output = ['success' => false,
                         'msg' => $e->getMessage()
@@ -182,12 +170,7 @@ class ModulesController extends Controller
         }
 
         try {
-            $module = Module::find($module_name);
-            $module->delete();
-
-            $output = ['success' => true,
-                            'msg' => __("lang_v1.success")
-                        ];
+            throw new \Exception('Module management requires nwidart/laravel-modules package.');
         } catch (\Exception $e) {
             $output = ['success' => false,
                         'msg' => $e->getMessage()

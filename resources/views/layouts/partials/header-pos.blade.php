@@ -82,7 +82,7 @@
         </button>
       @endif
 
-      @if(Module::has('Repair') && $transaction_sub_type != 'repair')
+      @if(false)
         @include('repair::layouts.partials.pos_header')
       @endif
 

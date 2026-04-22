@@ -1005,7 +1005,7 @@
   <!-- Call restaurant module if defined -->
   @include('restaurant.partials.invoice_layout')
 
-  @if(Module::has('Repair'))
+  @if(false)
     @include('repair::layouts.partials.invoice_layout_settings')
   @endif
   <div class="box box-solid">

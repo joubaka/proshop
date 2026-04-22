@@ -15,15 +15,14 @@
         <span class="sr-only">Toggle navigation</span>
       </a>
 
-      @if(Module::has('Superadmin'))
+      @if(false)
         @includeIf('superadmin::layouts.partials.active_subscription')
       @endif
 
       <!-- Navbar Right Menu -->
       <div class="navbar-custom-menu">
 
-        @if(Module::has('Essentials'))
-          @includeIf('essentials::layouts.partials.header_part')
+        @if(false)
         @endif
 
         <div class="btn-group">
@@ -36,7 +35,7 @@
                   <i class="fas fa-calendar-alt" aria-hidden="true"></i> @lang('lang_v1.calendar')
               </a></li>
             @endif
-            @if(Module::has('Essentials'))
+            @if(false)
               <li><a href="#" class="btn-modal" data-href="{{action('\Modules\Essentials\Http\Controllers\ToDoController@create')}}" data-container="#task_modal">
                   <i class="fas fa-clipboard-check" aria-hidden="true"></i> @lang( 'essentials::lang.add_to_do' )
               </a></li>
@@ -76,7 +75,7 @@
           @endcan
         @endif
 
-        @if(Module::has('Repair'))
+        @if(false)
           @includeIf('repair::layouts.partials.header')
         @endif
 

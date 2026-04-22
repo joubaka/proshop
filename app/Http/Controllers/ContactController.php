@@ -1242,10 +1242,10 @@ class ContactController extends Controller
         $business_id = request()->session()->get('user.business_id');
         $contact_id = request()->input('contact_id');
 
-        $start_date = request()->start_date;
-        $end_date =  request()->end_date;
-        $format =  request()->format;
-        $location_id =  request()->location_id;
+        $start_date = request()->input('start_date');
+        $end_date = request()->input('end_date');
+        $format = request()->input('format');
+        $location_id = request()->input('location_id');
 
         $contact = Contact::find($contact_id);
 

@@ -3,6 +3,7 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 class DocumentAndNote extends Model
@@ -16,8 +17,12 @@ class DocumentAndNote extends Model
      */
     protected $guarded = ['id'];
 
-    protected static $logUnguarded = true;
-    protected static $logOnlyDirty = true;
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logUnguarded()
+            ->logOnlyDirty();
+    }
 
 
     /**

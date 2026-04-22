@@ -522,8 +522,12 @@ class SellController extends Controller
                     return $invoice_no;
                 })
                 ->editColumn('shipping_status', function ($row) use ($shipping_statuses) {
+                    if (empty($row->shipping_status) || !isset($shipping_statuses[$row->shipping_status])) {
+                        return '';
+                    }
+
                     $status_color = !empty($this->shipping_status_colors[$row->shipping_status]) ? $this->shipping_status_colors[$row->shipping_status] : 'bg-gray';
-                    $status = !empty($row->shipping_status) ? '<a href="#" class="btn-modal" data-href="' . action('App\Http\Controllers\SellController@editShipping', [$row->id]) . '" data-container=".view_modal"><span class="label ' . $status_color .'">' . $shipping_statuses[$row->shipping_status] . '</span></a>' : '';
+                    $status = '<a href="#" class="btn-modal" data-href="' . action('App\Http\Controllers\SellController@editShipping', [$row->id]) . '" data-container=".view_modal"><span class="label ' . $status_color .'">' . $shipping_statuses[$row->shipping_status] . '</span></a>';
                      
                     return $status;
                 })
@@ -552,12 +556,14 @@ class SellController extends Controller
                 ->editColumn('status', function($row) use($sales_order_statuses, $is_admin){
                     $status = '';
 
-                    if ($row->type == 'sales_order') {
+                    if ($row->type == 'sales_order' && isset($sales_order_statuses[$row->status])) {
                         if ($is_admin && $row->status != 'completed') {
                             $status = '<span class="edit-so-status label ' . $sales_order_statuses[$row->status]['class'] . '" data-href="'.action("App\Http\Controllers\SalesOrderController@getEditSalesOrderStatus", ['id' => $row->id]).'">' . $sales_order_statuses[$row->status]['label'] . '</span>';
                         } else {
                             $status = '<span class="label ' . $sales_order_statuses[$row->status]['class'] . '" >' . $sales_order_statuses[$row->status]['label'] . '</span>';
                         }
+                    } elseif (!empty($row->status)) {
+                        $status = '<span class="label bg-gray">' . e(ucfirst((string) $row->status)) . '</span>';
                     }
 
                     return $status;

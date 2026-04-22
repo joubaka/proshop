@@ -9,7 +9,7 @@
         $opening_balance = 0;
         $lead_users = $contact->leadUsers->pluck('id');
     } else {
-      $url = action('ContactController@update', [$contact->id]);
+      $url = action('App\Http\Controllers\ContactController@update', [$contact->id]);
       $sources = [];
       $life_stages = [];
       $lead_users = [];

@@ -284,7 +284,7 @@ class ExpenseController extends Controller
         
         //Check if subscribed or not
         if (!$this->moduleUtil->isSubscribed($business_id)) {
-            return $this->moduleUtil->expiredResponse(action('ExpenseController@index'));
+            return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\ExpenseController@index'));
         }
 
         $business_locations = BusinessLocation::forDropdown($business_id, false, true);
@@ -337,7 +337,7 @@ class ExpenseController extends Controller
 
             //Check if subscribed or not
             if (!$this->moduleUtil->isSubscribed($business_id)) {
-                return $this->moduleUtil->expiredResponse(action('ExpenseController@index'));
+                return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\ExpenseController@index'));
             }
 
             //Validate document size
@@ -407,7 +407,7 @@ class ExpenseController extends Controller
 
         //Check if subscribed or not
         if (!$this->moduleUtil->isSubscribed($business_id)) {
-            return $this->moduleUtil->expiredResponse(action('ExpenseController@index'));
+            return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\ExpenseController@index'));
         }
 
         $business_locations = BusinessLocation::forDropdown($business_id);
@@ -462,7 +462,7 @@ class ExpenseController extends Controller
             
             //Check if subscribed or not
             if (!$this->moduleUtil->isSubscribed($business_id)) {
-                return $this->moduleUtil->expiredResponse(action('ExpenseController@index'));
+                return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\ExpenseController@index'));
             }
 
             $expense = $this->transactionUtil->updateExpense($request, $id, $business_id);

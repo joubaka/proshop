@@ -7,7 +7,7 @@
 <div class="modal-dialog" role="document">
   <div class="modal-content">
 
-    {!! Form::open(['url' => $notification_template['template_for'] == 'send_ledger' ? action('ContactController@sendLedger') : action('NotificationController@send'), 'method' => 'post', 'id' => 'send_notification_form' ]) !!}
+    {!! Form::open(['url' => $notification_template['template_for'] == 'send_ledger' ? action('App\Http\Controllers\ContactController@sendLedger') : action('App\Http\Controllers\NotificationController@send'), 'method' => 'post', 'id' => 'send_notification_form' ]) !!}
 
     <div class="modal-header">
       <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>

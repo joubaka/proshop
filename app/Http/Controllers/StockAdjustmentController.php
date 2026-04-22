@@ -112,7 +112,7 @@ class StockAdjustmentController extends Controller
                 })
                 ->setRowAttr([
                 'data-href' => function ($row) {
-                    return  action('StockAdjustmentController@show', [$row->id]);
+                    return  action('App\Http\Controllers\StockAdjustmentController@show', [$row->id]);
                 }])
                 ->rawColumns(['final_total', 'action', 'total_amount_recovered'])
                 ->make(true);
@@ -136,7 +136,7 @@ class StockAdjustmentController extends Controller
 
         //Check if subscribed or not
         if (!$this->moduleUtil->isSubscribed($business_id)) {
-            return $this->moduleUtil->expiredResponse(action('StockAdjustmentController@index'));
+            return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\StockAdjustmentController@index'));
         }
 
         $business_locations = BusinessLocation::forDropdown($business_id);
@@ -165,7 +165,7 @@ class StockAdjustmentController extends Controller
 
             //Check if subscribed or not
             if (!$this->moduleUtil->isSubscribed($business_id)) {
-                return $this->moduleUtil->expiredResponse(action('StockAdjustmentController@index'));
+                return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\StockAdjustmentController@index'));
             }
         
             $user_id = $request->session()->get('user.id');

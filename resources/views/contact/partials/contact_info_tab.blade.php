@@ -36,7 +36,7 @@
             <div class="clearfix"></div>
             <div class="col-sm-12">
                 @if(($contact->total_purchase - $contact->purchase_paid) > 0)
-                    <a href="{{action('TransactionPaymentController@getPayContactDue', [$contact->id])}}?type=purchase" class="pay_purchase_due btn btn-primary btn-sm pull-right"><i class="fas fa-money-bill-alt" aria-hidden="true"></i> @lang("contact.pay_due_amount")</a>
+                    <a href="{{action('App\Http\Controllers\TransactionPaymentController@getPayContactDue', [$contact->id])}}?type=purchase" class="pay_purchase_due btn btn-primary btn-sm pull-right"><i class="fas fa-money-bill-alt" aria-hidden="true"></i> @lang("contact.pay_due_amount")</a>
                 @endif
             </div>
         @endif

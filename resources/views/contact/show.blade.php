@@ -340,7 +340,7 @@ $(document).ready( function(){
         processing: true,
         serverSide: true,
         'ajax': {
-            url: "{{action('ContactController@getSupplierStockReport', [$contact->id])}}",
+            url: "{{action('App\Http\Controllers\ContactController@getSupplierStockReport', [$contact->id])}}",
             data: function (d) {
                 d.location_id = $('#sr_location_id').val();
             }
@@ -393,7 +393,7 @@ $(document).on('click', '#contact_payments_pagination a', function(e){
 
 function get_contact_payments(url = null) {
     if (!url) {
-        url = "{{action('ContactController@getContactPayments', [$contact->id])}}";
+        url = "{{action('App\Http\Controllers\ContactController@getContactPayments', [$contact->id])}}";
     }
     $.ajax({
         url: url,
@@ -455,7 +455,7 @@ $(document).on('click', '#send_ledger', function() {
 
     var location_id = $('#ledger_location').val();
 
-    var url = "{{action('NotificationController@getTemplate', [$contact->id, 'send_ledger'])}}" + '?start_date=' + start_date + '&end_date=' + end_date + '&format=' + format + '&location_id=' + location_id;
+    var url = "{{action('App\Http\Controllers\NotificationController@getTemplate', [$contact->id, 'send_ledger'])}}" + '?start_date=' + start_date + '&end_date=' + end_date + '&format=' + format + '&location_id=' + location_id;
 
     $.ajax({
         url: url,

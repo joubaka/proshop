@@ -194,49 +194,49 @@ class ProductController extends Controller
                     'action',
                     function ($row) use ($selling_price_group_count) {
                         $html =
-                        '<div class="btn-group"><button type="button" class="btn btn-info dropdown-toggle btn-xs" data-toggle="dropdown" aria-expanded="false">'. __("messages.actions") . '<span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button><ul class="dropdown-menu dropdown-menu-left" role="menu"><li><a href="' . action('LabelsController@show') . '?product_id=' . $row->id . '" data-toggle="tooltip" title="' . __('lang_v1.label_help') . '"><i class="fa fa-barcode"></i> ' . __('barcode.labels') . '</a></li>';
+                        '<div class="btn-group"><button type="button" class="btn btn-info dropdown-toggle btn-xs" data-toggle="dropdown" aria-expanded="false">'. __("messages.actions") . '<span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button><ul class="dropdown-menu dropdown-menu-left" role="menu"><li><a href="' . action('App\Http\Controllers\LabelsController@show') . '?product_id=' . $row->id . '" data-toggle="tooltip" title="' . __('lang_v1.label_help') . '"><i class="fa fa-barcode"></i> ' . __('barcode.labels') . '</a></li>';
 
                         if (auth()->user()->can('product.view')) {
                             $html .=
-                            '<li><a href="' . action('ProductController@view', [$row->id]) . '" class="view-product"><i class="fa fa-eye"></i> ' . __("messages.view") . '</a></li>';
+                            '<li><a href="' . action('App\Http\Controllers\ProductController@view', [$row->id]) . '" class="view-product"><i class="fa fa-eye"></i> ' . __("messages.view") . '</a></li>';
                         }
 
                         if (auth()->user()->can('product.update')) {
                             $html .=
-                            '<li><a href="' . action('ProductController@edit', [$row->id]) . '"><i class="glyphicon glyphicon-edit"></i> ' . __("messages.edit") . '</a></li>';
+                            '<li><a href="' . action('App\Http\Controllers\ProductController@edit', [$row->id]) . '"><i class="glyphicon glyphicon-edit"></i> ' . __("messages.edit") . '</a></li>';
                         }
 
                         if (auth()->user()->can('product.delete')) {
                             $html .=
-                            '<li><a href="' . action('ProductController@destroy', [$row->id]) . '" class="delete-product"><i class="fa fa-trash"></i> ' . __("messages.delete") . '</a></li>';
+                            '<li><a href="' . action('App\Http\Controllers\ProductController@destroy', [$row->id]) . '" class="delete-product"><i class="fa fa-trash"></i> ' . __("messages.delete") . '</a></li>';
                         }
 
                         if ($row->is_inactive == 1) {
                             $html .=
-                            '<li><a href="' . action('ProductController@activate', [$row->id]) . '" class="activate-product"><i class="fas fa-check-circle"></i> ' . __("lang_v1.reactivate") . '</a></li>';
+                            '<li><a href="' . action('App\Http\Controllers\ProductController@activate', [$row->id]) . '" class="activate-product"><i class="fas fa-check-circle"></i> ' . __("lang_v1.reactivate") . '</a></li>';
                         }
 
                         $html .= '<li class="divider"></li>';
 
                         if ($row->enable_stock == 1 && auth()->user()->can('product.opening_stock')) {
                             $html .=
-                            '<li><a href="#" data-href="' . action('OpeningStockController@add', ['product_id' => $row->id]) . '" class="add-opening-stock"><i class="fa fa-database"></i> ' . __("lang_v1.add_edit_opening_stock") . '</a></li>';
+                            '<li><a href="#" data-href="' . action('App\Http\Controllers\OpeningStockController@add', ['product_id' => $row->id]) . '" class="add-opening-stock"><i class="fa fa-database"></i> ' . __("lang_v1.add_edit_opening_stock") . '</a></li>';
                         }
 
                         if (auth()->user()->can('product.view')) {
                             $html .=
-                            '<li><a href="' . action('ProductController@productStockHistory', [$row->id]) . '"><i class="fas fa-history"></i> ' . __("lang_v1.product_stock_history") . '</a></li>';
+                            '<li><a href="' . action('App\Http\Controllers\ProductController@productStockHistory', [$row->id]) . '"><i class="fas fa-history"></i> ' . __("lang_v1.product_stock_history") . '</a></li>';
                         }
 
                         if (auth()->user()->can('product.create')) {
             
                             if ($selling_price_group_count > 0) {
                                 $html .=
-                                '<li><a href="' . action('ProductController@addSellingPrices', [$row->id]) . '"><i class="fas fa-money-bill-alt"></i> ' . __("lang_v1.add_selling_price_group_prices") . '</a></li>';
+                                '<li><a href="' . action('App\Http\Controllers\ProductController@addSellingPrices', [$row->id]) . '"><i class="fas fa-money-bill-alt"></i> ' . __("lang_v1.add_selling_price_group_prices") . '</a></li>';
                             }
 
                             $html .=
-                                '<li><a href="' . action('ProductController@create', ["d" => $row->id]) . '"><i class="fa fa-copy"></i> ' . __("lang_v1.duplicate_product") . '</a></li>';
+                                '<li><a href="' . action('App\Http\Controllers\ProductController@create', ["d" => $row->id]) . '"><i class="fa fa-copy"></i> ' . __("lang_v1.duplicate_product") . '</a></li>';
                         }
 
                         if (!empty($row->media->first())) {
@@ -287,7 +287,7 @@ class ProductController extends Controller
                 ->setRowAttr([
                     'data-href' => function ($row) {
                         if (auth()->user()->can("product.view")) {
-                            return  action('ProductController@view', [$row->id]) ;
+                            return  action('App\Http\Controllers\ProductController@view', [$row->id]) ;
                         } else {
                             return '';
                         }
@@ -350,7 +350,7 @@ class ProductController extends Controller
         if (!$this->moduleUtil->isSubscribed($business_id)) {
             return $this->moduleUtil->expiredResponse();
         } elseif (!$this->moduleUtil->isQuotaAvailable('products', $business_id)) {
-            return $this->moduleUtil->quotaExpiredResponse('products', $business_id, action('ProductController@index'));
+            return $this->moduleUtil->quotaExpiredResponse('products', $business_id, action('App\Http\Controllers\ProductController@index'));
         }
 
         $categories = Category::forDropdown($business_id, 'product');
@@ -544,18 +544,15 @@ class ProductController extends Controller
         }
 
         if ($request->input('submit_type') == 'submit_n_add_opening_stock') {
-            return redirect()->action(
-                'OpeningStockController@add',
+            return redirect()->action('App\Http\Controllers\OpeningStockController@add',
                 ['product_id' => $product->id]
             );
         } elseif ($request->input('submit_type') == 'submit_n_add_selling_prices') {
-            return redirect()->action(
-                'ProductController@addSellingPrices',
+            return redirect()->action('App\Http\Controllers\ProductController@addSellingPrices',
                 [$product->id]
             );
         } elseif ($request->input('submit_type') == 'save_n_add_another') {
-            return redirect()->action(
-                'ProductController@create'
+            return redirect()->action('App\Http\Controllers\ProductController@create'
             )->with('status', $output);
         }
 
@@ -830,18 +827,15 @@ class ProductController extends Controller
         }
 
         if ($request->input('submit_type') == 'update_n_edit_opening_stock') {
-            return redirect()->action(
-                'OpeningStockController@add',
+            return redirect()->action('App\Http\Controllers\OpeningStockController@add',
                 ['product_id' => $product->id]
             );
         } elseif ($request->input('submit_type') == 'submit_n_add_selling_prices') {
-            return redirect()->action(
-                'ProductController@addSellingPrices',
+            return redirect()->action('App\Http\Controllers\ProductController@addSellingPrices',
                 [$product->id]
             );
         } elseif ($request->input('submit_type') == 'save_n_add_another') {
-            return redirect()->action(
-                'ProductController@create'
+            return redirect()->action('App\Http\Controllers\ProductController@create'
             )->with('status', $output);
         }
 
@@ -1648,13 +1642,11 @@ class ProductController extends Controller
         }
 
         if ($request->input('submit_type') == 'submit_n_add_opening_stock') {
-            return redirect()->action(
-                'OpeningStockController@add',
+            return redirect()->action('App\Http\Controllers\OpeningStockController@add',
                 ['product_id' => $product->id]
             );
         } elseif ($request->input('submit_type') == 'save_n_add_another') {
-            return redirect()->action(
-                'ProductController@create'
+            return redirect()->action('App\Http\Controllers\ProductController@create'
             )->with('status', $output);
         }
 

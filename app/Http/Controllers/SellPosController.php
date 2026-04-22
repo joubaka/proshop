@@ -159,9 +159,9 @@ class SellPosController extends Controller
 
         //Check if subscribed or not, then check for users quota
         if (!$this->moduleUtil->isSubscribed($business_id)) {
-            return $this->moduleUtil->expiredResponse(action('HomeController@index'));
+            return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\HomeController@index'));
         } elseif (!$this->moduleUtil->isQuotaAvailable('invoices', $business_id)) {
-            return $this->moduleUtil->quotaExpiredResponse('invoices', $business_id, action('SellPosController@index'));
+            return $this->moduleUtil->quotaExpiredResponse('invoices', $business_id, action('App\Http\Controllers\SellPosController@index'));
         }
         
         //like:repair
@@ -169,7 +169,7 @@ class SellPosController extends Controller
 
         //Check if there is a open register, if no then redirect to Create Register screen.
         if ($this->cashRegisterUtil->countOpenedRegister() == 0) {
-            return redirect()->action('CashRegisterController@create', ['sub_type' => $sub_type]);
+            return redirect()->action('App\Http\Controllers\CashRegisterController@create', ['sub_type' => $sub_type]);
         }
 
         $register_details = $this->cashRegisterUtil->getCurrentCashRegister(auth()->user()->id);
@@ -310,7 +310,7 @@ class SellPosController extends Controller
 
         //Check if there is a open register, if no then redirect to Create Register screen.
         if (!$is_direct_sale && $this->cashRegisterUtil->countOpenedRegister() == 0) {
-            return redirect()->action('CashRegisterController@create');
+            return redirect()->action('App\Http\Controllers\CashRegisterController@create');
         }
 
         try {
@@ -339,7 +339,7 @@ class SellPosController extends Controller
                     return $output;
                 } else {
                     return redirect()
-                        ->action('SellController@index')
+                        ->action('App\Http\Controllers\SellController@index')
                         ->with('status', $output);
                 }
             }
@@ -351,7 +351,7 @@ class SellPosController extends Controller
                 if (!$this->moduleUtil->isSubscribed($business_id)) {
                     return $this->moduleUtil->expiredResponse();
                 } elseif (!$this->moduleUtil->isQuotaAvailable('invoices', $business_id)) {
-                    return $this->moduleUtil->quotaExpiredResponse('invoices', $business_id, action('SellPosController@index'));
+                    return $this->moduleUtil->quotaExpiredResponse('invoices', $business_id, action('App\Http\Controllers\SellPosController@index'));
                 }
         
                 $user_id = $request->session()->get('user.id');
@@ -628,20 +628,20 @@ class SellPosController extends Controller
             if ($input['status'] == 'draft') {
                 if (isset($input['is_quotation']) && $input['is_quotation'] == 1) {
                     return redirect()
-                        ->action('SellController@getQuotations')
+                        ->action('App\Http\Controllers\SellController@getQuotations')
                         ->with('status', $output);
                 } else {
                     return redirect()
-                        ->action('SellController@getDrafts')
+                        ->action('App\Http\Controllers\SellController@getDrafts')
                         ->with('status', $output);
                 }
             } elseif ($input['status'] == 'quotation') {
                 return redirect()
-                    ->action('SellController@getQuotations')
+                    ->action('App\Http\Controllers\SellController@getQuotations')
                     ->with('status', $output);
             } elseif (isset($input['type']) && $input['type'] == 'sales_order') {
                 return redirect()
-                    ->action('SalesOrderController@index')
+                    ->action('App\Http\Controllers\SalesOrderController@index')
                     ->with('status', $output);
             } else {
                 if (!empty($input['sub_type']) && $input['sub_type'] == 'repair') {
@@ -650,7 +650,7 @@ class SellPosController extends Controller
                         ->with('status', $output);
                 }
                 return redirect()
-                    ->action('SellController@index')
+                    ->action('App\Http\Controllers\SellController@index')
                     ->with('status', $output);
             }
         }
@@ -763,7 +763,7 @@ class SellPosController extends Controller
 
         //Check if there is a open register, if no then redirect to Create Register screen.
         if ($this->cashRegisterUtil->countOpenedRegister() == 0) {
-            return redirect()->action('CashRegisterController@create');
+            return redirect()->action('App\Http\Controllers\CashRegisterController@create');
         }
         
         //Check if return exist then not allowed
@@ -1083,14 +1083,14 @@ class SellPosController extends Controller
                         return $output;
                     } else {
                         return redirect()
-                            ->action('SellController@index')
+                            ->action('App\Http\Controllers\SellController@index')
                             ->with('status', $output);
                     }
                 }
 
                 //Check if there is a open register, if no then redirect to Create Register screen.
                 if (!$is_direct_sale && $this->cashRegisterUtil->countOpenedRegister() == 0) {
-                    return redirect()->action('CashRegisterController@create');
+                    return redirect()->action('App\Http\Controllers\CashRegisterController@create');
                 }
 
                 $business_id = $request->session()->get('user.business_id');
@@ -1327,11 +1327,11 @@ class SellPosController extends Controller
             if ($input['status'] == 'draft') {
                 if (isset($input['is_quotation']) && $input['is_quotation'] == 1) {
                     return redirect()
-                        ->action('SellController@getQuotations')
+                        ->action('App\Http\Controllers\SellController@getQuotations')
                         ->with('status', $output);
                 } else {
                     return redirect()
-                        ->action('SellController@getDrafts')
+                        ->action('App\Http\Controllers\SellController@getDrafts')
                         ->with('status', $output);
                 }
             } else {
@@ -1343,12 +1343,12 @@ class SellPosController extends Controller
 
                 if ($transaction->type == 'sales_order') {
                     return redirect()
-                    ->action('SalesOrderController@index')
+                    ->action('App\Http\Controllers\SalesOrderController@index')
                     ->with('status', $output);
                 }
 
                 return redirect()
-                    ->action('SellController@index')
+                    ->action('App\Http\Controllers\SellController@index')
                     ->with('status', $output);
             }
         }
@@ -2075,16 +2075,16 @@ class SellPosController extends Controller
                             $link_text = !empty($row->recur_stopped_on) ? __('lang_v1.start_subscription') : __('lang_v1.stop_subscription');
                             $link_class = !empty($row->recur_stopped_on) ? 'btn-success' : 'btn-danger';
 
-                            $html .= '<a href="' . action('SellPosController@toggleRecurringInvoices', [$row->id]) . '" class="toggle_recurring_invoice btn btn-xs ' . $link_class . '"><i class="fa fa-power-off"></i> ' . $link_text . '</a>';
+                            $html .= '<a href="' . action('App\Http\Controllers\SellPosController@toggleRecurringInvoices', [$row->id]) . '" class="toggle_recurring_invoice btn btn-xs ' . $link_class . '"><i class="fa fa-power-off"></i> ' . $link_text . '</a>';
 
                             if ($row->is_direct_sale == 0) {
-                                $html .= '<a target="_blank" class="btn btn-xs btn-primary" href="' . action('SellPosController@edit', [$row->id]) . '"><i class="glyphicon glyphicon-edit"></i> ' . __("messages.edit") . '</a>';
+                                $html .= '<a target="_blank" class="btn btn-xs btn-primary" href="' . action('App\Http\Controllers\SellPosController@edit', [$row->id]) . '"><i class="glyphicon glyphicon-edit"></i> ' . __("messages.edit") . '</a>';
                             } else {
-                                $html .= '<a target="_blank" class="btn btn-xs btn-primary" href="' . action('SellController@edit', [$row->id]) . '"><i class="glyphicon glyphicon-edit"></i> ' . __("messages.edit") . '</a>';
+                                $html .= '<a target="_blank" class="btn btn-xs btn-primary" href="' . action('App\Http\Controllers\SellController@edit', [$row->id]) . '"><i class="glyphicon glyphicon-edit"></i> ' . __("messages.edit") . '</a>';
                             }
 
                             if (auth()->user()->can("direct_sell.delete") || auth()->user()->can("sell.delete")) {
-                                $html .= '&nbsp;<a href="' . action('SellPosController@destroy', [$row->id]) . '" class="delete-sale btn btn-xs btn-danger"><i class="fas fa-trash"></i> ' . __("messages.delete") . '</a>';
+                                $html .= '&nbsp;<a href="' . action('App\Http\Controllers\SellPosController@destroy', [$row->id]) . '" class="delete-sale btn btn-xs btn-danger"><i class="fas fa-trash"></i> ' . __("messages.delete") . '</a>';
                             }
                         }
 
@@ -2524,7 +2524,7 @@ class SellPosController extends Controller
             DB::beginTransaction();
             //Check if there is a open register, if no then redirect to Create Register screen.
             if (!$is_direct_sale && $this->cashRegisterUtil->countOpenedRegister() == 0) {
-                return redirect()->action('CashRegisterController@create');
+                return redirect()->action('App\Http\Controllers\CashRegisterController@create');
             }
 
             $invoice_no = $this->transactionUtil->getInvoiceNumber($business_id, 'final', $transaction->location_id);
@@ -2605,7 +2605,7 @@ class SellPosController extends Controller
                             ];
 
                 return redirect()
-                    ->action('SellController@index')
+                    ->action('App\Http\Controllers\SellController@index')
                     ->with('status', $output);
             }
             
@@ -2638,7 +2638,7 @@ class SellPosController extends Controller
         }
 
         return redirect()
-                ->action('SellController@index')
+                ->action('App\Http\Controllers\SellController@index')
                 ->with('status', $output);
     }
 

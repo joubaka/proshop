@@ -17,7 +17,7 @@
 
 <!-- Main content -->
 <section class="content">
-{!! Form::open(['url' => action('InvoiceLayoutController@store'), 'method' => 'post', 'id' => 'add_invoice_layout_form', 'files' => true]) !!}
+{!! Form::open(['url' => action('App\Http\Controllers\InvoiceLayoutController@store'), 'method' => 'post', 'id' => 'add_invoice_layout_form', 'files' => true]) !!}
   <div class="box box-solid">
     <div class="box-body">
       <div class="row">

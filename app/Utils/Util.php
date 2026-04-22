@@ -1301,7 +1301,7 @@ class Util
                             ['invoice_no' => !empty($data['invoice_no']) ? $data['invoice_no'] : '', 'subscription_no' => !empty($data['subscription_no']) ? $data['subscription_no'] : '']
                         );
                     $icon_class = !empty($data['invoice_status']) && $data['invoice_status'] == 'draft' ? "fas fa-exclamation-triangle bg-yellow" : "fas fa-recycle bg-green";
-                    $link = action('SellPosController@listSubscriptions');
+                    $link = action('App\Http\Controllers\SellPosController@listSubscriptions');
                 } else if (
                     $notification->type ==
                     \App\Notifications\RecurringExpenseNotification::class
@@ -1311,7 +1311,7 @@ class Util
                         ['ref_no' => $data['ref_no']]
                     );
                     $icon_class = "fas fa-recycle bg-green";
-                    $link = action('ExpenseController@index');
+                    $link = action('App\Http\Controllers\ExpenseController@index');
                 }
 
                 $notifications_data[] = [
@@ -1586,7 +1586,7 @@ class Util
             if (!$moduleUtil->isSubscribed($business_id)) {
                 return $moduleUtil->expiredResponse();
             } elseif (!$moduleUtil->isQuotaAvailable('users', $business_id)) {
-                return $moduleUtil->quotaExpiredResponse('users', $business_id, action('ManageUserController@index'));
+                return $moduleUtil->quotaExpiredResponse('users', $business_id, action('App\Http\Controllers\ManageUserController@index'));
             }
         }
 

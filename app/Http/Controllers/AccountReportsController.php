@@ -277,7 +277,7 @@ class AccountReportsController extends Controller
                         $action = '<button type="button" class="btn btn-info 
                         btn-xs btn-modal"
                         data-container=".view_modal" 
-                        data-href="' . action('AccountReportsController@getLinkAccount', [$row->payment_id]). '">' . __('account.link_account') .'</button>';
+                        data-href="' . action('App\Http\Controllers\AccountReportsController@getLinkAccount', [$row->payment_id]). '">' . __('account.link_account') .'</button>';
                         
                         return $action;
                     })
@@ -292,10 +292,10 @@ class AccountReportsController extends Controller
                         $html = $row->ref_no;
                         if ($row->type == 'sell') {
                             $html = '<button type="button" class="btn btn-link btn-modal"
-                                    data-href="' . action('SellController@show', [$row->transaction_id]) .'" data-container=".view_modal">' . $row->invoice_no . '</button>';
+                                    data-href="' . action('App\Http\Controllers\SellController@show', [$row->transaction_id]) .'" data-container=".view_modal">' . $row->invoice_no . '</button>';
                         } elseif ($row->type == 'purchase') {
                             $html = '<button type="button" class="btn btn-link btn-modal"
-                                    data-href="' . action('PurchaseController@show', [$row->transaction_id]) .'" data-container=".view_modal">' . $row->ref_no . '</button>';
+                                    data-href="' . action('App\Http\Controllers\PurchaseController@show', [$row->transaction_id]) .'" data-container=".view_modal">' . $row->ref_no . '</button>';
                         }
                         return $html;
                     })

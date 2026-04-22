@@ -74,7 +74,7 @@ class DocumentAndNoteController extends Controller
 
                         if (in_array('view', $permissions)) {
                             $html .='<li>
-                                        <a data-href="' . action('DocumentAndNoteController@show', ['id' => $row->id, 'notable_id' => $row->notable_id, 'notable_type' => $notable_type]) . '" class="cursor-pointer view_a_docs_note">
+                                        <a data-href="' . action('App\Http\Controllers\DocumentAndNoteController@show', ['id' => $row->id, 'notable_id' => $row->notable_id, 'notable_type' => $notable_type]) . '" class="cursor-pointer view_a_docs_note">
                                             <i class="fa fa-eye"></i>
                                             '.__("messages.view").'
                                         </a>
@@ -82,7 +82,7 @@ class DocumentAndNoteController extends Controller
                         }
                         if (in_array('create', $permissions)) {
                             $html .= '<li>
-                                    <a data-href="' . action('DocumentAndNoteController@edit', ['id' => $row->id, 'notable_id' => $row->notable_id, 'notable_type' => $notable_type]) . '"  class="cursor-pointer docs_and_notes_btn">
+                                    <a data-href="' . action('App\Http\Controllers\DocumentAndNoteController@edit', ['id' => $row->id, 'notable_id' => $row->notable_id, 'notable_type' => $notable_type]) . '"  class="cursor-pointer docs_and_notes_btn">
                                         <i class="fa fa-edit"></i>
                                         '.__("messages.edit").'
                                     </a>
@@ -90,7 +90,7 @@ class DocumentAndNoteController extends Controller
                         }
                         if (in_array('delete', $permissions)) {
                             $html .= '<li>
-                                    <a data-href="' . action('DocumentAndNoteController@destroy', ['id' => $row->id, 'notable_id' => $row->notable_id, 'notable_type' => $notable_type]) . '"  id="delete_docus_note" class="cursor-pointer">
+                                    <a data-href="' . action('App\Http\Controllers\DocumentAndNoteController@destroy', ['id' => $row->id, 'notable_id' => $row->notable_id, 'notable_type' => $notable_type]) . '"  id="delete_docus_note" class="cursor-pointer">
                                         <i class="fas fa-trash"></i>
                                         '.__("messages.delete").'
                                     </a>
@@ -127,7 +127,7 @@ class DocumentAndNoteController extends Controller
                                 $icon = '<i class="fas fa-file-image text-primary" data-toggle="tooltip" title="'.$media_tooltip.'"></i>';
                             }
 
-                            $html = '<a data-href="' . action('DocumentAndNoteController@show', ['id' => $row->id, 'notable_id' => $row->notable_id, 'notable_type' => $notable_type]) . '" class="cursor-pointer view_a_docs_note text-black">
+                            $html = '<a data-href="' . action('App\Http\Controllers\DocumentAndNoteController@show', ['id' => $row->id, 'notable_id' => $row->notable_id, 'notable_type' => $notable_type]) . '" class="cursor-pointer view_a_docs_note text-black">
                                 '.
                                     $row->heading .
                                     '&nbsp;'.

@@ -12,7 +12,7 @@
 
 <!-- Main content -->
 <section class="content">
-{!! Form::open(['url' => action('BusinessController@postBusinessSettings'), 'method' => 'post', 'id' => 'bussiness_edit_form',
+{!! Form::open(['url' => action('App\Http\Controllers\BusinessController@postBusinessSettings'), 'method' => 'post', 'id' => 'bussiness_edit_form',
            'files' => true ]) !!}
     <div class="row">
         <div class="col-xs-12">
@@ -120,7 +120,7 @@
         $.ajax({
             method: 'post',
             data: data,
-            url: "{{ action('BusinessController@testEmailConfiguration') }}",
+            url: "{{ action('App\Http\Controllers\BusinessController@testEmailConfiguration') }}",
             dataType: 'json',
             success: function(result) {
                 if (result.success == true) {
@@ -179,7 +179,7 @@
         $.ajax({
             method: 'post',
             data: data,
-            url: "{{ action('BusinessController@testSmsConfiguration') }}",
+            url: "{{ action('App\Http\Controllers\BusinessController@testSmsConfiguration') }}",
             dataType: 'json',
             success: function(result) {
                 if (result.success == true) {

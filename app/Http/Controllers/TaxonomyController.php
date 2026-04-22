@@ -61,11 +61,11 @@ class TaxonomyController extends Controller
                     {
                         $html = '';
                         if ($can_edit) {
-                            $html .= '<button data-href="' . action('TaxonomyController@edit', [$row->id]) . '?type=' . $category_type . '" class="btn btn-xs btn-primary edit_category_button"><i class="glyphicon glyphicon-edit"></i>' . __("messages.edit") . '</button>';
+                            $html .= '<button data-href="' . action('App\Http\Controllers\TaxonomyController@edit', [$row->id]) . '?type=' . $category_type . '" class="btn btn-xs btn-primary edit_category_button"><i class="glyphicon glyphicon-edit"></i>' . __("messages.edit") . '</button>';
                         }
 
                         if ($can_delete) {
-                            $html .= '&nbsp;<button data-href="' . action('TaxonomyController@destroy', [$row->id]) . '" class="btn btn-xs btn-danger delete_category_button"><i class="glyphicon glyphicon-trash"></i> ' . __("messages.delete") . '</button>';
+                            $html .= '&nbsp;<button data-href="' . action('App\Http\Controllers\TaxonomyController@destroy', [$row->id]) . '" class="btn btn-xs btn-danger delete_category_button"><i class="glyphicon glyphicon-trash"></i> ' . __("messages.delete") . '</button>';
                         }
 
                         return $html;

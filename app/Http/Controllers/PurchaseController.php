@@ -112,19 +112,19 @@ class PurchaseController extends Controller
                             </button>
                             <ul class="dropdown-menu dropdown-menu-left" role="menu">';
                     if (auth()->user()->can("purchase.view")) {
-                        $html .= '<li><a href="#" data-href="' . action('PurchaseController@show', [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-eye" aria-hidden="true"></i>' . __("messages.view") . '</a></li>';
+                        $html .= '<li><a href="#" data-href="' . action('App\Http\Controllers\PurchaseController@show', [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-eye" aria-hidden="true"></i>' . __("messages.view") . '</a></li>';
                     }
                     if (auth()->user()->can("purchase.view")) {
-                        $html .= '<li><a href="#" class="print-invoice" data-href="' . action('PurchaseController@printInvoice', [$row->id]) . '"><i class="fas fa-print" aria-hidden="true"></i>'. __("messages.print") .'</a></li>';
+                        $html .= '<li><a href="#" class="print-invoice" data-href="' . action('App\Http\Controllers\PurchaseController@printInvoice', [$row->id]) . '"><i class="fas fa-print" aria-hidden="true"></i>'. __("messages.print") .'</a></li>';
                     }
                     if (auth()->user()->can("purchase.update")) {
-                        $html .= '<li><a href="' . action('PurchaseController@edit', [$row->id]) . '"><i class="fas fa-edit"></i>' . __("messages.edit") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\PurchaseController@edit', [$row->id]) . '"><i class="fas fa-edit"></i>' . __("messages.edit") . '</a></li>';
                     }
                     if (auth()->user()->can("purchase.delete")) {
-                        $html .= '<li><a href="' . action('PurchaseController@destroy', [$row->id]) . '" class="delete-purchase"><i class="fas fa-trash"></i>' . __("messages.delete") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\PurchaseController@destroy', [$row->id]) . '" class="delete-purchase"><i class="fas fa-trash"></i>' . __("messages.delete") . '</a></li>';
                     }
 
-                    $html .= '<li><a href="' . action('LabelsController@show') . '?purchase_id=' . $row->id . '" data-toggle="tooltip" title="' . __('lang_v1.label_help') . '"><i class="fas fa-barcode"></i>' . __('barcode.labels') . '</a></li>';
+                    $html .= '<li><a href="' . action('App\Http\Controllers\LabelsController@show') . '?purchase_id=' . $row->id . '" data-toggle="tooltip" title="' . __('lang_v1.label_help') . '"><i class="fas fa-barcode"></i>' . __('barcode.labels') . '</a></li>';
 
                     if (auth()->user()->can("purchase.view") && !empty($row->document)) {
                         $document_name = !empty(explode("_", $row->document, 2)[1]) ? explode("_", $row->document, 2)[1] : $row->document ;
@@ -140,15 +140,15 @@ class PurchaseController extends Controller
 
                         $html .= '<li class="divider"></li>';
                         if ($row->payment_status != 'paid') {
-                            $html .= '<li><a href="' . action('TransactionPaymentController@addPayment', [$row->id]) . '" class="add_payment_modal"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("purchase.add_payment") . '</a></li>';
+                            $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@addPayment', [$row->id]) . '" class="add_payment_modal"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("purchase.add_payment") . '</a></li>';
                         }
                         
-                        $html .= '<li><a href="' . action('TransactionPaymentController@show', [$row->id]) .
+                        $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@show', [$row->id]) .
                         '" class="view_payment_modal"><i class="fas fa-money-bill-alt" aria-hidden="true" ></i>' . __("purchase.view_payments") . '</a></li>';
                     }
 
                     if (auth()->user()->can("purchase.update")) {
-                        $html .= '<li><a href="' . action('PurchaseReturnController@add', [$row->id]) .
+                        $html .= '<li><a href="' . action('App\Http\Controllers\PurchaseReturnController@add', [$row->id]) .
                         '"><i class="fas fa-undo" aria-hidden="true" ></i>' . __("lang_v1.purchase_return") . '</a></li>';
                     }
 
@@ -158,11 +158,11 @@ class PurchaseController extends Controller
                     }
 
                     if ($row->status == 'ordered') {
-                        $html .= '<li><a href="#" data-href="' . action('NotificationController@getTemplate', ["transaction_id" => $row->id,"template_for" => "new_order"]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-envelope" aria-hidden="true"></i> ' . __("lang_v1.new_order_notification") . '</a></li>';
+                        $html .= '<li><a href="#" data-href="' . action('App\Http\Controllers\NotificationController@getTemplate', ["transaction_id" => $row->id,"template_for" => "new_order"]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-envelope" aria-hidden="true"></i> ' . __("lang_v1.new_order_notification") . '</a></li>';
                     } elseif ($row->status == 'received') {
-                        $html .= '<li><a href="#" data-href="' . action('NotificationController@getTemplate', ["transaction_id" => $row->id,"template_for" => "items_received"]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-envelope" aria-hidden="true"></i> ' . __("lang_v1.item_received_notification") . '</a></li>';
+                        $html .= '<li><a href="#" data-href="' . action('App\Http\Controllers\NotificationController@getTemplate', ["transaction_id" => $row->id,"template_for" => "items_received"]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-envelope" aria-hidden="true"></i> ' . __("lang_v1.item_received_notification") . '</a></li>';
                     } elseif ($row->status == 'pending') {
-                        $html .= '<li><a href="#" data-href="' . action('NotificationController@getTemplate', ["transaction_id" => $row->id,"template_for" => "items_pending"]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-envelope" aria-hidden="true"></i> ' . __("lang_v1.item_pending_notification") . '</a></li>';
+                        $html .= '<li><a href="#" data-href="' . action('App\Http\Controllers\NotificationController@getTemplate', ["transaction_id" => $row->id,"template_for" => "items_pending"]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-envelope" aria-hidden="true"></i> ' . __("lang_v1.item_pending_notification") . '</a></li>';
                     }
 
                     $html .=  '</ul></div>';
@@ -203,7 +203,7 @@ class PurchaseController extends Controller
                 ->setRowAttr([
                     'data-href' => function ($row) {
                         if (auth()->user()->can("purchase.view")) {
-                            return  action('PurchaseController@show', [$row->id]) ;
+                            return  action('App\Http\Controllers\PurchaseController@show', [$row->id]) ;
                         } else {
                             return '';
                         }
@@ -297,7 +297,7 @@ class PurchaseController extends Controller
 
             //Check if subscribed or not
             if (!$this->moduleUtil->isSubscribed($business_id)) {
-                return $this->moduleUtil->expiredResponse(action('PurchaseController@index'));
+                return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\PurchaseController@index'));
             }
 
             $transaction_data = $request->only([ 'ref_no', 'status', 'contact_id', 'transaction_date', 'total_before_tax', 'location_id','discount_type', 'discount_amount','tax_id', 'tax_amount', 'shipping_details', 'shipping_charges', 'final_total', 'additional_notes', 'exchange_rate', 'pay_term_number', 'pay_term_type', 'purchase_order_ids']);
@@ -521,7 +521,7 @@ class PurchaseController extends Controller
 
         //Check if subscribed or not
         if (!$this->moduleUtil->isSubscribed($business_id)) {
-            return $this->moduleUtil->expiredResponse(action('PurchaseController@index'));
+            return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\PurchaseController@index'));
         }
 
         //Check if the transaction can be edited or not.

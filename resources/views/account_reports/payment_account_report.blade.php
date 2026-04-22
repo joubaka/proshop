@@ -89,7 +89,7 @@
                             processing: true,
                             serverSide: true,
                             "ajax": {
-                                "url": "{{action('AccountReportsController@paymentAccountReport')}}",
+                                "url": "{{action('App\Http\Controllers\AccountReportsController@paymentAccountReport')}}",
                                 "data": function ( d ) {
                                     d.account_id = $('#account_id').val();
                                     var start_date = '';

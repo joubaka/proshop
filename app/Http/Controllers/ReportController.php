@@ -226,7 +226,7 @@ class ReportController extends Controller
                     if (!empty($row->supplier_business_name)) {
                         $name .= ', ' . $row->supplier_business_name;
                     }
-                    return '<a href="' . action('ContactController@show', [$row->id]) . '" target="_blank" class="no-print">' .
+                    return '<a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]) . '" target="_blank" class="no-print">' .
                             $name .
                         '</a>';
                 })
@@ -384,7 +384,7 @@ class ReportController extends Controller
                     }
 
                     if ($allowed_selling_price_group) {
-                        $html .= ' <button type="button" class="btn btn-primary btn-xs btn-modal no-print" data-container=".view_modal" data-href="' . action('ProductController@viewGroupPrice', [$row->product_id]) .'">' . __('lang_v1.view_group_prices') . '</button>';
+                        $html .= ' <button type="button" class="btn btn-primary btn-xs btn-modal no-print" data-container=".view_modal" data-href="' . action('App\Http\Controllers\ProductController@viewGroupPrice', [$row->product_id]) .'">' . __('lang_v1.view_group_prices') . '</button>';
                     }
 
                     return $html;
@@ -1330,7 +1330,7 @@ class ReportController extends Controller
                 //     }
                 // })
                 ->editColumn('ref_no', function ($row) {
-                    return '<button type="button" data-href="' . action('PurchaseController@show', [$row->transaction_id])
+                    return '<button type="button" data-href="' . action('App\Http\Controllers\PurchaseController@show', [$row->transaction_id])
                             . '" class="btn btn-link btn-modal" data-container=".view_modal"  >' . $row->ref_no . '</button>';
                 })
                 ->editColumn('stock_left', function ($row) {
@@ -1344,7 +1344,7 @@ class ReportController extends Controller
                         $carbon_exp = \Carbon::createFromFormat('Y-m-d', $row->exp_date);
                         $carbon_now = \Carbon::now();
                         if ($carbon_now->diffInDays($carbon_exp, false) < 0) {
-                            $html .=  ' <button type="button" class="btn btn-warning btn-xs remove_from_stock_btn" data-href="' . action('StockAdjustmentController@removeExpiredStock', [$row->purchase_line_id]) . '"> <i class="fa fa-trash"></i> ' . __("lang_v1.remove_from_stock") .
+                            $html .=  ' <button type="button" class="btn btn-warning btn-xs remove_from_stock_btn" data-href="' . action('App\Http\Controllers\StockAdjustmentController@removeExpiredStock', [$row->purchase_line_id]) . '"> <i class="fa fa-trash"></i> ' . __("lang_v1.remove_from_stock") .
                             '</button>';
                         }
                     }
@@ -1620,7 +1620,7 @@ class ReportController extends Controller
                     return $product_name;
                 })
                  ->editColumn('ref_no', function ($row) {
-                     return '<a data-href="' . action('PurchaseController@show', [$row->transaction_id])
+                     return '<a data-href="' . action('App\Http\Controllers\PurchaseController@show', [$row->transaction_id])
                             . '" href="#" data-container=".view_modal" class="btn-modal">' . $row->ref_no . '</a>';
                  })
                  ->editColumn('purchase_qty', function ($row) {
@@ -1758,7 +1758,7 @@ class ReportController extends Controller
                     return $product_name;
                 })
                  ->editColumn('invoice_no', function ($row) {
-                     return '<a data-href="' . action('SellController@show', [$row->transaction_id])
+                     return '<a data-href="' . action('App\Http\Controllers\SellController@show', [$row->transaction_id])
                             . '" href="#" data-container=".view_modal" class="btn-modal">' . $row->invoice_no . '</a>';
                  })
                 ->editColumn('transaction_date', '{{@format_datetime($transaction_date)}}')
@@ -1928,7 +1928,7 @@ class ReportController extends Controller
                     return $product_name;
                 })
                  ->editColumn('invoice_no', function ($row) {
-                     return '<a data-href="' . action('SellController@show', [$row->transaction_id])
+                     return '<a data-href="' . action('App\Http\Controllers\SellController@show', [$row->transaction_id])
                             . '" href="#" data-container=".view_modal" class="btn-modal">' . $row->invoice_no . '</a>';
                  })
                 ->editColumn('transaction_date', '{{@format_datetime($transaction_date)}}')
@@ -2180,7 +2180,7 @@ class ReportController extends Controller
             return Datatables::of($query)
                  ->editColumn('ref_no', function ($row) {
                      if (!empty($row->ref_no)) {
-                         return '<a data-href="' . action('PurchaseController@show', [$row->transaction_id])
+                         return '<a data-href="' . action('App\Http\Controllers\PurchaseController@show', [$row->transaction_id])
                             . '" href="#" data-container=".view_modal" class="btn-modal">' . $row->ref_no . '</a>';
                      } else {
                          return '';
@@ -2313,7 +2313,7 @@ class ReportController extends Controller
             return Datatables::of($query)
                  ->editColumn('invoice_no', function ($row) {
                      if (!empty($row->transaction_id)) {
-                         return '<a data-href="' . action('SellController@show', [$row->transaction_id])
+                         return '<a data-href="' . action('App\Http\Controllers\SellController@show', [$row->transaction_id])
                             . '" href="#" data-container=".view_modal" class="btn-modal">' . $row->invoice_no . '</a>';
                      } else {
                          return '';
@@ -3102,7 +3102,7 @@ class ReportController extends Controller
         
         if ($by == 'invoice') {
             $datatable->editColumn('invoice_no', function ($row) {
-                return '<a data-href="' . action('SellController@show', [$row->transaction_id])
+                return '<a data-href="' . action('App\Http\Controllers\SellController@show', [$row->transaction_id])
                             . '" href="#" data-container=".view_modal" class="btn-modal">' . $row->invoice_no . '</a>';
             });
             $raw_columns[] = 'invoice_no';
@@ -3230,7 +3230,7 @@ class ReportController extends Controller
                 })
                 ->editColumn('purchase_date', '{{@format_datetime($purchase_date)}}')
                 ->editColumn('purchase_ref_no', function ($row) {
-                    $html = $row->purchase_type == 'purchase' ? '<a data-href="' . action('PurchaseController@show', [$row->purchase_id])
+                    $html = $row->purchase_type == 'purchase' ? '<a data-href="' . action('App\Http\Controllers\PurchaseController@show', [$row->purchase_id])
                             . '" href="#" data-container=".view_modal" class="btn-modal">' . $row->purchase_ref_no . '</a>' : $row->purchase_ref_no;
                     if ($row->purchase_type == 'opening_stock') {
                         $html .= '(' . __('lang_v1.opening_stock') . ')';
@@ -3425,7 +3425,7 @@ class ReportController extends Controller
                 ->setRowAttr([
                     'data-href' => function ($row) {
                         if (auth()->user()->can("purchase.view")) {
-                            return  action('PurchaseController@show', [$row->id]) ;
+                            return  action('App\Http\Controllers\PurchaseController@show', [$row->id]) ;
                         } else {
                             return '';
                         }

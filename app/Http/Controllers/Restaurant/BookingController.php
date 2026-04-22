@@ -130,7 +130,7 @@ class BookingController extends Controller
                     //Send notification to customer
                     if (isset($input['send_notification']) && $input['send_notification'] == 1) {
                         $output['send_notification'] = 1;
-                        $output['notification_url'] = action('NotificationController@getTemplate', ["transaction_id" => $booking->id,"template_for" => "new_booking"]);
+                        $output['notification_url'] = action('App\Http\Controllers\NotificationController@getTemplate', ["transaction_id" => $booking->id,"template_for" => "new_booking"]);
                     }
                 } else {
                     $time_range = $this->commonUtil->format_date($existing_booking->booking_start, true) . ' ~ ' .

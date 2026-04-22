@@ -115,7 +115,7 @@ class ImportProductsController extends Controller
                 if (!$this->moduleUtil->isSubscribed($business_id)) {
                     return $this->moduleUtil->expiredResponse();
                 } elseif (!$this->moduleUtil->isQuotaAvailable('products', $business_id, $total_rows)) {
-                    return $this->moduleUtil->quotaExpiredResponse('products', $business_id, action('ImportProductsController@index'));
+                    return $this->moduleUtil->quotaExpiredResponse('products', $business_id, action('App\Http\Controllers\ImportProductsController@index'));
                 }
 
                 $business_locations = BusinessLocation::where('business_id', $business_id)->get();

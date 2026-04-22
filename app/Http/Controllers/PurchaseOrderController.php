@@ -161,22 +161,22 @@ class PurchaseOrderController extends Controller
                             </button>
                             <ul class="dropdown-menu dropdown-menu-left" role="menu">';
                     if (auth()->user()->can("purchase_order.view_all") || auth()->user()->can("purchase_order.view_own")) {
-                        $html .= '<li><a href="#" data-href="' . action('PurchaseOrderController@show', [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-eye" aria-hidden="true"></i>' . __("messages.view") . '</a></li>';
+                        $html .= '<li><a href="#" data-href="' . action('App\Http\Controllers\PurchaseOrderController@show', [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-eye" aria-hidden="true"></i>' . __("messages.view") . '</a></li>';
 
-                        $html .= '<li><a href="#" class="print-invoice" data-href="' . action('PurchaseController@printInvoice', [$row->id]) . '"><i class="fas fa-print" aria-hidden="true"></i>'. __("messages.print") .'</a></li>';
+                        $html .= '<li><a href="#" class="print-invoice" data-href="' . action('App\Http\Controllers\PurchaseController@printInvoice', [$row->id]) . '"><i class="fas fa-print" aria-hidden="true"></i>'. __("messages.print") .'</a></li>';
                     }
                     if (config('constants.enable_download_pdf') && (auth()->user()->can("purchase_order.view_all") || auth()->user()->can("purchase_order.view_own"))) {
                         $html .= '<li><a href="' . route('purchaseOrder.downloadPdf', [$row->id]) . '" target="_blank"><i class="fas fa-print" aria-hidden="true"></i> ' . __("lang_v1.download_pdf") . '</a></li>';
                     }
                     if (auth()->user()->can("purchase_order.update")) {
-                        $html .= '<li><a href="' . action('PurchaseOrderController@edit', [$row->id]) . '"><i class="fas fa-edit"></i>' . __("messages.edit") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\PurchaseOrderController@edit', [$row->id]) . '"><i class="fas fa-edit"></i>' . __("messages.edit") . '</a></li>';
                     }
                     if (auth()->user()->can("purchase_order.delete")) {
-                        $html .= '<li><a href="' . action('PurchaseOrderController@destroy', [$row->id]) . '" class="delete-purchase-order"><i class="fas fa-trash"></i>' . __("messages.delete") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\PurchaseOrderController@destroy', [$row->id]) . '" class="delete-purchase-order"><i class="fas fa-trash"></i>' . __("messages.delete") . '</a></li>';
                     }
 
                     if ($is_admin || auth()->user()->hasAnyPermission(['access_shipping', 'access_own_shipping', 'access_commission_agent_shipping']) ) {
-                        $html .= '<li><a href="#" data-href="' . action('SellController@editShipping', [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-truck" aria-hidden="true"></i>' . __("lang_v1.edit_shipping") . '</a></li>';
+                        $html .= '<li><a href="#" data-href="' . action('App\Http\Controllers\SellController@editShipping', [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-truck" aria-hidden="true"></i>' . __("lang_v1.edit_shipping") . '</a></li>';
                     }
 
                     if ((auth()->user()->can("purchase_order.view_all") || auth()->user()->can("purchase_order.view_own")) && !empty($row->document)) {
@@ -215,13 +215,13 @@ class PurchaseOrderController extends Controller
                 })
                 ->editColumn('shipping_status', function ($row) use ($shipping_statuses) {
                     $status_color = !empty($this->shipping_status_colors[$row->shipping_status]) ? $this->shipping_status_colors[$row->shipping_status] : 'bg-gray';
-                    $status = !empty($row->shipping_status) ? '<a href="#" class="btn-modal" data-href="' . action('SellController@editShipping', [$row->id]) . '" data-container=".view_modal"><span class="label ' . $status_color .'">' . $shipping_statuses[$row->shipping_status] . '</span></a>' : '';
+                    $status = !empty($row->shipping_status) ? '<a href="#" class="btn-modal" data-href="' . action('App\Http\Controllers\SellController@editShipping', [$row->id]) . '" data-container=".view_modal"><span class="label ' . $status_color .'">' . $shipping_statuses[$row->shipping_status] . '</span></a>' : '';
                      
                     return $status;
                 })
                 ->setRowAttr([
                     'data-href' => function ($row) {
-                        return  action('PurchaseOrderController@show', [$row->id]) ;
+                        return  action('App\Http\Controllers\PurchaseOrderController@show', [$row->id]) ;
                     }])
                 ->rawColumns(['final_total', 'action', 'ref_no', 'name', 'status', 'shipping_status'])
                 ->make(true);
@@ -300,7 +300,7 @@ class PurchaseOrderController extends Controller
 
             //Check if subscribed or not
             if (!$this->moduleUtil->isSubscribed($business_id)) {
-                return $this->moduleUtil->expiredResponse(action('PurchaseController@index'));
+                return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\PurchaseController@index'));
             }
 
             $transaction_data = $request->only([ 'ref_no', 'contact_id', 'transaction_date', 'total_before_tax', 'location_id','discount_type', 'discount_amount','tax_id', 'tax_amount', 'shipping_details', 'shipping_charges', 'final_total', 'additional_notes', 'exchange_rate', 'pay_term_number', 'pay_term_type', 'shipping_address', 'shipping_status', 'delivered_to']);
@@ -422,7 +422,7 @@ class PurchaseOrderController extends Controller
                         ];
         }
 
-        return redirect()->action('PurchaseOrderController@index')->with('status', $output);
+        return redirect()->action('App\Http\Controllers\PurchaseOrderController@index')->with('status', $output);
     }
 
     /**
@@ -682,7 +682,7 @@ class PurchaseOrderController extends Controller
             return back()->with('status', $output);
         }
 
-        return redirect()->action('PurchaseOrderController@index')->with('status', $output);
+        return redirect()->action('App\Http\Controllers\PurchaseOrderController@index')->with('status', $output);
     }
 
     /**

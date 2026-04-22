@@ -93,9 +93,9 @@ class StockTransferController extends Controller
             
             return Datatables::of($stock_transfers)
                 ->addColumn('action', function ($row) use ($edit_days) {
-                    $html = '<button type="button" title="' . __("stock_adjustment.view_details") . '" class="btn btn-primary btn-xs btn-modal" data-container=".view_modal" data-href="' . action('StockTransferController@show', [$row->id]) . '"><i class="fa fa-eye" aria-hidden="true"></i> ' . __('messages.view') . '</button>';
+                    $html = '<button type="button" title="' . __("stock_adjustment.view_details") . '" class="btn btn-primary btn-xs btn-modal" data-container=".view_modal" data-href="' . action('App\Http\Controllers\StockTransferController@show', [$row->id]) . '"><i class="fa fa-eye" aria-hidden="true"></i> ' . __('messages.view') . '</button>';
 
-                    $html .= ' <a href="#" class="print-invoice btn btn-info btn-xs" data-href="' . action('StockTransferController@printInvoice', [$row->id]) . '"><i class="fa fa-print" aria-hidden="true"></i> '. __("messages.print") .'</a>';
+                    $html .= ' <a href="#" class="print-invoice btn btn-info btn-xs" data-href="' . action('App\Http\Controllers\StockTransferController@printInvoice', [$row->id]) . '"><i class="fa fa-print" aria-hidden="true"></i> '. __("messages.print") .'</a>';
 
                     $date = \Carbon::parse($row->transaction_date)
                         ->addDays($edit_days);
@@ -133,7 +133,7 @@ class StockTransferController extends Controller
                 ->rawColumns(['final_total', 'action', 'shipping_charges', 'status'])
                 ->setRowAttr([
                 'data-href' => function ($row) {
-                    return  action('StockTransferController@show', [$row->id]);
+                    return  action('App\Http\Controllers\StockTransferController@show', [$row->id]);
                 }])
                 ->make(true);
         }
@@ -156,7 +156,7 @@ class StockTransferController extends Controller
 
         //Check if subscribed or not
         if (!$this->moduleUtil->isSubscribed($business_id)) {
-            return $this->moduleUtil->expiredResponse(action('StockTransferController@index'));
+            return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\StockTransferController@index'));
         }
 
         $business_locations = BusinessLocation::forDropdown($business_id);
@@ -193,7 +193,7 @@ class StockTransferController extends Controller
 
             //Check if subscribed or not
             if (!$this->moduleUtil->isSubscribed($business_id)) {
-                return $this->moduleUtil->expiredResponse(action('StockTransferController@index'));
+                return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\StockTransferController@index'));
             }
 
             DB::beginTransaction();
@@ -667,7 +667,7 @@ class StockTransferController extends Controller
 
             //Check if subscribed or not
             if (!$this->moduleUtil->isSubscribed($business_id)) {
-                return $this->moduleUtil->expiredResponse(action('StockTransferController@index'));
+                return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\StockTransferController@index'));
             }
 
             $business_id = request()->session()->get('user.business_id');

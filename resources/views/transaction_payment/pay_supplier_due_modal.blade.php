@@ -1,7 +1,7 @@
 <div class="modal-dialog" role="document">
   <div class="modal-content">
 
-    {!! Form::open(['url' => action('TransactionPaymentController@postPayContactDue'), 'method' => 'post', 'id' => 'pay_contact_due_form', 'files' => true ]) !!}
+    {!! Form::open(['url' => action('App\Http\Controllers\TransactionPaymentController@postPayContactDue'), 'method' => 'post', 'id' => 'pay_contact_due_form', 'files' => true ]) !!}
 
     {!! Form::hidden("contact_id", $contact_details->contact_id); !!}
     {!! Form::hidden("due_payment_type", $due_payment_type); !!}

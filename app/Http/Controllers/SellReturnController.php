@@ -163,7 +163,7 @@ class SellReturnController extends Controller
                     '<span class="display_currency final_total" data-currency_symbol="true" data-orig-value="{{$final_total}}">{{$final_total}}</span>'
                 )
                 ->editColumn('parent_sale', function ($row) {
-                    return '<button type="button" class="btn btn-link btn-modal" data-container=".view_modal" data-href="' . action('SellController@show', [$row->parent_sale_id]) . '">' . $row->parent_sale . '</button>';
+                    return '<button type="button" class="btn btn-link btn-modal" data-container=".view_modal" data-href="' . action('App\Http\Controllers\SellController@show', [$row->parent_sale_id]) . '">' . $row->parent_sale . '</button>';
                 })
                 ->editColumn('transaction_date', '{{@format_datetime($transaction_date)}}')
                 ->editColumn(
@@ -177,7 +177,7 @@ class SellReturnController extends Controller
                 ->setRowAttr([
                     'data-href' => function ($row) {
                         if (auth()->user()->can("sell.view")) {
-                            return  action('SellReturnController@show', [$row->parent_sale_id]) ;
+                            return  action('App\Http\Controllers\SellReturnController@show', [$row->parent_sale_id]) ;
                         } else {
                             return '';
                         }
@@ -208,7 +208,7 @@ class SellReturnController extends Controller
 
     //     //Check if subscribed or not
     //     if (!$this->moduleUtil->isSubscribed($business_id)) {
-    //         return $this->moduleUtil->expiredResponse(action('SellReturnController@index'));
+    //         return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\SellReturnController@index'));
     //     }
 
     //     $business_locations = BusinessLocation::forDropdown($business_id);
@@ -272,7 +272,7 @@ class SellReturnController extends Controller
 
                 //Check if subscribed or not
                 if (!$this->moduleUtil->isSubscribed($business_id)) {
-                    return $this->moduleUtil->expiredResponse(action('SellReturnController@index'));
+                    return $this->moduleUtil->expiredResponse(action('App\Http\Controllers\SellReturnController@index'));
                 }
         
                 $user_id = $request->session()->get('user.id');

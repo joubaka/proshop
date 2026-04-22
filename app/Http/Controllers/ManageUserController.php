@@ -99,7 +99,7 @@ class ManageUserController extends Controller
         if (!$this->moduleUtil->isSubscribed($business_id)) {
             return $this->moduleUtil->expiredResponse();
         } elseif (!$this->moduleUtil->isQuotaAvailable('users', $business_id)) {
-            return $this->moduleUtil->quotaExpiredResponse('users', $business_id, action('ManageUserController@index'));
+            return $this->moduleUtil->quotaExpiredResponse('users', $business_id, action('App\Http\Controllers\ManageUserController@index'));
         }
 
         $roles  = $this->getRolesArray($business_id);

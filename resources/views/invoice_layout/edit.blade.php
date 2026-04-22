@@ -14,7 +14,7 @@
 
 <!-- Main content -->
 <section class="content">
-{!! Form::open(['url' => action('InvoiceLayoutController@update', [$invoice_layout->id]), 'method' => 'put', 
+{!! Form::open(['url' => action('App\Http\Controllers\InvoiceLayoutController@update', [$invoice_layout->id]), 'method' => 'put', 
   'id' => 'add_invoice_layout_form', 'files' => true]) !!}
 
   @php

@@ -113,7 +113,7 @@
                 <div class="tab-content">
                     <div class="tab-pane active" id="product_list_tab">
                         @can('product.create')
-                            <a class="btn btn-primary pull-right" href="{{action('ProductController@create')}}">
+                            <a class="btn btn-primary pull-right" href="{{action('App\Http\Controllers\ProductController@create')}}">
                                         <i class="fa fa-plus"></i> @lang('messages.add')</a>
                             <br><br>
                         @endcan
@@ -454,7 +454,7 @@
                 var div = $(this).find('#view_product_stock_details');
             if (div.length) {
                 $.ajax({
-                    url: "{{action('ReportController@getStockReport')}}"  + '?for=view_product&product_id=' + div.data('product_id'),
+                    url: "{{action('App\Http\Controllers\ReportController@getStockReport')}}"  + '?for=view_product&product_id=' + div.data('product_id'),
                     dataType: 'html',
                     success: function(result) {
                         div.html(result);

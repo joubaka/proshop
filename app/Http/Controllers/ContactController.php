@@ -145,25 +145,25 @@ class ContactController extends Controller
                     </button>
                     <ul class="dropdown-menu dropdown-menu-left" role="menu">';
 
-                    $html .= '<li><a href="' . action('TransactionPaymentController@getPayContactDue', [$row->id]) . '?type=purchase" class="pay_purchase_due"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("lang_v1.pay") . '</a></li>';
+                    $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@getPayContactDue', [$row->id]) . '?type=purchase" class="pay_purchase_due"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("lang_v1.pay") . '</a></li>';
 
                     $return_due = $row->total_purchase_return - $row->purchase_return_paid;
                     if ($return_due > 0) {
-                        $html .= '<li><a href="' . action('TransactionPaymentController@getPayContactDue', [$row->id]) . '?type=purchase_return" class="pay_purchase_due"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("lang_v1.receive_purchase_return_due") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@getPayContactDue', [$row->id]) . '?type=purchase_return" class="pay_purchase_due"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("lang_v1.receive_purchase_return_due") . '</a></li>';
                     }
 
                     if (auth()->user()->can('supplier.view') || auth()->user()->can('supplier.view_own')) {
-                        $html .= '<li><a href="' . action('ContactController@show', [$row->id]) . '"><i class="fas fa-eye" aria-hidden="true"></i>' . __("messages.view") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]) . '"><i class="fas fa-eye" aria-hidden="true"></i>' . __("messages.view") . '</a></li>';
                     }
                     if (auth()->user()->can('supplier.update')) {
-                        $html .= '<li><a href="' . action('ContactController@edit', [$row->id]) . '" class="edit_contact_button"><i class="glyphicon glyphicon-edit"></i>' .  __("messages.edit") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\ContactController@edit', [$row->id]) . '" class="edit_contact_button"><i class="glyphicon glyphicon-edit"></i>' .  __("messages.edit") . '</a></li>';
                     }
                     if (auth()->user()->can('supplier.delete')) {
-                        $html .= '<li><a href="' . action('ContactController@destroy', [$row->id]) . '" class="delete_contact_button"><i class="glyphicon glyphicon-trash"></i>' . __("messages.delete") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\ContactController@destroy', [$row->id]) . '" class="delete_contact_button"><i class="glyphicon glyphicon-trash"></i>' . __("messages.delete") . '</a></li>';
                     }
 
                     if (auth()->user()->can('customer.update')) {
-                        $html .= '<li><a href="' . action('ContactController@updateStatus', [$row->id]) . '"class="update_contact_status"><i class="fas fa-power-off"></i>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\ContactController@updateStatus', [$row->id]) . '"class="update_contact_status"><i class="fas fa-power-off"></i>';
 
                         if ($row->contact_status == "active") {
                             $html .= __("messages.deactivate");
@@ -178,7 +178,7 @@ class ContactController extends Controller
                     if (auth()->user()->can('supplier.view')) {
                         $html .= '
                                 <li>
-                                    <a href="' . action('ContactController@show', [$row->id]). '?view=ledger">
+                                    <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]). '?view=ledger">
                                         <i class="fas fa-scroll" aria-hidden="true"></i>
                                         ' . __("lang_v1.ledger") . '
                                     </a>
@@ -186,13 +186,13 @@ class ContactController extends Controller
 
                         if (in_array($row->type, ["both", "supplier"])) {
                             $html .= '<li>
-                                <a href="' . action('ContactController@show', [$row->id]) . '?view=purchase">
+                                <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]) . '?view=purchase">
                                     <i class="fas fa-arrow-circle-down" aria-hidden="true"></i>
                                     ' . __("purchase.purchases") . '
                                 </a>
                             </li>
                             <li>
-                                <a href="' . action('ContactController@show', [$row->id]) . '?view=stock_report">
+                                <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]) . '?view=stock_report">
                                     <i class="fas fa-hourglass-half" aria-hidden="true"></i>
                                     ' . __("report.stock_report") . '
                                 </a>
@@ -201,7 +201,7 @@ class ContactController extends Controller
 
                         if (in_array($row->type, ["both", "customer"])) {
                             $html .=  '<li>
-                                <a href="' . action('ContactController@show', [$row->id]). '?view=sales">
+                                <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]). '?view=sales">
                                     <i class="fas fa-arrow-circle-up" aria-hidden="true"></i>
                                     ' . __("sale.sells") . '
                                 </a>
@@ -209,7 +209,7 @@ class ContactController extends Controller
                         }
 
                         $html .= '<li>
-                                <a href="' . action('ContactController@show', [$row->id]) . '?view=documents_and_notes">
+                                <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]) . '?view=documents_and_notes">
                                     <i class="fas fa-paperclip" aria-hidden="true"></i>
                                      ' . __("lang_v1.documents_and_notes") . '
                                 </a>
@@ -367,24 +367,24 @@ class ContactController extends Controller
                     </button>
                     <ul class="dropdown-menu dropdown-menu-left" role="menu">';
 
-                    $html .= '<li><a href="' . action('TransactionPaymentController@getPayContactDue', [$row->id]) . '?type=sell" class="pay_sale_due"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("lang_v1.pay") . '</a></li>';
+                    $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@getPayContactDue', [$row->id]) . '?type=sell" class="pay_sale_due"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("lang_v1.pay") . '</a></li>';
                     $return_due = $row->total_sell_return - $row->sell_return_paid;
                     if ($return_due > 0) {
-                        $html .= '<li><a href="' . action('TransactionPaymentController@getPayContactDue', [$row->id]) . '?type=sell_return" class="pay_purchase_due"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("lang_v1.pay_sell_return_due") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@getPayContactDue', [$row->id]) . '?type=sell_return" class="pay_purchase_due"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __("lang_v1.pay_sell_return_due") . '</a></li>';
                     }
                     
                     if (auth()->user()->can('customer.view') || auth()->user()->can('customer.view_own')) {
-                        $html .= '<li><a href="' . action('ContactController@show', [$row->id]) . '"><i class="fas fa-eye" aria-hidden="true"></i>' . __("messages.view") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]) . '"><i class="fas fa-eye" aria-hidden="true"></i>' . __("messages.view") . '</a></li>';
                     }
                     if (auth()->user()->can('customer.update')) {
-                        $html .= '<li><a href="' . action('ContactController@edit', [$row->id]) . '" class="edit_contact_button"><i class="glyphicon glyphicon-edit"></i>' .  __("messages.edit") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\ContactController@edit', [$row->id]) . '" class="edit_contact_button"><i class="glyphicon glyphicon-edit"></i>' .  __("messages.edit") . '</a></li>';
                     }
                     if (!$row->is_default && auth()->user()->can('customer.delete')) {
-                        $html .= '<li><a href="' . action('ContactController@destroy', [$row->id]) . '" class="delete_contact_button"><i class="glyphicon glyphicon-trash"></i>' . __("messages.delete") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\ContactController@destroy', [$row->id]) . '" class="delete_contact_button"><i class="glyphicon glyphicon-trash"></i>' . __("messages.delete") . '</a></li>';
                     }
 
                     if (auth()->user()->can('customer.update')) {
-                        $html .= '<li><a href="' . action('ContactController@updateStatus', [$row->id]) . '"class="update_contact_status"><i class="fas fa-power-off"></i>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\ContactController@updateStatus', [$row->id]) . '"class="update_contact_status"><i class="fas fa-power-off"></i>';
 
                         if ($row->contact_status == "active") {
                             $html .= __("messages.deactivate");
@@ -399,7 +399,7 @@ class ContactController extends Controller
                     if (auth()->user()->can('customer.view')) {
                         $html .= '
                                 <li>
-                                    <a href="' . action('ContactController@show', [$row->id]). '?view=ledger">
+                                    <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]). '?view=ledger">
                                         <i class="fas fa-scroll" aria-hidden="true"></i>
                                         ' . __("lang_v1.ledger") . '
                                     </a>
@@ -407,13 +407,13 @@ class ContactController extends Controller
 
                         if (in_array($row->type, ["both", "supplier"])) {
                             $html .= '<li>
-                                <a href="' . action('ContactController@show', [$row->id]) . '?view=purchase">
+                                <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]) . '?view=purchase">
                                     <i class="fas fa-arrow-circle-down" aria-hidden="true"></i>
                                     ' . __("purchase.purchases") . '
                                 </a>
                             </li>
                             <li>
-                                <a href="' . action('ContactController@show', [$row->id]) . '?view=stock_report">
+                                <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]) . '?view=stock_report">
                                     <i class="fas fa-hourglass-half" aria-hidden="true"></i>
                                     ' . __("report.stock_report") . '
                                 </a>
@@ -422,7 +422,7 @@ class ContactController extends Controller
 
                         if (in_array($row->type, ["both", "customer"])) {
                             $html .=  '<li>
-                                <a href="' . action('ContactController@show', [$row->id]). '?view=sales">
+                                <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]). '?view=sales">
                                     <i class="fas fa-arrow-circle-up" aria-hidden="true"></i>
                                     ' . __("sale.sells") . '
                                 </a>
@@ -430,7 +430,7 @@ class ContactController extends Controller
                         }
 
                         $html .= '<li>
-                                <a href="' . action('ContactController@show', [$row->id]) . '?view=documents_and_notes">
+                                <a href="' . action('App\Http\Controllers\ContactController@show', [$row->id]) . '?view=documents_and_notes">
                                     <i class="fas fa-paperclip" aria-hidden="true"></i>
                                      ' . __("lang_v1.documents_and_notes") . '
                                 </a>
@@ -1224,7 +1224,7 @@ class ContactController extends Controller
             return redirect()->route('contacts.import')->with('notification', $output);
         }
         $type = !empty($contact->type) && $contact->type != 'both' ? $contact->type : 'supplier';
-        return redirect()->action('ContactController@index', ['type' => $type])->with('status', $output);
+        return redirect()->action('App\Http\Controllers\ContactController@index', ['type' => $type])->with('status', $output);
     }
 
     /**

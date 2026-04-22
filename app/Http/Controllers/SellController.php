@@ -349,19 +349,19 @@ class SellController extends Controller
                         if (!$only_shipments) {
                             if ($row->is_direct_sale == 0) {
                                 if (auth()->user()->can("sell.update")) {
-                                    $html .= '<li><a target="_blank" href="' . action('SellPosController@edit', [$row->id]) . '"><i class="fas fa-edit"></i> ' . __("messages.edit") . '</a></li>';
+                                    $html .= '<li><a target="_blank" href="' . action('App\Http\Controllers\SellPosController@edit', [$row->id]) . '"><i class="fas fa-edit"></i> ' . __("messages.edit") . '</a></li>';
                                 }
                             } elseif ($row->type == 'sales_order') {
                                 if (auth()->user()->can("so.update")) {
-                                    $html .= '<li><a target="_blank" href="' . action('SellController@edit', [$row->id]) . '"><i class="fas fa-edit"></i> ' . __("messages.edit") . '</a></li>';
+                                    $html .= '<li><a target="_blank" href="' . action('App\Http\Controllers\SellController@edit', [$row->id]) . '"><i class="fas fa-edit"></i> ' . __("messages.edit") . '</a></li>';
                                 }
                             } else {
                                 if (auth()->user()->can("direct_sell.update")) {
-                                    $html .= '<li><a target="_blank" href="' . action('SellController@edit', [$row->id]) . '"><i class="fas fa-edit"></i> ' . __("messages.edit") . '</a></li>';
+                                    $html .= '<li><a target="_blank" href="' . action('App\Http\Controllers\SellController@edit', [$row->id]) . '"><i class="fas fa-edit"></i> ' . __("messages.edit") . '</a></li>';
                                 }
                             }
 
-                            $delete_link = '<li><a href="' . action('SellPosController@destroy', [$row->id]) . '" class="delete-sale"><i class="fas fa-trash"></i> ' . __("messages.delete") . '</a></li>';
+                            $delete_link = '<li><a href="' . action('App\Http\Controllers\SellPosController@destroy', [$row->id]) . '" class="delete-sale"><i class="fas fa-trash"></i> ' . __("messages.delete") . '</a></li>';
                             if ($row->is_direct_sale == 0) {
                                 if (auth()->user()->can("sell.delete")) {
                                     $html .= $delete_link;
@@ -396,7 +396,7 @@ class SellController extends Controller
                         }
 
                         if ($is_admin || auth()->user()->hasAnyPermission(['access_shipping', 'access_own_shipping', 'access_commission_agent_shipping']) ) {
-                            $html .= '<li><a href="#" data-href="' . action('SellController@editShipping', [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-truck" aria-hidden="true"></i>' . __("lang_v1.edit_shipping") . '</a></li>';
+                            $html .= '<li><a href="#" data-href="' . action('App\Http\Controllers\SellController@editShipping', [$row->id]) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-truck" aria-hidden="true"></i>' . __("lang_v1.edit_shipping") . '</a></li>';
                         }
                             
                         if ($row->type == 'sell') {
@@ -412,25 +412,25 @@ class SellController extends Controller
                                     auth()->user()->can("delete_sell_payment")){
 
                                     if ($row->payment_status != "paid") {
-                                        $html .= '<li><a href="' . action('TransactionPaymentController@addPayment', [$row->id]) . '" class="add_payment_modal"><i class="fas fa-money-bill-alt"></i> ' . __("purchase.add_payment") . '</a></li>';
+                                        $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@addPayment', [$row->id]) . '" class="add_payment_modal"><i class="fas fa-money-bill-alt"></i> ' . __("purchase.add_payment") . '</a></li>';
                                     }
 
-                                    $html .= '<li><a href="' . action('TransactionPaymentController@show', [$row->id]) . '" class="view_payment_modal"><i class="fas fa-money-bill-alt"></i> ' . __("purchase.view_payments") . '</a></li>';
+                                    $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@show', [$row->id]) . '" class="view_payment_modal"><i class="fas fa-money-bill-alt"></i> ' . __("purchase.view_payments") . '</a></li>';
                                 }
 
                                 if (auth()->user()->can("sell.create") || auth()->user()->can("direct_sell.access")) {
-                                    // $html .= '<li><a href="' . action('SellController@duplicateSell', [$row->id]) . '"><i class="fas fa-copy"></i> ' . __("lang_v1.duplicate_sell") . '</a></li>';
+                                    // $html .= '<li><a href="' . action('App\Http\Controllers\SellController@duplicateSell', [$row->id]) . '"><i class="fas fa-copy"></i> ' . __("lang_v1.duplicate_sell") . '</a></li>';
                                     
 
-                                    $html .= '<li><a href="' . action('SellReturnController@add', [$row->id]) . '"><i class="fas fa-undo"></i> ' . __("lang_v1.sell_return") . '</a></li>
+                                    $html .= '<li><a href="' . action('App\Http\Controllers\SellReturnController@add', [$row->id]) . '"><i class="fas fa-undo"></i> ' . __("lang_v1.sell_return") . '</a></li>
 
-                                    <li><a href="' . action('SellPosController@showInvoiceUrl', [$row->id]) . '" class="view_invoice_url"><i class="fas fa-eye"></i> ' . __("lang_v1.view_invoice_url") . '</a></li>';
+                                    <li><a href="' . action('App\Http\Controllers\SellPosController@showInvoiceUrl', [$row->id]) . '" class="view_invoice_url"><i class="fas fa-eye"></i> ' . __("lang_v1.view_invoice_url") . '</a></li>';
                                 }
                             }
 
-                            $html .= '<li><a href="#" data-href="' . action('NotificationController@getTemplate', ["transaction_id" => $row->id,"template_for" => "new_sale"]) . '" class="btn-modal" data-container=".view_modal"><i class="fa fa-envelope" aria-hidden="true"></i>' . __("lang_v1.new_sale_notification") . '</a></li>';
+                            $html .= '<li><a href="#" data-href="' . action('App\Http\Controllers\NotificationController@getTemplate', ["transaction_id" => $row->id,"template_for" => "new_sale"]) . '" class="btn-modal" data-container=".view_modal"><i class="fa fa-envelope" aria-hidden="true"></i>' . __("lang_v1.new_sale_notification") . '</a></li>';
                         } else {
-                            $html .= '<li><a href="#" data-href="' . action('SellController@viewMedia', ["model_id" => $row->id, "model_type" => "App\Transaction", 'model_media_type' => 'shipping_document']) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-paperclip" aria-hidden="true"></i>' . __("lang_v1.shipping_documents") . '</a></li>';
+                            $html .= '<li><a href="#" data-href="' . action('App\Http\Controllers\SellController@viewMedia', ["model_id" => $row->id, "model_type" => "App\Transaction", 'model_media_type' => 'shipping_document']) . '" class="btn-modal" data-container=".view_modal"><i class="fas fa-paperclip" aria-hidden="true"></i>' . __("lang_v1.shipping_documents") . '</a></li>';
                         }
 
                         $html .= '</ul></div>';
@@ -523,7 +523,7 @@ class SellController extends Controller
                 })
                 ->editColumn('shipping_status', function ($row) use ($shipping_statuses) {
                     $status_color = !empty($this->shipping_status_colors[$row->shipping_status]) ? $this->shipping_status_colors[$row->shipping_status] : 'bg-gray';
-                    $status = !empty($row->shipping_status) ? '<a href="#" class="btn-modal" data-href="' . action('SellController@editShipping', [$row->id]) . '" data-container=".view_modal"><span class="label ' . $status_color .'">' . $shipping_statuses[$row->shipping_status] . '</span></a>' : '';
+                    $status = !empty($row->shipping_status) ? '<a href="#" class="btn-modal" data-href="' . action('App\Http\Controllers\SellController@editShipping', [$row->id]) . '" data-container=".view_modal"><span class="label ' . $status_color .'">' . $shipping_statuses[$row->shipping_status] . '</span></a>' : '';
                      
                     return $status;
                 })
@@ -566,7 +566,7 @@ class SellController extends Controller
                 ->setRowAttr([
                     'data-href' => function ($row) {
                         if (auth()->user()->can("sell.view") || auth()->user()->can("view_own_sell_only")) {
-                            return  action('SellController@show', [$row->id]) ;
+                            return  action('App\Http\Controllers\SellController@show', [$row->id]) ;
                         } else {
                             return '';
                         }
@@ -632,7 +632,7 @@ class SellController extends Controller
         if (!$this->moduleUtil->isSubscribed($business_id)) {
             return $this->moduleUtil->expiredResponse();
         } elseif (!$this->moduleUtil->isQuotaAvailable('invoices', $business_id)) {
-            return $this->moduleUtil->quotaExpiredResponse('invoices', $business_id, action('SellController@index'));
+            return $this->moduleUtil->quotaExpiredResponse('invoices', $business_id, action('App\Http\Controllers\SellController@index'));
         }
 
         $walk_in_customer = $this->contactUtil->getWalkInCustomer($business_id);
@@ -1308,7 +1308,7 @@ class SellController extends Controller
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-right" role="menu">
                                     <li>
-                                    <a href="#" data-href="'.action('SellController@show', [$row->id]).'" class="btn-modal" data-container=".view_modal">
+                                    <a href="#" data-href="'.action('App\Http\Controllers\SellController@show', [$row->id]).'" class="btn-modal" data-container=".view_modal">
                                         <i class="fas fa-eye" aria-hidden="true"></i>'.__("messages.view").'
                                     </a>
                                     </li>' ;
@@ -1316,13 +1316,13 @@ class SellController extends Controller
                         if (auth()->user()->can('draft.update') || auth()->user()->can('quotation.update')) {
                             if($row->is_direct_sale == 1) {
                                 $html .= '<li>
-                                            <a target="_blank" href="'.action('SellController@edit', [$row->id]).'">
+                                            <a target="_blank" href="'.action('App\Http\Controllers\SellController@edit', [$row->id]).'">
                                                 <i class="fas fa-edit"></i>' .__("messages.edit").'
                                             </a>
                                         </li>';
                             } else {
                                 $html .= '<li>
-                                            <a target="_blank" href="'.action('SellPosController@edit', [$row->id]).'">
+                                            <a target="_blank" href="'.action('App\Http\Controllers\SellPosController@edit', [$row->id]).'">
                                                 <i class="fas fa-edit"></i>'.  __("messages.edit").'
                                             </a>
                                         </li>';
@@ -1345,19 +1345,19 @@ class SellController extends Controller
 
                         if( (auth()->user()->can("sell.create") || auth()->user()->can("direct_sell.access")) && config("constants.enable_convert_draft_to_invoice")) {
                             $html .= '<li>
-                                        <a href="'.action('SellPosController@convertToInvoice', [$row->id]).'" class="convert-draft"><i class="fas fa-sync-alt"></i>'.__("lang_v1.convert_to_invoice").'</a>
+                                        <a href="'.action('App\Http\Controllers\SellPosController@convertToInvoice', [$row->id]).'" class="convert-draft"><i class="fas fa-sync-alt"></i>'.__("lang_v1.convert_to_invoice").'</a>
                                     </li>';
                         }
 
                         if($row->sub_status != "proforma") {
                             $html .= '<li>
-                                        <a href="'.action('SellPosController@convertToProforma', [$row->id]).'" class="convert-to-proforma"><i class="fas fa-sync-alt"></i>'.__("lang_v1.convert_to_proforma").'</a>
+                                        <a href="'.action('App\Http\Controllers\SellPosController@convertToProforma', [$row->id]).'" class="convert-to-proforma"><i class="fas fa-sync-alt"></i>'.__("lang_v1.convert_to_proforma").'</a>
                                     </li>';
                         }
 
                         if (auth()->user()->can('draft.delete') || auth()->user()->can('quotation.delete')) {
                             $html .= '<li>
-                                <a href="'.action('SellPosController@destroy', [$row->id]).'" class="delete-sale"><i class="fas fa-trash"></i>'.__("messages.delete").'</a>
+                                <a href="'.action('App\Http\Controllers\SellPosController@destroy', [$row->id]).'" class="delete-sale"><i class="fas fa-trash"></i>'.__("messages.delete").'</a>
                                 </li>';
                         }
 
@@ -1409,7 +1409,7 @@ class SellController extends Controller
                 ->setRowAttr([
                     'data-href' => function ($row) {
                         if (auth()->user()->can("sell.view")) {
-                            return  action('SellController@show', [$row->id]) ;
+                            return  action('App\Http\Controllers\SellController@show', [$row->id]) ;
                         } else {
                             return '';
                         }
@@ -1488,9 +1488,9 @@ class SellController extends Controller
 
         if (!empty($duplicate_transaction)) {
             if ($duplicate_transaction->is_direct_sale == 1) {
-                return redirect()->action('SellController@edit', [$duplicate_transaction->id])->with(['status', $output]);
+                return redirect()->action('App\Http\Controllers\SellController@edit', [$duplicate_transaction->id])->with(['status', $output]);
             } else {
-                return redirect()->action('SellPosController@edit', [$duplicate_transaction->id])->with(['status', $output]);
+                return redirect()->action('App\Http\Controllers\SellPosController@edit', [$duplicate_transaction->id])->with(['status', $output]);
             }
         } else {
             abort(404, 'Not Found.');

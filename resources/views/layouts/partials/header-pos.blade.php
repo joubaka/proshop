@@ -1,9 +1,9 @@
 <!-- default value -->
 @php
-    $go_back_url = action('SellPosController@index');
+    $go_back_url = action('App\Http\Controllers\SellPosController@index');
     $transaction_sub_type = '';
-    $view_suspended_sell_url = action('SellController@index').'?suspended=1';
-    $pos_redirect_url = action('SellPosController@create');
+    $view_suspended_sell_url = action('App\Http\Controllers\SellController@index').'?suspended=1';
+    $pos_redirect_url = action('App\Http\Controllers\SellPosController@create');
 @endphp
 
 @if(!empty($pos_module_data))
@@ -51,14 +51,14 @@
       </a>
       @can('close_cash_register')
       <button type="button" id="close_register" title="{{ __('cash_register.close_register') }}" class="btn btn-danger btn-flat m-6 btn-xs m-5 btn-modal pull-right" data-container=".close_register_modal" 
-          data-href="{{ action('CashRegisterController@getCloseRegister')}}">
+          data-href="{{ action('App\Http\Controllers\CashRegisterController@getCloseRegister')}}">
             <strong><i class="fa fa-window-close fa-lg"></i></strong>
       </button>
       @endcan
       
       @can('view_cash_register')
       <button type="button" id="register_details" title="{{ __('cash_register.register_details') }}" class="btn btn-success btn-flat m-6 btn-xs m-5 btn-modal pull-right" data-container=".register_details_modal" 
-          data-href="{{ action('CashRegisterController@getRegisterDetails')}}">
+          data-href="{{ action('App\Http\Controllers\CashRegisterController@getRegisterDetails')}}">
             <strong><i class="fa fa-briefcase fa-lg" aria-hidden="true"></i></strong>
       </button>
       @endcan
@@ -88,7 +88,7 @@
 
         @if(in_array('pos_sale', $enabled_modules) && !empty($transaction_sub_type))
           @can('sell.create')
-            <a href="{{action('SellPosController@create')}}" title="@lang('sale.pos_sale')" class="btn btn-success btn-flat m-6 btn-xs m-5 pull-right">
+            <a href="{{action('App\Http\Controllers\SellPosController@create')}}" title="@lang('sale.pos_sale')" class="btn btn-success btn-flat m-6 btn-xs m-5 pull-right">
               <strong><i class="fa fa-th-large"></i> &nbsp; @lang('sale.pos_sale')</strong>
             </a>
           @endcan

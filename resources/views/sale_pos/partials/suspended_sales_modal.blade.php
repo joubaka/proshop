@@ -37,10 +37,10 @@
 					              	<br>@lang('restaurant.service_staff'): {{$sale->service_staff->user_full_name}}
 					              @endif
 					            </div>
-					            <a href="{{action('SellPosController@edit', ['id' => $sale->id]).$subtype}}" class="small-box-footer bg-blue p-10">
+					            <a href="{{action('App\Http\Controllers\SellPosController@edit', ['id' => $sale->id]).$subtype}}" class="small-box-footer bg-blue p-10">
 					              @lang('sale.edit_sale') <i class="fa fa-arrow-circle-right"></i>
 					            </a>
-					            <a href="{{action('SellPosController@destroy', ['id' => $sale->id])}}" class="small-box-footer delete-sale bg-red is_suspended">
+					            <a href="{{action('App\Http\Controllers\SellPosController@destroy', ['id' => $sale->id])}}" class="small-box-footer delete-sale bg-red is_suspended">
 					              @lang('messages.delete') <i class="fas fa-trash"></i>
 					            </a>
 					         </div>

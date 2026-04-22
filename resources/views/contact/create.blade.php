@@ -11,7 +11,7 @@
       $type = 'lead';
       $customer_groups = [];
     } else {
-      $url = action('ContactController@store');
+      $url = action('App\Http\Controllers\ContactController@store');
       $type = isset($selected_type) ? $selected_type : '';
       $sources = [];
       $life_stages = [];

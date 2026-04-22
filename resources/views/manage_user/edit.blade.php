@@ -11,7 +11,7 @@
 
 <!-- Main content -->
 <section class="content">
-    {!! Form::open(['url' => action('ManageUserController@update', [$user->id]), 'method' => 'PUT', 'id' => 'user_edit_form' ]) !!}
+    {!! Form::open(['url' => action('App\Http\Controllers\ManageUserController@update', [$user->id]), 'method' => 'PUT', 'id' => 'user_edit_form' ]) !!}
     <div class="row">
         <div class="col-md-12">
         @component('components.widget', ['class' => 'box-primary'])

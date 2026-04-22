@@ -51,7 +51,7 @@ class CashRegisterController extends Controller
 
         //Check if there is a open register, if yes then redirect to POS screen.
         if ($this->cashRegisterUtil->countOpenedRegister() != 0) {
-            return redirect()->action('SellPosController@create', ['sub_type' => $sub_type]);
+            return redirect()->action('App\Http\Controllers\SellPosController@create', ['sub_type' => $sub_type]);
         }
         $business_id = request()->session()->get('user.business_id');
         $business_locations = BusinessLocation::forDropdown($business_id);
@@ -98,7 +98,7 @@ class CashRegisterController extends Controller
             \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
         }
 
-        return redirect()->action('SellPosController@create', ['sub_type' => $sub_type]);
+        return redirect()->action('App\Http\Controllers\SellPosController@create', ['sub_type' => $sub_type]);
     }
 
     /**
@@ -206,7 +206,7 @@ class CashRegisterController extends Controller
                 $output = ['success' => 0,
                                 'msg' => 'Feature disabled in demo!!'
                             ];
-                return redirect()->action('HomeController@index')->with('status', $output);
+                return redirect()->action('App\Http\Controllers\HomeController@index')->with('status', $output);
             }
             
             $input = $request->only(['closing_amount', 'total_card_slips', 'total_cheques', 'closing_note']);

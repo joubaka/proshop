@@ -434,12 +434,12 @@ class AccountController extends Controller
                                 if (auth()->user()->can('delete_account_transaction')) {
                                     
                                     if ($row->sub_type == 'fund_transfer' || $row->sub_type == 'deposit') {
-                                        $action .= '<button type="button" class="btn btn-danger btn-xs delete_account_transaction" data-href="' . action('AccountController@destroyAccountTransaction', [$row->id]) . '"><i class="fa fa-trash"></i> ' . __('messages.delete') . '</button>';
+                                        $action .= '<button type="button" class="btn btn-danger btn-xs delete_account_transaction" data-href="' . action('App\Http\Controllers\AccountController@destroyAccountTransaction', [$row->id]) . '"><i class="fa fa-trash"></i> ' . __('messages.delete') . '</button>';
                                     }
                                 }
                                 if (auth()->user()->can('edit_account_transaction')) {
                                     if ($row->sub_type == 'fund_transfer' || $row->sub_type == 'deposit' || $row->sub_type == 'opening_balance') {
-                                        $action .= ' <button type="button" class="btn btn-primary btn-xs btn-modal" data-container="#edit_account_transaction" data-href="' . action('AccountController@editAccountTransaction', [$row->id]) . '"><i class="fa fa-edit"></i> ' . __('messages.edit') . '</button>';
+                                        $action .= ' <button type="button" class="btn btn-primary btn-xs btn-modal" data-container="#edit_account_transaction" data-href="' . action('App\Http\Controllers\AccountController@editAccountTransaction', [$row->id]) . '"><i class="fa fa-edit"></i> ' . __('messages.edit') . '</button>';
                                     }
                                 }
 
@@ -697,7 +697,7 @@ class AccountController extends Controller
                     ];
         }
 
-        return redirect()->action('AccountController@index')->with('status', $output);
+        return redirect()->action('App\Http\Controllers\AccountController@index')->with('status', $output);
     }
 
     /**

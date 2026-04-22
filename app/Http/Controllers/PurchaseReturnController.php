@@ -115,22 +115,22 @@ class PurchaseReturnController extends Controller
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-right" role="menu">';
                     if (!empty($row->return_parent_id)) {
-                        $html .= '<li><a href="' . action('PurchaseReturnController@add', $row->return_parent_id) . '" ><i class="glyphicon glyphicon-edit"></i>' .
+                        $html .= '<li><a href="' . action('App\Http\Controllers\PurchaseReturnController@add', $row->return_parent_id) . '" ><i class="glyphicon glyphicon-edit"></i>' .
                                 __("messages.edit") .
                                 '</a></li>';
                     } else {
-                        $html .= '<li><a href="' . action('CombinedPurchaseReturnController@edit', $row->id) . '" ><i class="glyphicon glyphicon-edit"></i>' .
+                        $html .= '<li><a href="' . action('App\Http\Controllers\CombinedPurchaseReturnController@edit', $row->id) . '" ><i class="glyphicon glyphicon-edit"></i>' .
                                 __("messages.edit") .
                                 '</a></li>';
                     }
 
                     if ($row->payment_status != "paid") {
-                        $html .= '<li><a href="' . action('TransactionPaymentController@addPayment', [$row->id]) . '" class="add_payment_modal"><i class="fas fa-money-bill-alt"></i>' . __("purchase.add_payment") . '</a></li>';
+                        $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@addPayment', [$row->id]) . '" class="add_payment_modal"><i class="fas fa-money-bill-alt"></i>' . __("purchase.add_payment") . '</a></li>';
                     }
 
-                    $html .= '<li><a href="' . action('TransactionPaymentController@show', [$row->id]) . '" class="view_payment_modal"><i class="fas fa-money-bill-alt"></i>' . __("purchase.view_payments") . '</a></li>';
+                    $html .= '<li><a href="' . action('App\Http\Controllers\TransactionPaymentController@show', [$row->id]) . '" class="view_payment_modal"><i class="fas fa-money-bill-alt"></i>' . __("purchase.view_payments") . '</a></li>';
 
-                    $html .= '<li><a href="' . action('PurchaseReturnController@destroy', $row->id) . '" class="delete_purchase_return" ><i class="fa fa-trash"></i>' .
+                    $html .= '<li><a href="' . action('App\Http\Controllers\PurchaseReturnController@destroy', $row->id) . '" class="delete_purchase_return" ><i class="fa fa-trash"></i>' .
                                 __("messages.delete") .
                                 '</a></li>';
                     $html .= '</ul></div>';
@@ -157,7 +157,7 @@ class PurchaseReturnController extends Controller
                 ->editColumn('parent_purchase', function ($row) {
                     $html = '';
                     if (!empty($row->parent_purchase)) {
-                        $html = '<a href="#" data-href="' . action('PurchaseController@show', [$row->return_parent_id]) . '" class="btn-modal" data-container=".view_modal">' . $row->parent_purchase . '</a>';
+                        $html = '<a href="#" data-href="' . action('App\Http\Controllers\PurchaseController@show', [$row->return_parent_id]) . '" class="btn-modal" data-container=".view_modal">' . $row->parent_purchase . '</a>';
                     }
                     return $html;
                 })
@@ -169,7 +169,7 @@ class PurchaseReturnController extends Controller
                     'data-href' => function ($row) {
                         if (auth()->user()->can("purchase.view")) {
                             $return_id = !empty($row->return_parent_id) ? $row->return_parent_id : $row->id;
-                            return  action('PurchaseReturnController@show', [$return_id]) ;
+                            return  action('App\Http\Controllers\PurchaseReturnController@show', [$return_id]) ;
                         } else {
                             return '';
                         }

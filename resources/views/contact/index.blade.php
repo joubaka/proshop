@@ -93,7 +93,7 @@
             @slot('tool')
                 <div class="box-tools">
                     <button type="button" class="btn btn-block btn-primary btn-modal" 
-                    data-href="{{action('ContactController@create', ['type' => $type])}}" 
+                    data-href="{{action('App\Http\Controllers\ContactController@create', ['type' => $type])}}" 
                     data-container=".contact_modal">
                     <i class="fa fa-plus"></i> @lang('messages.add')</button>
                 </div>

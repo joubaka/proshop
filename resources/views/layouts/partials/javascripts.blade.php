@@ -116,6 +116,8 @@
 @if(!empty($__system_settings['additional_js']))
     {!! $__system_settings['additional_js'] !!}
 @endif
+{{-- Chart.js must be loaded before any @section('javascript') that calls new Chart() --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 @yield('javascript')
 
 @if(false)

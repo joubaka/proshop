@@ -12,7 +12,7 @@ class CommonChart
 {
     protected string $id;
     protected array $labels   = [];
-    protected array $datasets = [];
+    protected array $datasets = [];   
     protected array $options  = [];
     protected ?string $title  = null;
 

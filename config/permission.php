@@ -82,7 +82,42 @@ return [
          */
 
         'model_morph_key' => 'model_id',
+
+        /*
+         * Change this if you want to use the teams feature and your related model's
+         * foreign key is other than `team_id`.
+         */
+
+        'team_foreign_key' => 'team_id',
     ],
+
+    /*
+     * When set to true, the method for checking permissions will be registered on the gate.
+     * Set this to false if you want to implement custom logic for checking permissions.
+     */
+
+    'register_permission_check_method' => true,
+
+    /*
+     * Teams Feature.
+     * When set to true the package implements teams using the 'team_foreign_key'.
+     */
+    'teams' => false,
+
+    /*
+     * The class to use to resolve the permissions team id
+     */
+    'team_resolver' => \Spatie\Permission\DefaultTeamResolver::class,
+
+    /*
+     * When set to true, the required role names are added to exception messages.
+     */
+    'display_role_in_exception' => false,
+
+    /*
+     * By default wildcard permission lookups are disabled.
+     */
+    'enable_wildcard_permission' => false,
 
     /*
      * When set to true, the required permission/role names are added to the exception

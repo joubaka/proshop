@@ -39,7 +39,15 @@ yarn-error.log
 /public/uploads/UltimatePOS
 /public/uploads/temp
 /public/js/
+!/public/js/*.js
+/public/js/vendor.js
+/public/js/init.js
+/public/js/skins/
 /public/css/
+!/public/css/app.css
+/public/css/vendor.css
+/public/css/rtl.css
+/public/css/init.css
 /public/fonts/
 /public/images/
 /public/modules/

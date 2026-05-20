@@ -11,7 +11,10 @@
     "format": "prettier --write 'public/js/*.{css,js,vue}'"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.5",
     "axios": "^0.18.1",
+    "babel-loader": "^8.4.1",
     "cross-env": "^5.1",
     "jquery": "^3.5.1",
     "laravel-mix": "^4.0.7",

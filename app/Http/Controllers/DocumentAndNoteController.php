@@ -36,12 +36,20 @@ class DocumentAndNoteController extends Controller
     public function index()
     {
         if (request()->ajax()) {
+            try {
             $business_id = request()->session()->get('user.business_id');
             $user_id = request()->session()->get('user.id');
             //model id like project_id, user_id
             $notable_id = request()->get('notable_id');
             //model name like App\User
             $notable_type = request()->get('notable_type');
+
+            \Log::info('[DocNotes index] params', [
+                'business_id'  => $business_id,
+                'user_id'      => $user_id,
+                'notable_id'   => $notable_id,
+                'notable_type' => $notable_type,
+            ]);
 
             $document_note = DocumentAndNote::where('business_id', $business_id)
                 ->where('notable_id', $notable_id)
@@ -57,6 +65,8 @@ class DocumentAndNoteController extends Controller
                 ->select('*');
 
             $permissions = $this->__getPermission($business_id, $notable_id, $notable_type);
+
+            \Log::info('[DocNotes index] permissions', ['permissions' => $permissions]);
 
             if (!empty($permissions) && in_array('view', $permissions)) {
                 return Datatables::of($document_note)
@@ -143,6 +153,18 @@ class DocumentAndNoteController extends Controller
                     ->removeColumn('id')
                     ->rawColumns(['action', 'heading', 'createdBy', 'created_at', 'updated_at'])
                     ->make(true);
+            }
+            } catch (\Exception $e) {
+                \Log::error('[DocNotes index] Exception: ' . $e->getMessage(), [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return response()->json([
+                    'error' => $e->getMessage(),
+                    'file'  => $e->getFile(),
+                    'line'  => $e->getLine(),
+                ], 500);
             }
         }
     }

@@ -16,7 +16,7 @@ class CommonChart
     protected array $options  = [];
     protected ?string $title  = null;
 
-    public function __construct()
+    public function __construct()   
     {
         $this->id = 'chart_' . substr(md5(uniqid('', true)), 0, 8);
     }

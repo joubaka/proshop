@@ -27,7 +27,7 @@ $(document).ready(function() {
         update_statistics(start, end);
     });
 
-    //atock alert datatables
+    //stock alert datatables
     var stock_alert_table = $('#stock_alert_table').DataTable({
         processing: true,
         serverSide: true,
@@ -38,7 +38,14 @@ $(document).ready(function() {
         scrollCollapse: true,
         fixedHeader: false,
         dom: 'Btirp',
-        ajax: '/home/product-stock-alert',
+        ajax: {
+            url: '/home/product-stock-alert',
+            error: function(xhr, error, thrown) {
+                console.error('[stock_alert_table] AJAX error:', error, thrown);
+                console.error('[stock_alert_table] Status:', xhr.status);
+                console.error('[stock_alert_table] Response:', xhr.responseText);
+            }
+        },
         columns: [
             { data: 'product', name: 'product' },
             { data: 'location', name: 'location' },
@@ -46,6 +53,12 @@ $(document).ready(function() {
         ],
         fnDrawCallback: function(oSettings) {
             __currency_convert_recursively($('#stock_alert_table'));
+        },
+        initComplete: function(settings, json) {
+            console.log('[stock_alert_table] Response:', json);
+            if (json && json.data && json.data.length > 0) {
+                console.log('[stock_alert_table] First row:', json.data[0]);
+            }
         },
     });
     //payment dues datatables
@@ -65,6 +78,11 @@ $(document).ready(function() {
                 if ($('#purchase_payment_dues_location').length > 0) {
                     d.location_id = $('#purchase_payment_dues_location').val();
                 }
+            },
+            error: function(xhr, error, thrown) {
+                console.error('[purchase_payment_dues_table] AJAX error:', error, thrown);
+                console.error('[purchase_payment_dues_table] Status:', xhr.status);
+                console.error('[purchase_payment_dues_table] Response:', xhr.responseText);
             }
         },
         columns: [
@@ -75,6 +93,12 @@ $(document).ready(function() {
         ],
         fnDrawCallback: function(oSettings) {
             __currency_convert_recursively($('#purchase_payment_dues_table'));
+        },
+        initComplete: function(settings, json) {
+            console.log('[purchase_payment_dues_table] Response:', json);
+            if (json && json.data && json.data.length > 0) {
+                console.log('[purchase_payment_dues_table] First row:', json.data[0]);
+            }
         },
     });
 
@@ -99,6 +123,11 @@ $(document).ready(function() {
                 if ($('#sales_payment_dues_location').length > 0) {
                     d.location_id = $('#sales_payment_dues_location').val();
                 }
+            },
+            error: function(xhr, error, thrown) {
+                console.error('[sales_payment_dues_table] AJAX error:', error, thrown);
+                console.error('[sales_payment_dues_table] Status:', xhr.status);
+                console.error('[sales_payment_dues_table] Response:', xhr.responseText);
             }
         },
         columns: [
@@ -109,6 +138,12 @@ $(document).ready(function() {
         ],
         fnDrawCallback: function(oSettings) {
             __currency_convert_recursively($('#sales_payment_dues_table'));
+        },
+        initComplete: function(settings, json) {
+            console.log('[sales_payment_dues_table] Response:', json);
+            if (json && json.data && json.data.length > 0) {
+                console.log('[sales_payment_dues_table] First row:', json.data[0]);
+            }
         },
     });
 
@@ -131,6 +166,11 @@ $(document).ready(function() {
             data: function(d) {
                 d.exp_date_filter = $('#stock_expiry_alert_days').val();
             },
+            error: function(xhr, error, thrown) {
+                console.error('[stock_expiry_alert_table] AJAX error:', error, thrown);
+                console.error('[stock_expiry_alert_table] Status:', xhr.status);
+                console.error('[stock_expiry_alert_table] Response:', xhr.responseText);
+            }
         },
         order: [[3, 'asc']],
         columns: [
@@ -142,6 +182,12 @@ $(document).ready(function() {
         fnDrawCallback: function(oSettings) {
             __show_date_diff_for_human($('#stock_expiry_alert_table'));
             __currency_convert_recursively($('#stock_expiry_alert_table'));
+        },
+        initComplete: function(settings, json) {
+            console.log('[stock_expiry_alert_table] Response:', json);
+            if (json && json.data && json.data.length > 0) {
+                console.log('[stock_expiry_alert_table] First row:', json.data[0]);
+            }
         },
     });
 

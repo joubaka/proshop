@@ -7,6 +7,7 @@
 /vendor
 .env
 .env.backup
+production.env
 .phpunit.result.cache
 docker-compose.override.yml
 user.ini
@@ -49,6 +50,8 @@ yarn-error.log
 /public/css/rtl.css
 /public/css/init.css
 /public/fonts/
+/public/webfonts/
 /public/images/
 /public/modules/
 /public/mix-manifest.json
+/\.local-acceptance/

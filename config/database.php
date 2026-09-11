@@ -43,6 +43,14 @@ return [
 
     'connections' => [
 
+        // No fallback to the shop database or its credentials.
+        'lights' => [
+            'driver' => 'mysql', 'host' => env('LIGHTS_DB_HOST', '127.0.0.1'),
+            'port' => env('LIGHTS_DB_PORT', '3306'), 'database' => env('LIGHTS_DB_DATABASE', 'lights_not_configured'),
+            'username' => env('LIGHTS_DB_USERNAME', 'lights_not_configured'), 'password' => env('LIGHTS_DB_PASSWORD', ''),
+            'charset' => 'utf8mb4', 'collation' => 'utf8mb4_unicode_ci', 'prefix' => '', 'strict' => true,
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DATABASE_URL'),

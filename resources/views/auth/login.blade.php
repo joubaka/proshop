@@ -3,7 +3,11 @@
 
 @section('content')
     <div class="login-form col-md-12 col-xs-12 right-col-content">
-        <p class="form-header text-white">@lang('lang_v1.login')</p>
+        <p class="form-header text-white">{{ app(\App\Lights\Portal::class)->enabled() ? 'POS staff login' : __('lang_v1.login') }}</p>
+        @if(app(\App\Lights\Portal::class)->enabled())
+            <p class="text-white">Use your existing shop username and password.</p>
+            <p><a class="text-white" href="{{ route('landing') }}">← Back to Court Lights</a></p>
+        @endif
         <form method="POST" action="{{ route('login') }}" id="login-form">
             {{ csrf_field() }}
             <div class="form-group has-feedback {{ $errors->has('username') ? ' has-error' : '' }}">
@@ -118,7 +122,7 @@
 <script type="text/javascript">
     $(document).ready(function(){
         $('#change_lang').change( function(){
-            window.location = "{{ route('login') }}?lang=" + $(this).val();
+            window.location = "{{ route('pos.login') }}?lang=" + $(this).val();
         });
 
         $('a.demo-login').click( function (e) {

@@ -16,6 +16,11 @@ class ExampleTest extends TestCase
      */
     public function testBasicTest()
     {
+        // The public layout reads system settings; never use the local shop database.
+        \Illuminate\Support\Facades\Schema::create('system', function ($table) {
+            $table->string('key');
+            $table->text('value')->nullable();
+        });
         $response = $this->get('/');
 
         $response->assertStatus(200);

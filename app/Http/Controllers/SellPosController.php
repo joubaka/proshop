@@ -1879,7 +1879,8 @@ class SellPosController extends Controller
      */
     public function invoicePayment($token)
     {
-        $transaction = Transaction::where('invoice_token', $token)->with(['business', 'contact', 'location'])->first();
+        $transaction = Transaction::where('invoice_token', $token)->where('type', 'sell')
+            ->with(['business', 'contact', 'location'])->firstOrFail();
         $business = $transaction->business;
         $business_details = $this->businessUtil->getDetails($business->id);
         $pos_settings = empty($business->pos_settings) ? $this->businessUtil->defaultPosSettings() : json_decode($business->pos_settings, true);
@@ -1894,9 +1895,10 @@ class SellPosController extends Controller
             $date_formatted = $this->transactionUtil->format_date($transaction->transaction_date, true, $business_details);
             $total_amount = $this->transactionUtil->num_f($transaction->final_total, true, $business_details);
             $total_paid = $this->transactionUtil->num_f($paid_amount, true, $business_details);
+            $payment_attempt = \App\InvoicePaymentAttempt::where('active_transaction_id', $transaction->id)->first();
 
             return view('sale_pos.partials.guest_payment_form')
-                    ->with(compact('transaction', 'title', 'pos_settings', 'total_payable', 'total_payable_formatted', 'date_formatted', 'total_amount', 'total_paid', 'business_details'));
+                    ->with(compact('transaction', 'title', 'pos_settings', 'total_payable', 'total_payable_formatted', 'date_formatted', 'total_amount', 'total_paid', 'business_details', 'payment_attempt'));
         } else {
             die(__("messages.something_went_wrong"));
         }
@@ -1907,16 +1909,21 @@ class SellPosController extends Controller
         $pos_settings = empty($transaction->business->pos_settings) ? $this->businessUtil->defaultPosSettings() : json_decode($transaction->business->pos_settings, true);
 
         $razorpay_payment_id = $request->razorpay_payment_id;
+        abort_unless(is_string($razorpay_payment_id) && preg_match('/^pay_[a-zA-Z0-9]+$/', $razorpay_payment_id), 422);
         $razorpay_api = new Api($pos_settings['razor_pay_key_id'], $pos_settings['razor_pay_key_secret']);
-        $payment = $razorpay_api->payment->fetch($razorpay_payment_id)->capture(['amount'=> $total_payable*100]); // Captures a payment
+        $amount = \App\Support\GatewayAmount::minorUnits($total_payable);
+        $currency = strtoupper($this->businessUtil->getDetails($transaction->business->id)->currency_code);
+        $payment = $razorpay_api->payment->fetch($razorpay_payment_id);
+        if ($payment->status !== 'authorized' || (int) $payment->amount !== $amount || strtoupper($payment->currency) !== $currency) {
+            throw new \RuntimeException('Provider payment does not match an authorized invoice payment.');
+        }
+        $payment = $payment->capture(['amount' => $amount, 'currency' => $currency]);
 
-        if (empty($payment->error_code)) {
+        if (empty($payment->error_code) && $payment->status === 'captured'
+            && (int) $payment->amount === $amount && strtoupper($payment->currency) === $currency) {
             return $payment->id;
         } else {
-            $error_description = $payment->error_description;
-
-            \Log::emergency($payment->error_description);
-            throw new \Exception($error_description);
+            throw new \RuntimeException('Provider did not confirm the expected captured payment.');
         }
     }
 
@@ -1929,78 +1936,58 @@ class SellPosController extends Controller
         $metadata = ['stripe_email' => $request->stripeEmail];
 
         $business_details = $this->businessUtil->getDetails($transaction->business->id);
+        $amount = \App\Support\GatewayAmount::stripe($total_payable, $business_details->currency_code);
         
         $charge = Charge::create([
-            'amount'   => $total_payable*100,
+            'amount'   => $amount,
             'currency' => strtolower($business_details->currency_code),
             "source" => $request->stripeToken,
             'metadata' => $metadata
-        ]);
+        ], ['idempotency_key' => $request->attributes->get('invoice_payment_attempt_id')]);
 
+        if (!$charge->paid || !$charge->captured || (int) $charge->amount !== $amount
+            || strtolower($charge->currency) !== strtolower($business_details->currency_code)) {
+            throw new \RuntimeException('Provider did not confirm the expected captured invoice payment.');
+        }
         return $charge->id;
 
     }
 
     public function confirmPayment($id, Request $request)
     {
+        // A CSRF token protects the session, not access to a particular invoice.
+        $token = $request->input('invoice_token');
+        abort_unless(is_string($token) && $token !== '', 404);
+        $transaction = Transaction::with('business')->where('invoice_token', $token)
+            ->where('type', 'sell')->findOrFail($id);
+        abort_unless(hash_equals((string) $transaction->invoice_token, $token), 404);
+
+        $settings = json_decode($transaction->business->pos_settings ?? '{}', true) ?: [];
+        abort_unless($transaction->status === 'final' && !empty($settings['enable_payment_link']), 404);
+        $request->validate(['gateway' => 'required|string|in:stripe,razorpay']);
+        $gateway = $request->input('gateway');
+        $requiredKeys = $gateway === 'stripe'
+            ? ['stripe_public_key', 'stripe_secret_key']
+            : ['razor_pay_key_id', 'razor_pay_key_secret'];
+        abort_unless(!empty($settings[$requiredKeys[0]]) && !empty($settings[$requiredKeys[1]]), 422, 'Payment gateway is not enabled.');
+
+        $payment_link = route('invoice_payment', ['token' => $token]);
+        $paid_amount = $this->transactionUtil->getTotalPaid($transaction->id);
+        $total_payable = $transaction->final_total - $paid_amount;
+        abort_unless($transaction->payment_status !== 'paid' && $total_payable > 0, 422, 'This invoice has no outstanding balance.');
+
         try {
-            $transaction = Transaction::with(['business'])->find($id);
-
-            $transaction_before = $transaction->replicate();
-
-            $payment_link = $this->transactionUtil->getInvoicePaymentLink($transaction->id, $transaction->business_id);
-
-            $paid_amount = $this->transactionUtil->getTotalPaid($transaction->id);
-            $total_payable = $transaction->final_total - $paid_amount;
-
-            $pay_function = 'pay_' . $request->gateway;
-
-            $payment_id = $this->$pay_function($transaction, $total_payable, $request);
-
-            if (!empty($payment_id)) {
-                DB::beginTransaction();
-                $ref_count = $this->transactionUtil->setAndGetReferenceCount('sell_payment', $transaction->business_id);
-                $payment_ref_no = $this->transactionUtil->generateReferenceNumber('sell_payment', $ref_count, $transaction->business_id);
-
-                $data = [
-                    'paid_on' => \Carbon::now()->toDateTimeString(),
-                    'transaction_id' => $transaction->id,
-                    'amount' => $total_payable,
-                    'payment_for' => $transaction->contact_id,
-                    'method' => 'cash',
-                    'note' => $payment_id,
-                    'paid_through_link' => 1,
-                    'gateway' => $request->gateway,
-                    'business_id' => $transaction->business_id,
-                    'payment_ref_no' => $payment_ref_no
-                ];
-
-                $tp = TransactionPayment::create($data);
-
-                $payment_status = $this->transactionUtil->updatePaymentStatus($transaction->id, $transaction->final_total);
-                $transaction->payment_status = $payment_status;
-
-                $this->transactionUtil->activityLog($transaction, 'payment_edited', $transaction_before);
-                DB::commit();
-
-                $output = [
-                    'success' => 1,
-                    'msg' => __('purchase.payment_added_success')
-                ];
-
-            } else {
-                $output = [
-                    'success' => 0,
-                    'msg' =>  __('messages.something_went_wrong')
-                ];
-            }
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
-            $output = [
-                    'success' => 0,
-                    'msg' =>  __('messages.something_went_wrong')
-                ];
+            app(\App\Support\InvoicePaymentCoordinator::class)->pay($transaction, $gateway,
+                function ($attempt) use ($transaction, $request) {
+                    $request->attributes->set('invoice_payment_attempt_id', $attempt->id);
+                    $pay_function = 'pay_'.$attempt->gateway;
+                    return $this->$pay_function($transaction, $attempt->amount, $request);
+                });
+            $output = ['success' => 1, 'msg' => __('purchase.payment_added_success')];
+        } catch (\Throwable $e) {
+            // Never roll back an unrelated caller transaction or expose provider data.
+            \Log::error('Invoice payment needs review.', ['transaction_id' => $transaction->id, 'exception' => get_class($e)]);
+            $output = ['success' => 0, 'msg' => 'Payment could not be confirmed locally. Do not pay again; contact the shop for review.'];
         }
 
         return redirect($payment_link)->with('status', $output);

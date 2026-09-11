@@ -1032,7 +1032,7 @@ $(document).ready(function() {
         }).then(willDelete => {
             if (willDelete) {
                 $.ajax({
-                    method: 'GET',
+                    method: 'POST',
                     url: $(this).data('href'),
                     dataType: 'json',
                     success: function(result) {

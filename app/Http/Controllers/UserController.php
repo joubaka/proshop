@@ -113,6 +113,12 @@ class UserController extends Controller
      */
     public function updatePassword(Request $request)
     {
+        $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:6', 'max:72'],
+            'confirm_password' => ['required', 'string', 'same:new_password'],
+        ]);
+
         //Disable in demo
         $notAllowed = $this->moduleUtil->notAllowedInDemo();
         if (!empty($notAllowed)) {
@@ -120,8 +126,7 @@ class UserController extends Controller
         }
 
         try {
-            $user_id = $request->session()->get('user.id');
-            $user = User::where('id', $user_id)->first();
+            $user = $request->user();
             
             if (Hash::check($request->input('current_password'), $user->password)) {
                 $user->password = Hash::make($request->input('new_password'));

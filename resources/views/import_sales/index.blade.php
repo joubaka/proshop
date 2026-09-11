@@ -122,7 +122,10 @@
                                 </p>
                             </td>
                             @can('sell.delete')
-                                <td><a href="{{action('App\Http\Controllers\ImportSalesController@revertSaleImport', $key)}}" class="btn btn-xs btn-danger revert_import"><i class="fas fa-undo"></i> @lang('lang_v1.revert_import')</a></td>
+                                <td><form method="POST" action="{{action('App\Http\Controllers\ImportSalesController@revertSaleImport', $key)}}" class="revert-import-form">
+                                    @csrf
+                                    <button type="submit" class="btn btn-xs btn-danger"><i class="fas fa-undo"></i> @lang('lang_v1.revert_import')</button>
+                                </form></td>
                             @endcan
                         </tr>
                     @endforeach
@@ -135,8 +138,9 @@
 @stop
 @section('javascript')
 <script type="text/javascript">
-    $(document).on('click', 'a.revert_import', function(e){
+    $(document).on('submit', '.revert-import-form', function(e){
         e.preventDefault();
+        var form = this;
         swal({
             title: LANG.sure,
             icon: 'warning',
@@ -144,7 +148,7 @@
             dangerMode: true,
         }).then(willDelete => {
             if (willDelete) {
-                window.location = $(this).attr('href');
+                form.submit();
             } else {
                 return false;
             }

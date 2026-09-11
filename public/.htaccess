@@ -5,6 +5,17 @@
 
     RewriteEngine On
 
+    # Local WAMP home opens the isolated Court Lights demo server.
+    # Limit this shortcut to loopback visitors at the development URL.
+    RewriteCond %{REMOTE_ADDR} ^(?:127\.0\.0\.1|::1)$
+    RewriteCond %{HTTP_HOST} ^(?:localhost|127\.0\.0\.1)(?::80)?$ [NC]
+    RewriteCond %{REQUEST_URI} ^/proshop/public/?$
+    RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$
+    RewriteRule ^$ http://127.0.0.1:8097/ [R=302,L,QSD]
+
+    # Block active uploads, including legacy files, before any front-controller rewrite.
+    RewriteRule ^uploads/.*\.(?:php[0-9]*|phtml|phar|phps|html?|svg|xml|xhtml|shtml|js|mjs|cgi|pl|py|sh|exe|jsp|aspx?|ini|htaccess|htpasswd)(?:[./]|$) - [NC,F]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)/$ /$1 [L,R=301]
@@ -18,5 +29,13 @@
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    RewriteRule ^uploads/.*\.(htaccess|htpasswd|ini|phps|fla|psd|log|sh|zip|exe|pl|jsp|asp|htm|sh|cgi|py|php)$ - [NC,F]
+    RewriteRule ^uploads/.*\.(fla|psd|log)$ - [NC,F]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    <FilesMatch "\.(?i:pdf|txt|csv|docx?|xlsx?|zip)$">
+        Header always set Content-Disposition "attachment"
+        Header always set Content-Security-Policy "sandbox"
+    </FilesMatch>
 </IfModule>

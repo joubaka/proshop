@@ -67,6 +67,7 @@ class CashRegisterController extends Controller
      */
     public function store(Request $request)
     {
+        \App\Support\StockOperationAccess::location($request->input('location_id'));
         //like:repair
         $sub_type = request()->get('sub_type');
             
@@ -114,6 +115,8 @@ class CashRegisterController extends Controller
         }
 
         $business_id = request()->session()->get('user.business_id');
+        $register = CashRegister::where('business_id', $business_id)->findOrFail($id);
+        \App\Support\StockOperationAccess::location($register->location_id);
 
         $register_details =  $this->cashRegisterUtil->getRegisterDetails($id);
         $user_id = $register_details->user_id;
@@ -170,6 +173,10 @@ class CashRegisterController extends Controller
         }
 
         $business_id = request()->session()->get('user.business_id');
+        $register = CashRegister::where('business_id', $business_id)
+            ->when($id, fn ($query) => $query->whereKey($id), fn ($query) => $query->where('user_id', auth()->id())->where('status', 'open'))
+            ->firstOrFail();
+        \App\Support\StockOperationAccess::location($register->location_id);
         $register_details =  $this->cashRegisterUtil->getRegisterDetails($id);
 
         $user_id = $register_details->user_id;
@@ -200,6 +207,9 @@ class CashRegisterController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $register = CashRegister::where('business_id', session('user.business_id'))
+            ->where('user_id', $request->input('user_id'))->where('status', 'open')->firstOrFail();
+        \App\Support\StockOperationAccess::location($register->location_id);
         try {
             //Disable in demo
             if (config('app.env') == 'demo') {
@@ -216,7 +226,7 @@ class CashRegisterController extends Controller
             $input['status'] = 'close';
             $input['denominations'] = !empty(request()->input('denominations')) ? json_encode(request()->input('denominations')) : null;
 
-            CashRegister::where('user_id', $user_id)
+            CashRegister::where('business_id', session('user.business_id'))->whereKey($register->id)->where('user_id', $user_id)
                                 ->where('status', 'open')
                                 ->update($input);
             $output = ['success' => 1,

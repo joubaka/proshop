@@ -996,6 +996,7 @@ class PurchaseController extends Controller
                                             'text' => $text . ' - ' . $variation['sub_sku'],
                                             'product_id' => $key ,
                                             'variation_id' => $variation['variation_id'],
+                                            'sub_sku' => $variation['sub_sku'],
                                         ];
                     }
                     $i++;

@@ -1,37 +1,6 @@
 
-/**
- * First we will load all of this project's JavaScript dependencies which
- * includes Vue and other libraries. It is a great starting point when
- * building robust, powerful web applications using Vue and Laravel.
- */
-
+// Bundle the first-party dependencies used by the server-rendered application.
 require('./bootstrap');
 
-window.Vue = require('vue');
-
-/**
- * Next, we will create a fresh Vue application instance and attach it to
- * the page. Then, you may begin adding components to this application
- * or customize the JavaScript scaffolding to fit your unique needs.
- */
-
-Vue.component('example', require('./components/Example.vue'));
-
-Vue.component(
-    'passport-clients',
-    require('./components/passport/Clients.vue').default
-);
-
-Vue.component(
-    'passport-authorized-clients',
-    require('./components/passport/AuthorizedClients.vue').default
-);
-
-Vue.component(
-    'passport-personal-access-tokens',
-    require('./components/passport/PersonalAccessTokens.vue').default
-);
-
-const app = new Vue({
-    el: '#app'
-});
+// No first-party Blade page renders the old Vue 2/Passport demo components.
+// Their source is retained but the unsupported runtime is no longer shipped.

@@ -11,14 +11,22 @@
 |
 */
 
-include_once('install_r.php');
+require __DIR__.'/install_r.php';
+require __DIR__.'/lights.php';
+require __DIR__.'/invoice_scans.php';
+require __DIR__.'/inventory_control.php';
 
 Route::middleware(['setData'])->group(function () {
     Route::get('/', function () {
+        if (app(\App\Lights\Portal::class)->enabled()) {
+            return redirect()->route(Auth::guard('lights')->check() ? 'lights.home' : 'lights.login')
+                ->header('Cache-Control', 'no-store, private');
+        }
         return view('welcome');
-    });
+    })->name('landing');
 
     Auth::routes();
+    Route::get('/pos/login', 'App\Http\Controllers\Auth\LoginController@showLoginForm')->name('pos.login');
 
     Route::get('/business/register', 'App\Http\Controllers\BusinessController@getRegister')->name('business.getRegister');
     Route::post('/business/register', 'App\Http\Controllers\BusinessController@postRegister')->name('business.postRegister');
@@ -56,7 +64,9 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
 
     Route::resource('brands', \App\Http\Controllers\BrandController::class);
     
-    Route::resource('payment-account', \App\Http\Controllers\PaymentAccountController::class);
+    Route::get('payment-account', [\App\Http\Controllers\PaymentAccountController::class, 'index'])->name('payment-account.index');
+    Route::match(['POST', 'PUT', 'PATCH', 'DELETE'], 'payment-account/{legacy?}', [\App\Http\Controllers\PaymentAccountController::class, 'retired']);
+    Route::get('payment-account/{legacy}', [\App\Http\Controllers\PaymentAccountController::class, 'retired'])->where('legacy', '.*');
 
     Route::resource('tax-rates', \App\Http\Controllers\TaxRateController::class);
 
@@ -82,7 +92,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::resource('variation-templates', \App\Http\Controllers\VariationTemplateController::class);
 
     Route::get('/products/stock-history/{id}', 'App\Http\Controllers\ProductController@productStockHistory');
-    Route::get('/delete-media/{media_id}', 'App\Http\Controllers\ProductController@deleteMedia');
+    Route::delete('/delete-media/{media_id}', 'App\Http\Controllers\ProductController@deleteMedia');
     Route::post('/products/mass-deactivate', 'App\Http\Controllers\ProductController@massDeactivate');
     Route::get('/products/activate/{id}', 'App\Http\Controllers\ProductController@activate');
     Route::get('/products/view-product-group-price/{id}', 'App\Http\Controllers\ProductController@viewGroupPrice');
@@ -128,12 +138,12 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/sells/convert-to-proforma/{id}', 'App\Http\Controllers\SellPosController@convertToProforma');
     Route::get('/sells/quotations', 'App\Http\Controllers\SellController@getQuotations');
     Route::get('/sells/draft-dt', 'App\Http\Controllers\SellController@getDraftDatables');
-    Route::resource('sells', \App\Http\Controllers\SellController::class)->except(['show']);
+    Route::resource('sells', \App\Http\Controllers\SellController::class)->except(['show', 'update', 'destroy']);
 
     Route::get('/import-sales', 'App\Http\Controllers\ImportSalesController@index');
     Route::post('/import-sales/preview', 'App\Http\Controllers\ImportSalesController@preview');
     Route::post('/import-sales', 'App\Http\Controllers\ImportSalesController@import');
-    Route::get('/revert-sale-import/{batch}', 'App\Http\Controllers\ImportSalesController@revertSaleImport');
+    Route::post('/revert-sale-import/{batch}', 'App\Http\Controllers\ImportSalesController@revertSaleImport');
 
     Route::get('/sells/pos/get_product_row/{variation_id}/{location_id}', 'App\Http\Controllers\SellPosController@getProductRow');
     Route::post('/sells/pos/get_payment_row', 'App\Http\Controllers\SellPosController@getPaymentRow');
@@ -171,7 +181,6 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/reports/service-staff-line-orders', 'App\Http\Controllers\ReportController@serviceStaffLineOrders');
     Route::get('/reports/table-report', 'App\Http\Controllers\ReportController@getTableReport');
     Route::get('/reports/profit-loss', 'App\Http\Controllers\ReportController@getProfitLoss');
-    Route::get('/reports/get-opening-stock', 'App\Http\Controllers\ReportController@getOpeningStock');
     Route::get('/reports/purchase-sell', 'App\Http\Controllers\ReportController@getPurchaseSell');
     Route::get('/reports/customer-supplier', 'App\Http\Controllers\ReportController@getCustomerSuppliers');
     Route::get('/reports/stock-report', 'App\Http\Controllers\ReportController@getStockReport');
@@ -217,7 +226,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::resource('business-location', \App\Http\Controllers\BusinessLocationController::class);
 
     //Invoice layouts..
-    Route::resource('invoice-layouts', \App\Http\Controllers\InvoiceLayoutController::class);
+    Route::resource('invoice-layouts', \App\Http\Controllers\InvoiceLayoutController::class)->except(['destroy']);
 
     Route::post('get-expense-sub-categories', 'App\Http\Controllers\ExpenseCategoryController@getSubCategories');
 
@@ -239,21 +248,21 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     //Printers...
     Route::resource('printers', \App\Http\Controllers\PrinterController::class);
 
-    Route::get('/stock-adjustments/remove-expired-stock/{purchase_line_id}', 'App\Http\Controllers\StockAdjustmentController@removeExpiredStock');
+    Route::post('/stock-adjustments/remove-expired-stock/{purchase_line_id}', 'App\Http\Controllers\StockAdjustmentController@removeExpiredStock');
     Route::post('/stock-adjustments/get_product_row', 'App\Http\Controllers\StockAdjustmentController@getProductRow');
     Route::resource('stock-adjustments', \App\Http\Controllers\StockAdjustmentController::class);
 
     Route::get('/cash-register/register-details', 'App\Http\Controllers\CashRegisterController@getRegisterDetails');
     Route::get('/cash-register/close-register/{id?}', 'App\Http\Controllers\CashRegisterController@getCloseRegister');
     Route::post('/cash-register/close-register', 'App\Http\Controllers\CashRegisterController@postCloseRegister');
-    Route::resource('cash-register', \App\Http\Controllers\CashRegisterController::class);
+    Route::resource('cash-register', \App\Http\Controllers\CashRegisterController::class)->except(['edit', 'update', 'destroy']);
 
     //Import products
     Route::get('/import-products', 'App\Http\Controllers\ImportProductsController@index');
     Route::post('/import-products/store', 'App\Http\Controllers\ImportProductsController@store');
 
     //Sales Commission Agent
-    Route::resource('sales-commission-agents', \App\Http\Controllers\SalesCommissionAgentController::class);
+    Route::resource('sales-commission-agents', \App\Http\Controllers\SalesCommissionAgentController::class)->except(['show']);
 
     //Stock Transfer
     Route::get('stock-transfers/print/{id}', 'App\Http\Controllers\StockTransferController@printInvoice');
@@ -264,23 +273,23 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::post('/opening-stock/save', 'App\Http\Controllers\OpeningStockController@save');
 
     //Customer Groups
-    Route::resource('customer-group', \App\Http\Controllers\CustomerGroupController::class);
+    Route::resource('customer-group', \App\Http\Controllers\CustomerGroupController::class)->except(['show']);
 
     //Import opening stock
     Route::get('/import-opening-stock', 'App\Http\Controllers\ImportOpeningStockController@index');
     Route::post('/import-opening-stock/store', 'App\Http\Controllers\ImportOpeningStockController@store');
 
     //Sell return
-    Route::resource('sell-return', \App\Http\Controllers\SellReturnController::class);
-    Route::get('sell-return/get-product-row', 'App\Http\Controllers\SellReturnController@getProductRow');
+    Route::resource('sell-return', \App\Http\Controllers\SellReturnController::class)->except(['create', 'edit', 'update']);
     Route::get('/sell-return/print/{id}', 'App\Http\Controllers\SellReturnController@printInvoice');
     Route::get('/sell-return/add/{id}', 'App\Http\Controllers\SellReturnController@add');
     
     //Backup
     Route::get('backup/download/{file_name}', 'App\Http\Controllers\BackUpController@download');
-    Route::get('backup/delete/{file_name}', 'App\Http\Controllers\BackUpController@delete');
+    Route::delete('backup/delete/{file_name}', 'App\Http\Controllers\BackUpController@delete');
+    Route::post('backup/create', 'App\Http\Controllers\BackUpController@create')->name('backup.create');
     Route::resource('backup', \App\Http\Controllers\BackUpController::class, ['only' => [
-        'index', 'create', 'store'
+        'index'
     ]]);
 
     Route::get('selling-price-group/activate-deactivate/{id}', 'App\Http\Controllers\SellingPriceGroupController@activateDeactivate');
@@ -299,21 +308,21 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::post('/purchase-return/get_product_row', 'App\Http\Controllers\CombinedPurchaseReturnController@getProductRow');
     Route::get('/purchase-return/create', 'App\Http\Controllers\CombinedPurchaseReturnController@create');
     Route::get('/purchase-return/add/{id}', 'App\Http\Controllers\PurchaseReturnController@add');
-    Route::resource('/purchase-return', \App\Http\Controllers\PurchaseReturnController::class, ['except' => ['create']]);
+    Route::resource('/purchase-return', \App\Http\Controllers\PurchaseReturnController::class, ['except' => ['create', 'edit', 'update']]);
 
     Route::get('/discount/activate/{id}', 'App\Http\Controllers\DiscountController@activate');
     Route::post('/discount/mass-deactivate', 'App\Http\Controllers\DiscountController@massDeactivate');
-    Route::resource('discount', \App\Http\Controllers\DiscountController::class);
+    Route::resource('discount', \App\Http\Controllers\DiscountController::class)->except(['show']);
 
     Route::group(['prefix' => 'account'], function () {
-        Route::resource('/account', \App\Http\Controllers\AccountController::class);
+        Route::resource('/account', \App\Http\Controllers\AccountController::class)->except(['destroy']);
         Route::get('/fund-transfer/{id}', 'App\Http\Controllers\AccountController@getFundTransfer');
         Route::post('/fund-transfer', 'App\Http\Controllers\AccountController@postFundTransfer');
         Route::get('/deposit/{id}', 'App\Http\Controllers\AccountController@getDeposit');
         Route::post('/deposit', 'App\Http\Controllers\AccountController@postDeposit');
         Route::get('/close/{id}', 'App\Http\Controllers\AccountController@close');
         Route::get('/activate/{id}', 'App\Http\Controllers\AccountController@activate');
-        Route::get('/delete-account-transaction/{id}', 'App\Http\Controllers\AccountController@destroyAccountTransaction');
+        Route::delete('/delete-account-transaction/{id}', 'App\Http\Controllers\AccountController@destroyAccountTransaction');
         Route::get('/edit-account-transaction/{id}', 'App\Http\Controllers\AccountController@editAccountTransaction');
         Route::post('/update-account-transaction/{id}', 'App\Http\Controllers\AccountController@updateAccountTransaction');
         Route::get('/get-account-balance/{id}', 'App\Http\Controllers\AccountController@getAccountBalance');

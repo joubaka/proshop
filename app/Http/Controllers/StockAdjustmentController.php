@@ -157,6 +157,9 @@ class StockAdjustmentController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        \App\Support\StockOperationAccess::location($request->input('location_id'));
+        $request->validate(['products' => 'required|array|min:1']);
+        \App\Support\StockOperationAccess::products($request->input('products'), $request->input('location_id'));
         try {
             DB::beginTransaction();
 
@@ -257,6 +260,7 @@ class StockAdjustmentController extends Controller
         if (!auth()->user()->can('purchase.view')) {
             abort(403, 'Unauthorized action.');
         }
+        \App\Support\StockOperationAccess::transaction($id, 'stock_adjustment');
         $business_id = request()->session()->get('user.business_id');
         $stock_adjustment = Transaction::where('transactions.business_id', $business_id)
                     ->where('transactions.id', $id)
@@ -312,14 +316,15 @@ class StockAdjustmentController extends Controller
         if (!auth()->user()->can('purchase.delete')) {
             abort(403, 'Unauthorized action.');
         }
+        $owned = \App\Support\StockOperationAccess::transaction($id, 'stock_adjustment');
         try {
             if (request()->ajax()) {
                 DB::beginTransaction();
 
-                $stock_adjustment = Transaction::where('id', $id)
+                $stock_adjustment = Transaction::where('business_id', $owned->business_id)->where('id', $id)
                                     ->where('type', 'stock_adjustment')
                                     ->with(['stock_adjustment_lines'])
-                                    ->first();
+                                    ->lockForUpdate()->firstOrFail();
 
                 //Add deleted product quantity to available quantity
                 $stock_adjustment_lines = $stock_adjustment->stock_adjustment_lines;
@@ -411,14 +416,18 @@ class StockAdjustmentController extends Controller
         }
 
         try {
+            DB::beginTransaction();
+            $business_id = request()->user()->business_id;
             $purchase_line = PurchaseLine::where('id', $purchase_line_id)
+                                    ->whereHas('transaction', fn ($query) => $query->where('business_id', $business_id))
                                     ->with(['transaction'])
-                                    ->first();
+                                    ->lockForUpdate()->firstOrFail();
+
+            abort_unless(\App\User::can_access_this_location($purchase_line->transaction->location_id, $business_id), 403);
 
             if (!empty($purchase_line)) {
-                DB::beginTransaction();
-
                 $qty_unsold = $purchase_line->quantity - $purchase_line->quantity_sold - $purchase_line->quantity_adjusted - $purchase_line->quantity_returned;
+                abort_if($qty_unsold <= 0, 422, 'No remaining stock to remove.');
                 $final_total = $purchase_line->purchase_price_inc_tax * $qty_unsold;
 
                 $user_id = request()->session()->get('user.id');

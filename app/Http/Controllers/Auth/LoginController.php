@@ -58,13 +58,30 @@ class LoginController extends Controller
         return 'username';
     }
 
-    public function logout()
+    public function showLoginForm(Request $request)
     {
-        $this->businessUtil->activityLog(auth()->user(), 'logout');
+        if ($request->routeIs('login') && app(\App\Lights\Portal::class)->enabled()) {
+            return redirect()->route('lights.login')->header('Cache-Control', 'no-store, private');
+        }
+        if ($request->routeIs('login') && in_array($request->getHost(), ['localhost', '127.0.0.1'], true)) {
+            return redirect()->away((string) config('lights.local_acceptance_url'))
+                ->header('Cache-Control', 'no-store, private');
+        }
 
-        request()->session()->flush();
-        \Auth::logout();
-        return redirect('/login');
+        return view('auth.login');
+    }
+
+    public function logout(Request $request)
+    {
+        if ($user = $this->guard()->user()) {
+            $this->businessUtil->activityLog($user, 'logout');
+        }
+
+        $this->guard()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('pos.login');
     }
 
     /**
@@ -81,28 +98,28 @@ class LoginController extends Controller
 
         if (!$user->business->is_active) {
             \Auth::logout();
-            return redirect('/login')
+            return redirect()->route('pos.login')
               ->with(
                   'status',
                   ['success' => 0, 'msg' => __('lang_v1.business_inactive')]
               );
         } elseif ($user->status != 'active') {
             \Auth::logout();
-            return redirect('/login')
+            return redirect()->route('pos.login')
               ->with(
                   'status',
                   ['success' => 0, 'msg' => __('lang_v1.user_inactive')]
               );
         } elseif (!$user->allow_login) {
             \Auth::logout();
-            return redirect('/login')
+            return redirect()->route('pos.login')
                 ->with(
                     'status',
                     ['success' => 0, 'msg' => __('lang_v1.login_not_allowed')]
                 );
         } elseif (($user->user_type == 'user_customer') && !$this->moduleUtil->hasThePermissionInSubscription($user->business_id, 'crm_module')) {
             \Auth::logout();
-            return redirect('/login')
+            return redirect()->route('pos.login')
                 ->with(
                     'status',
                     ['success' => 0, 'msg' => __('lang_v1.business_dont_have_crm_subscription')]

@@ -11,17 +11,17 @@
         "php": "^8.2",
         "aloha/twilio": "^4.0",
         "automattic/woocommerce": "^3.0",
-        "barryvdh/laravel-dompdf": "^2.0",
+        "barryvdh/laravel-dompdf": "^3.1",
         "composer/semver": "^3.0",
         "giggsey/libphonenumber-for-php": "^8.12",
         "knox/pesapal": "^2.0",
-        "laravel/framework": "^11.0",
+        "konekt/html": "^6.8",
+        "laravel/framework": "^12.61.1",
         "laravel/passport": "^12.0",
         "laravel/tinker": "^2.9",
         "laravel/ui": "^4.0",
         "maatwebsite/excel": "^3.1",
-        "mfonte/laravel-collective-html": "^1.0",
-        "milon/barcode": "^11.0",
+        "milon/barcode": "^12.0",
         "mpdf/mpdf": "^8.0",
         "opcodesio/log-viewer": "^3.0",
         "pusher/pusher-php-server": "^7.0",
@@ -32,9 +32,8 @@
         "spatie/laravel-permission": "^6.0",
         "srmklive/paypal": "~3.0.40",
         "stripe/stripe-php": "^13.0",
-        "unicodeveloper/laravel-paystack": "^1.0",
         "vonage/vonage-laravel": "^1.0",
-        "yajra/laravel-datatables-oracle": "^11.0"
+        "yajra/laravel-datatables-oracle": "^12.0"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.13",
@@ -76,20 +75,8 @@
         "sort-packages": true,
         "optimize-autoloader": true,
         "audit": {
-            "block-insecure": false,
-            "ignore": [
-                "PKSA-qstp-ffwg-8hp6",
-                "PKSA-5vz3-q51h-7mg4",
-                "PKSA-7ztm-rpt3-qqzk",
-                "PKSA-4jrs-y99s-q8j6",
-                "PKSA-hbk6-2vfz-8f8n",
-                "PKSA-kj9c-tr41-t8mj",
-                "PKSA-872h-8556-2chm",
-                "PKSA-99tj-gg5v-4g74",
-                "PKSA-y2cr-5h3j-g3ys",
-                "PKSA-2kqm-ps5x-s4f5",
-                "PKSA-4s4z-t146-6123"
-            ]
+            "block-insecure": true,
+            "ignore": []
         },
         "platform": {
             "php": "8.2.0"

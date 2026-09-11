@@ -55,6 +55,12 @@ return [
             'visibility' => 'public',
         ],
 
+        'invoice_scans' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/invoice-scans'),
+            'visibility' => 'private',
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_KEY'),

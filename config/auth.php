@@ -36,6 +36,7 @@ return [
     */
 
     'guards' => [
+        'lights' => ['driver' => 'session', 'provider' => 'lights_users'],
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
@@ -70,6 +71,7 @@ return [
     */
 
     'providers' => [
+        'lights_users' => ['driver' => 'eloquent', 'model' => App\Lights\Member::class],
         'users' => [
             'driver' => 'eloquent',
             'model' => App\User::class,

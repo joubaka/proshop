@@ -32,10 +32,10 @@
       @component('components.widget', ['class' => 'box-primary'])
         @slot('tool')
           <div class="box-tools">
-            <a id="create-new-backup-button" href="{{ url('backup/create') }}" class="btn btn-primary pull-right"
-                     style="margin-bottom:2em;"><i
-                          class="fa fa-plus"></i> @lang('lang_v1.create_new_backup')
-            </a>
+            <form method="POST" action="{{ url('backup/create') }}">
+                @csrf
+                <button type="submit" id="create-new-backup-button" class="btn btn-primary pull-right" style="margin-bottom:2em;"><i class="fa fa-plus"></i> @lang('lang_v1.create_new_backup')</button>
+            </form>
           </div>
         @endslot
         @if (count($backups))
@@ -64,9 +64,11 @@
                               <a class="btn btn-xs btn-success"
                                    href="{{action('App\Http\Controllers\BackUpController@download', [$backup['file_name']])}}"><i
                                         class="fa fa-cloud-download"></i> @lang('lang_v1.download')</a>
-                                <a class="btn btn-xs btn-danger link_confirmation" data-button-type="delete"
-                                   href="{{action('App\Http\Controllers\BackUpController@delete', [$backup['file_name']])}}"><i class="fa fa-trash-o"></i>
-                                    @lang('messages.delete')</a>
+                                <form method="POST" action="{{action('App\Http\Controllers\BackUpController@delete', [$backup['file_name']])}}" class="backup-delete-form" style="display:inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-xs btn-danger"><i class="fa fa-trash-o"></i> @lang('messages.delete')</button>
+                                </form>
                             </td>
                         </tr>
                     @endforeach
@@ -86,4 +88,16 @@
     </div>
   </div>
 </section>
+@endsection
+
+@section('javascript')
+<script>
+$(document).on('submit', '.backup-delete-form', function (event) {
+    event.preventDefault();
+    var form = this;
+    swal({title: LANG.sure, icon: 'warning', buttons: true, dangerMode: true}).then(function (confirmed) {
+        if (confirmed) { form.submit(); }
+    });
+});
+</script>
 @endsection

@@ -296,7 +296,7 @@ class Util
             }
         }
 
-        return !empty($date) ? \Carbon::createFromTimestamp(strtotime($date))->format($format) : null;
+        return !empty($date) ? \Carbon::createFromTimestamp(strtotime($date), date_default_timezone_get())->format($format) : null;
     }
 
     /**
@@ -701,24 +701,12 @@ class Util
         $uploaded_file_name = null;
         if ($request->hasFile($file_name) && $request->file($file_name)->isValid()) {
 
-            //Check if mime type is image
-            if ($file_type == 'image') {
-                if (strpos($request->$file_name->getClientMimeType(), 'image/') === false) {
-                    throw new \Exception("Invalid image file");
-                }
-            }
-
-            if ($file_type == 'document') {
-                if (!in_array($request->$file_name->getClientMimeType(), array_keys(config('constants.document_upload_mimes_types')))) {
-                    throw new \Exception("Invalid document file");
-                }
-            }
-
-            if ($request->$file_name->getSize() <= config('constants.document_size_limit')) {
-                $new_file_name = time() . '_' . $request->$file_name->getClientOriginalName();
-                if ($request->$file_name->storeAs($dir_name, $new_file_name)) {
-                    $uploaded_file_name = $new_file_name;
-                }
+            $file = $request->file($file_name);
+            $new_file_name = \App\Support\SafeUpload::filename($file, $file_type === 'image');
+            if ($file->storeAs($dir_name, $new_file_name)) {
+                $uploaded_file_name = $new_file_name;
+            } else {
+                throw new \RuntimeException('Unable to store the uploaded file.');
             }
         }
 

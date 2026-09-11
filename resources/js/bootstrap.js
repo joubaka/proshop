@@ -16,9 +16,8 @@ try {
 window.moment = require('moment');
 require('moment-timezone');
 
-window.Highcharts = require('highcharts');  
-// Load module after Highcharts is loaded
-require('highcharts/modules/exporting')(Highcharts);  
+const chartModule = require('chart.js/auto');
+window.Chart = chartModule.default || chartModule;
 
 //import all the 3rd party libraries
 window.Ladda = require('ladda');
@@ -27,32 +26,8 @@ window.PerfectScrollbar = require('perfect-scrollbar').default;
 window.screenfull = require('screenfull');
 
 import jkanban from 'jkanban/dist/jkanban.min.js';
-import tinymce from 'tinymce/tinymce';
-import 'tinymce/themes/silver';
-import 'tinymce/plugins/paste';
-import 'tinymce/plugins/link';
-import 'tinymce/plugins/advlist';
-import 'tinymce/plugins/autolink';
-import 'tinymce/plugins/image';
-import 'tinymce/plugins/lists';
-import 'tinymce/plugins/charmap';
-import 'tinymce/plugins/print';
-import 'tinymce/plugins/preview';
-import 'tinymce/plugins/hr';
-import 'tinymce/plugins/anchor';
-import 'tinymce/plugins/pagebreak';
-import 'tinymce/plugins/searchreplace';
-import 'tinymce/plugins/wordcount';
-import 'tinymce/plugins/visualblocks';
-import 'tinymce/plugins/visualchars';
-import 'tinymce/plugins/code';
-import 'tinymce/plugins/fullscreen';
-import 'tinymce/plugins/insertdatetime';
-import 'tinymce/plugins/media';
-import 'tinymce/plugins/nonbreaking';
-import 'tinymce/plugins/table';
-import 'tinymce/plugins/template';
-import 'tinymce/plugins/help';
+require('./rich-text');
+require('./tour');
 
 window.PatternLock = require('patternlock/dist/patternlock.min.js');
 
@@ -63,7 +38,7 @@ window.Tagify = require('@yaireo/tagify/dist/tagify.min.js');
  * CSRF token as a header based on the value of the "XSRF" token cookie.
  */
 
-window.axios = require('axios');
+window.axios = require('axios').default;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 

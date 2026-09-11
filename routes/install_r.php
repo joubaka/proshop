@@ -9,12 +9,14 @@
 |
 */
 
-Route::get('/install-start', 'App\Http\Controllers\Install\InstallController@index')->name('install.index');
-Route::get('/install/check-server', 'App\Http\Controllers\Install\InstallController@checkServer')->name('install.checkServer');
-Route::get('/install/details', 'App\Http\Controllers\Install\InstallController@details')->name('install.details');
-Route::post('/install/post-details', 'App\Http\Controllers\Install\InstallController@postDetails')->name('install.postDetails');
-Route::post('/install/install-alternate', 'App\Http\Controllers\Install\InstallController@installAlternate')->name('install.installAlternate');
-Route::get('/install/success', 'App\Http\Controllers\Install\InstallController@success')->name('install.success');
+Route::middleware(\App\Http\Middleware\EnsureInstallerAccess::class)->group(function () {
+    Route::get('/install-start', 'App\Http\Controllers\Install\InstallController@index')->name('install.index');
+    Route::get('/install/check-server', 'App\Http\Controllers\Install\InstallController@checkServer')->name('install.checkServer');
+    Route::get('/install/details', 'App\Http\Controllers\Install\InstallController@details')->name('install.details');
+    Route::post('/install/post-details', 'App\Http\Controllers\Install\InstallController@postDetails')->name('install.postDetails');
+    Route::post('/install/install-alternate', 'App\Http\Controllers\Install\InstallController@installAlternate')->name('install.installAlternate');
+    Route::get('/install/success', 'App\Http\Controllers\Install\InstallController@success')->name('install.success');
 
-Route::get('/install/update', 'App\Http\Controllers\Install\InstallController@updateConfirmation')->name('install.updateConfirmation');
-Route::post('/install/update', 'App\Http\Controllers\Install\InstallController@update')->name('install.update');
+    Route::get('/install/update', 'App\Http\Controllers\Install\InstallController@updateConfirmation')->middleware(['auth', 'superadmin'])->name('install.updateConfirmation');
+    Route::post('/install/update', 'App\Http\Controllers\Install\InstallController@update')->middleware(['auth', 'superadmin'])->name('install.update');
+});

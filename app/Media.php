@@ -4,6 +4,9 @@ namespace App;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use App\Support\SafeUpload;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class Media extends Model
 {
@@ -108,15 +111,13 @@ class Media extends Model
         }
 
         //check if base64
-        if (!empty($request->$file_name) && !is_array($request->$file_name)) {
+        if (is_string($request->input($file_name)) && $request->input($file_name) !== '') {
 
-            $base64_array = explode(',', $request->$file_name);
+            $base64_array = explode(',', $request->input($file_name), 2);
 
             $base64_string = $base64_array[1] ?? $base64_array[0];
 
-            if (Media::is_base64($base64_string)) {
-                $uploaded_files[] = Media::uploadBase64Image($base64_string);
-            }
+            $uploaded_files[] = Media::uploadBase64Image($base64_string);
         }
 
         if (!empty($uploaded_files)) {
@@ -140,32 +141,37 @@ class Media extends Model
      */
     public static function uploadFile($file)
     {
-        $file_name = null;
-        if ($file->getSize() <= config('constants.document_size_limit')) {
-            $new_file_name = time() . '_' . mt_rand() . '_' . $file->getClientOriginalName();
-            if ($file->storeAs('/media', $new_file_name)) {
-                $file_name = $new_file_name;
-            }
+        $file_name = SafeUpload::filename($file);
+        if (!$file->storeAs('media', $file_name)) {
+            throw new \RuntimeException('Unable to store the uploaded file.');
         }
-
         return $file_name;
     }
 
     public static function uploadBase64Image($base64_string) {
 
-        $file_name = time() . '_' . mt_rand() . '_media.jpg';
-
-        $output_file = public_path('uploads') . '/media/' . $file_name;
-
-        // open the output file for writing
-        $ifp = fopen( $output_file, 'wb' ); 
-
-        fwrite( $ifp, base64_decode( $base64_string ) );
-
-        // clean up the file resource
-        fclose( $ifp ); 
-
-        return $file_name; 
+        $limit = (int) config('constants.document_size_limit');
+        $decoded = strlen($base64_string) <= (int) ceil($limit / 3) * 4
+            ? base64_decode($base64_string, true) : false;
+        $info = $decoded !== false ? @getimagesizefromstring($decoded) : false;
+        if ($decoded === false || strlen($decoded) > $limit || !$info
+            || !in_array($info['mime'], ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)
+            || $info[0] * $info[1] > 20000000) {
+            throw ValidationException::withMessages(['file' => 'Upload a valid image within the size limit.']);
+        }
+        $image = @imagecreatefromstring($decoded);
+        if (!$image) {
+            throw ValidationException::withMessages(['file' => 'The image could not be decoded.']);
+        }
+        // Re-encode instead of writing arbitrary base64 data into public storage.
+        ob_start();
+        imagejpeg($image, null, 90);
+        $contents = ob_get_clean();
+        $file_name = time().'_'.Str::uuid().'_media.jpg';
+        if (!Storage::put('media/'.$file_name, $contents)) {
+            throw new \RuntimeException('Unable to store the uploaded image.');
+        }
+        return $file_name;
     }
 
     /**

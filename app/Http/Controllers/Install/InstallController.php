@@ -9,6 +9,7 @@ use Symfony\Component\Console\Output\BufferedOutput;
 
 use App\Utils\InstallUtil;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Composer\Semver\Comparator;
 
 //use Illuminate\Support\Facades\Storage;
@@ -22,6 +23,7 @@ class InstallController extends Controller
     protected $outputLog;
     protected $appVersion;
     protected $macActivationKeyChecker;
+    protected $env;
 
     /**
      * Constructor
@@ -39,8 +41,6 @@ class InstallController extends Controller
             include_once(__DIR__ . '/MacActivationKeyChecker.php');
             $this->macActivationKeyChecker = $mac_is_enabled;
         }
-
-        $this->installSettings();
     }
 
     /**
@@ -49,9 +49,7 @@ class InstallController extends Controller
      */
     private function installSettings()
     {
-        config(['app.debug' => true]);
         Artisan::call('config:clear');
-        Artisan::call('cache:clear');
     }
 
     /**
@@ -64,19 +62,6 @@ class InstallController extends Controller
         if (file_exists($envPath)) {
             abort(404);
         }
-    }
-
-    /**
-     * This function deletes .env file.
-     *
-     */
-    private function deleteEnv()
-    {
-        $envPath = base_path('.env');
-        if ($envPath && file_exists($envPath)) {
-            unlink($envPath);
-        }
-        return true;
     }
 
     /**
@@ -238,15 +223,14 @@ class InstallController extends Controller
 
                 // return redirect()->route('install.success');
             } else {
-                $this->deleteEnv();
-
                 //Show intermediate steps if not able to copy file.
                 $envContent = implode('', $env_lines);
+                // Only this setup session may complete installation after creating .env.
+                $request->session()->put('installer.expires_at', time() + 900);
                 return view('install.envText')
                     ->with(compact('envContent', 'envPath'));
             }
-        } catch (Exception $e) {
-            $this->deleteEnv();
+        } catch (\Exception $e) {
 
             return redirect()->back()
                 ->with('error', 'Something went wrong, please try again!!');
@@ -262,13 +246,19 @@ class InstallController extends Controller
         $this->installSettings();
         
         DB::statement('SET default_storage_engine=INNODB;');
-        Artisan::call('migrate:fresh', ["--force"=> true]);
-        Artisan::call('db:seed');
+        if (Artisan::call('migrate', ["--force" => true]) !== 0
+            || Artisan::call('db:seed', ["--force" => true]) !== 0) {
+            throw new \RuntimeException('Installation failed; inspect the server logs before retrying.');
+        }
         //Artisan::call('storage:link');
     }
 
     public function installAlternate(Request $request)
     {
+        abort_unless((int) $request->session()->pull('installer.expires_at', 0) > time(), 403);
+        // Never seed or rebuild an existing installation, even with a setup session.
+        abort_if(Schema::hasTable('migrations') || Schema::hasTable('business') || Schema::hasTable('users'), 403);
+
         try {
             $this->installSettings();
 
@@ -281,8 +271,7 @@ class InstallController extends Controller
 
             $this->runArtisanCommands();
             return redirect()->route('install.success');
-        } catch (Exception $e) {
-            $this->deleteEnv();
+        } catch (\Exception $e) {
 
             return redirect()->back()
                 ->with('error', 'Something went wrong, please try again!!');

@@ -21,6 +21,9 @@
 
       <!-- Navbar Right Menu -->
       <div class="navbar-custom-menu">
+        @if(config('lights.enabled') && app()->environment('acceptance'))
+          <a href="{{ route('lights.home') }}" class="btn btn-success btn-flat pull-left m-8 btn-sm mt-10">Court lights</a>
+        @endif
 
         @if(false)
         @endif
@@ -120,7 +123,10 @@
                   <a href="{{action('App\Http\Controllers\UserController@getProfile')}}" class="btn btn-default btn-flat">@lang('lang_v1.profile')</a>
                 </div>
                 <div class="pull-right">
-                  <a href="{{action('App\Http\Controllers\Auth\LoginController@logout')}}" class="btn btn-default btn-flat">@lang('lang_v1.sign_out')</a>
+                  <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-default btn-flat">@lang('lang_v1.sign_out')</button>
+                  </form>
                 </div>
               </li>
             </ul>

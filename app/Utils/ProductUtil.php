@@ -344,33 +344,11 @@ class ProductUtil extends Util
             $qty_difference = $new_quantity - $old_quantity;
         }
 
-        $product = Product::find($product_id);
+        $product = Product::findOrFail($product_id);
 
         //Check if stock is enabled or not.
         if ($product->enable_stock == 1 && $qty_difference != 0) {
-            $variation = Variation::where('id', $variation_id)
-                            ->where('product_id', $product_id)
-                            ->first();
-            
-            //Add quantity in VariationLocationDetails
-            $variation_location_d = VariationLocationDetails
-                          ::where('variation_id', $variation->id)
-                          ->where('product_id', $product_id)
-                          ->where('product_variation_id', $variation->product_variation_id)
-                          ->where('location_id', $location_id)
-                          ->first();
-
-            if (empty($variation_location_d)) {
-                $variation_location_d = new VariationLocationDetails();
-                $variation_location_d->variation_id = $variation->id;
-                $variation_location_d->product_id = $product_id;
-                $variation_location_d->location_id = $location_id;
-                $variation_location_d->product_variation_id = $variation->product_variation_id;
-                $variation_location_d->qty_available = 0;
-            }
-
-            $variation_location_d->qty_available += $qty_difference;
-            $variation_location_d->save();
+            $this->changeStockQuantity($product_id, $variation_id, $location_id, $qty_difference);
         }
         
         return true;
@@ -391,32 +369,32 @@ class ProductUtil extends Util
     {
         $qty_difference = $new_quantity - $old_quantity;
 
-        $product = Product::find($product_id);
+        $product = Product::findOrFail($product_id);
 
         //Check if stock is enabled or not.
-        if ($product->enable_stock == 1) {
-            //Decrement Quantity in variations location table
-            $details = VariationLocationDetails::where('variation_id', $variation_id)
-                ->where('product_id', $product_id)
-                ->where('location_id', $location_id)
-                ->first();
-
-            //If location details not exists create new one
-            if (empty($details)) {
-                $variation = Variation::find($variation_id);
-                $details = VariationLocationDetails::create([
-                            'product_id' => $product_id,
-                            'location_id' => $location_id,
-                            'variation_id' => $variation_id,
-                            'product_variation_id' => $variation->product_variation_id,
-                            'qty_available' => 0
-                          ]);
-            }
-            
-            $details->decrement('qty_available', $qty_difference);
+        if ($product->enable_stock == 1 && $qty_difference != 0) {
+            $this->changeStockQuantity($product_id, $variation_id, $location_id, -$qty_difference);
         }
 
         return true;
+    }
+
+    private function changeStockQuantity($product_id, $variation_id, $location_id, $delta): void
+    {
+        DB::transaction(function () use ($product_id, $variation_id, $location_id, $delta) {
+            // Lock an existing parent even when this location has no stock row yet.
+            // Both receipt and sale paths take the same lock before creating that row.
+            $variation = Variation::where('product_id', $product_id)->whereKey($variation_id)
+                ->lockForUpdate()->firstOrFail();
+            $details = VariationLocationDetails::lockForUpdate()->firstOrCreate([
+                'product_id' => $product_id,
+                'variation_id' => $variation->id,
+                'product_variation_id' => $variation->product_variation_id,
+                'location_id' => $location_id,
+            ], ['qty_available' => 0]);
+            // SQL arithmetic also avoids overwriting stock changed by another writer.
+            $details->increment('qty_available', $delta);
+        });
     }
 
     /**
@@ -625,9 +603,9 @@ class ProductUtil extends Util
             if (!empty($product['modifier_price'])) {
                 foreach ($product['modifier_price'] as $key => $modifier_price) {
                     $modifier_price = $uf_number ? $this->num_uf($modifier_price) : $modifier_price;
-                    $uf_modifier_price = $uf_number ? $this->num_uf($modifier_price): $modifier_price;
                     $modifier_qty = isset($product['modifier_quantity'][$key]) ? $product['modifier_quantity'][$key] : 0;
-                    $modifier_total = $uf_modifier_price * $modifier_qty;
+                    $modifier_qty = $uf_number ? $this->num_uf($modifier_qty) : $modifier_qty;
+                    $modifier_total = $modifier_price * $modifier_qty;
                     $output['total_before_tax'] += $modifier_total;
                 }
             }

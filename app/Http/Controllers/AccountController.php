@@ -542,18 +542,21 @@ class AccountController extends Controller
 
         if (request()->ajax()) {
             try {
-                $business_id = request()->session()->get('user.business_id');
-
-                $account_transaction = AccountTransaction::findOrFail($id);
-                
-                if (in_array($account_transaction->sub_type, ['fund_transfer', 'deposit'])) {
-                    //Delete transfer transaction for fund transfer
+                $business_id = request()->user()->business_id;
+                DB::transaction(function () use ($id, $business_id) {
+                    $ownedTransactions = fn () => AccountTransaction::whereHas('account',
+                        fn ($query) => $query->where('business_id', $business_id));
+                    $account_transaction = $ownedTransactions()->lockForUpdate()->findOrFail($id);
+                    abort_unless(in_array($account_transaction->sub_type, ['fund_transfer', 'deposit']), 422);
                     if (!empty($account_transaction->transfer_transaction_id)) {
-                        $transfer_transaction = AccountTransaction::findOrFail($account_transaction->transfer_transaction_id);
+                        // A malformed foreign link must roll back the entire operation.
+                        $transfer_transaction = $ownedTransactions()->lockForUpdate()
+                            ->findOrFail($account_transaction->transfer_transaction_id);
+                        abort_unless(in_array($transfer_transaction->sub_type, ['fund_transfer', 'deposit']), 422);
                         $transfer_transaction->delete();
                     }
                     $account_transaction->delete();
-                }
+                });
 
                 $output = ['success' => true,
                             'msg' => __("lang_v1.deleted_success")

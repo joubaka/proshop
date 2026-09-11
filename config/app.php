@@ -38,7 +38,7 @@ return [
     |
     */
 
-    'debug' => env('APP_DEBUG', true),
+    'debug' => (bool) env('APP_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -157,7 +157,6 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
-        Unicodeveloper\Paystack\PaystackServiceProvider::class,
         /*
          * Package Service Providers...
          */
@@ -233,7 +232,6 @@ return [
         'DNS1D' => Milon\Barcode\Facades\DNS1DFacade::class,
         'DNS2D' => Milon\Barcode\Facades\DNS2DFacade::class,
         'Datatables' => Yajra\DataTables\Facades\DataTables::class,
-        'Paystack' => Unicodeveloper\Paystack\Facades\Paystack::class,
         'Menu' => App\Facades\Menu::class,
     ]
 ];

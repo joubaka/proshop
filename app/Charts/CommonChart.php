@@ -5,8 +5,7 @@ namespace App\Charts;
 /**
  * Lightweight Chart.js wrapper that replaces the removed consoletvs/charts package.
  * Generates a self-contained <canvas> container and an inline <script> that
- * initialises Chart.js (v2 CDN) with the supplied labels/datasets/options.
- * Requires Chart.js to be present on the page (via CDN or bundled assets).
+ * initialises the locally bundled Chart.js 4 with supplied labels/datasets/options.
  */
 class CommonChart
 {
@@ -73,10 +72,10 @@ class CommonChart
             'options' => array_merge([
                 'responsive'          => true,
                 'maintainAspectRatio' => false,
-            ], $this->options, $this->title ? ['title' => ['display' => true, 'text' => $this->title]] : []),
+            ], $this->options),
         ];
-
-        $json = json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($this->title) $config['options']['plugins']['title'] = ['display' => true, 'text' => $this->title];
+        $json = json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
 
         return <<<HTML
 <script>

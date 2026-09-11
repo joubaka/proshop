@@ -158,7 +158,7 @@ class AppServiceProvider extends ServiceProvider
         //Blade directive to convert.
         Blade::directive('format_date', function ($date) {
             if (!empty($date)) {
-                return "\Carbon::createFromTimestamp(strtotime($date))->format(session('business.date_format'))";
+                return "\Carbon::createFromTimestamp(strtotime($date), date_default_timezone_get())->format(session('business.date_format'))";
             } else {
                 return null;
             }
@@ -167,11 +167,7 @@ class AppServiceProvider extends ServiceProvider
         //Blade directive to convert.
         Blade::directive('format_time', function ($date) {
             if (!empty($date)) {
-                $time_format = 'h:i A';
-                if (session('business.time_format') == 24) {
-                    $time_format = 'H:i';
-                }
-                return "\Carbon::createFromTimestamp(strtotime($date))->format('$time_format')";
+                return "\Carbon::createFromTimestamp(strtotime($date), date_default_timezone_get())->format(session('business.time_format') == 12 ? 'h:i A' : 'H:i')";
             } else {
                 return null;
             }
@@ -179,12 +175,7 @@ class AppServiceProvider extends ServiceProvider
 
         Blade::directive('format_datetime', function ($date) {
             if (!empty($date)) {
-                $time_format = 'h:i A';
-                if (session('business.time_format') == 24) {
-                    $time_format = 'H:i';
-                }
-                
-                return "\Carbon::createFromTimestamp(strtotime($date))->format(session('business.date_format') . ' ' . '$time_format')";
+                return "\Carbon::createFromTimestamp(strtotime($date), date_default_timezone_get())->format(session('business.date_format') . ' ' . (session('business.time_format') == 12 ? 'h:i A' : 'H:i'))";
             } else {
                 return null;
             }

@@ -2,6 +2,9 @@
 @section('title', __('purchase.purchases'))
 
 @section('content')
+@if(auth()->user()->can('stock_report.view') || auth()->user()->can('purchase.create'))
+<div class="text-right" style="margin:10px 15px"><a href="{{ route('inventory-control.index') }}" class="btn btn-info"><i class="fas fa-boxes"></i> Stock control</a></div>
+@endif
 
 <!-- Content Header (Page header) -->
 <section class="content-header no-print">
@@ -53,6 +56,8 @@
         @can('purchase.create')
             @slot('tool')
                 <div class="box-tools">
+                    <a class="btn btn-success" href="{{ route('invoice-scans.index') }}">
+                    <i class="fas fa-camera"></i> Scan invoice</a>
                     <a class="btn btn-block btn-primary" href="{{action('App\Http\Controllers\PurchaseController@create')}}">
                     <i class="fa fa-plus"></i> @lang('messages.add')</a>
                 </div>

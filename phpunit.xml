@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit backupGlobals="false"
-         backupStaticAttributes="false"
          bootstrap="vendor/autoload.php"
          colors="true"
-         convertErrorsToExceptions="true"
-         convertNoticesToExceptions="true"
-         convertWarningsToExceptions="true"
          processIsolation="false"
          stopOnFailure="false">
     <testsuites>
@@ -16,18 +12,35 @@
         <testsuite name="Feature">
             <directory suffix="Test.php">./tests/Feature</directory>
         </testsuite>
+        <testsuite name="Audit">
+            <directory suffix="Test.php">./tests/Audit</directory>
+        </testsuite>
     </testsuites>
-    <filter>
-        <whitelist processUncoveredFilesFromWhitelist="true">
+    <source>
+        <include>
             <directory suffix=".php">./app</directory>
-        </whitelist>
-    </filter>
+        </include>
+    </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_URL" value="http://localhost" force="true"/>
+        <env name="APP_DEBUG" value="false" force="true"/>
+        <env name="APP_KEY" value="01234567890123456789012345678901" force="true"/>
+        <env name="APP_CONFIG_CACHE" value="tests/.cache/config.php" force="true"/>
+        <env name="APP_ROUTES_CACHE" value="tests/.cache/routes.php" force="true"/>
+        <env name="APP_PACKAGES_CACHE" value="tests/.cache/packages.php" force="true"/>
+        <env name="APP_SERVICES_CACHE" value="tests/.cache/services.php" force="true"/>
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <env name="DATABASE_URL" value="" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
+        <env name="LOG_CHANNEL" value="null" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="WEB_INSTALLER_ENABLED" value="false" force="true"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="CACHE_DRIVER" value="array"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="MAIL_DRIVER" value="array"/>
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="MAIL_DRIVER" value="array" force="true"/>
     </php>
 </phpunit>

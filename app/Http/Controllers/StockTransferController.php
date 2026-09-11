@@ -188,6 +188,11 @@ class StockTransferController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        \App\Support\StockOperationAccess::location($request->input('location_id'));
+        \App\Support\StockOperationAccess::location($request->input('transfer_location_id'));
+        abort_if($request->input('location_id') == $request->input('transfer_location_id'), 422, 'Choose different locations.');
+        $request->validate(['status' => 'required|in:pending,in_transit,completed', 'products' => 'required|array|min:1']);
+        \App\Support\StockOperationAccess::products($request->input('products'), $request->input('location_id'));
         try {
             $business_id = $request->session()->get('user.business_id');
 
@@ -374,6 +379,7 @@ class StockTransferController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        \App\Support\StockOperationAccess::transaction($id, 'sell_transfer');
         $business_id = request()->session()->get('user.business_id');
             
         $sell_transfer = Transaction::where('business_id', $business_id)
@@ -437,6 +443,10 @@ class StockTransferController extends Controller
         if (!auth()->user()->can('purchase.delete')) {
             abort(403, 'Unauthorized action.');
         }
+        $owned = \App\Support\StockOperationAccess::transaction($id, 'sell_transfer');
+        $paired = Transaction::where('business_id', $owned->business_id)->where('transfer_parent_id', $owned->id)
+            ->where('type', 'purchase_transfer')->firstOrFail();
+        \App\Support\StockOperationAccess::location($paired->location_id);
         try {
             if (request()->ajax()) {
                 $edit_days = request()->session()->get('business.transaction_edit_days');
@@ -446,28 +456,29 @@ class StockTransferController extends Controller
                 }
 
                 //Get sell transfer transaction
-                $sell_transfer = Transaction::where('id', $id)
+                DB::beginTransaction();
+                $sell_transfer = Transaction::where('business_id', $owned->business_id)->where('id', $id)
                                     ->where('type', 'sell_transfer')
                                     ->with(['sell_lines'])
-                                    ->first();
+                                    ->lockForUpdate()->firstOrFail();
 
                 //Get purchase transfer transaction
-                $purchase_transfer = Transaction::where('transfer_parent_id', $sell_transfer->id)
+                $purchase_transfer = Transaction::where('business_id', $owned->business_id)->where('transfer_parent_id', $sell_transfer->id)
                                     ->where('type', 'purchase_transfer')
                                     ->with(['purchase_lines'])
-                                    ->first();
+                                    ->lockForUpdate()->firstOrFail();
 
                 //Check if any transfer stock is deleted and delete purchase lines
                 $purchase_lines = $purchase_transfer->purchase_lines;
                 foreach ($purchase_lines as $purchase_line) {
                     if ($purchase_line->quantity_sold > 0) {
+                        DB::rollBack();
                         return [ 'success' => 0,
                                         'msg' => __('lang_v1.stock_transfer_cannot_be_deleted')
                             ];
                     }
                 }
 
-                DB::beginTransaction();
                 //Get purchase lines from transaction_sell_lines_purchase_lines and decrease quantity_sold
                 $sell_lines = $sell_transfer->sell_lines;
                 $deleted_sell_purchase_ids = [];
@@ -549,6 +560,8 @@ class StockTransferController extends Controller
      */
     public function printInvoice($id)
     {
+        abort_unless(auth()->user()->can('purchase.view'), 403);
+        \App\Support\StockOperationAccess::transaction($id, 'sell_transfer');
         try {
             $business_id = request()->session()->get('user.business_id');
             
@@ -601,6 +614,8 @@ class StockTransferController extends Controller
      */
     public function edit($id)
     {
+        abort_unless(auth()->user()->can('purchase.update'), 403);
+        \App\Support\StockOperationAccess::transaction($id, 'sell_transfer');
         $business_id = request()->session()->get('user.business_id');
 
         $business_locations = BusinessLocation::forDropdown($business_id);
@@ -658,10 +673,17 @@ class StockTransferController extends Controller
      */
     public function update(Request $request, $id)
     {
-        if (!auth()->user()->can('purchase.create')) {
+        if (!auth()->user()->can('purchase.update')) {
             abort(403, 'Unauthorized action.');
         }
 
+        $owned = \App\Support\StockOperationAccess::transaction($id, 'sell_transfer');
+        abort_if($owned->status === 'final', 422, 'Completed transfers cannot be edited.');
+        $request->validate(['status' => 'required|in:pending,in_transit,completed', 'products' => 'required|array|min:1']);
+        \App\Support\StockOperationAccess::products($request->input('products'), $owned->location_id, $owned);
+        $paired = Transaction::where('business_id', $owned->business_id)->where('transfer_parent_id', $owned->id)
+            ->where('type', 'purchase_transfer')->firstOrFail();
+        \App\Support\StockOperationAccess::location($paired->location_id);
         try {
             $business_id = $request->session()->get('user.business_id');
 
@@ -676,6 +698,10 @@ class StockTransferController extends Controller
                     ->where('type', 'sell_transfer')
                     ->findOrFail($id);
 
+            DB::beginTransaction();
+            $sell_transfer = Transaction::where('business_id', $business_id)->where('type', 'sell_transfer')
+                ->lockForUpdate()->findOrFail($id);
+            abort_if($sell_transfer->status === 'final', 422, 'Completed transfers cannot be edited.');
             $sell_transfer_before = $sell_transfer->replicate();
 
             $purchase_transfer = Transaction::where('business_id', 
@@ -687,8 +713,6 @@ class StockTransferController extends Controller
 
             $status = $request->input('status');
 
-            DB::beginTransaction();
-            
             $input_data = $request->only(['transaction_date', 'additional_notes', 'shipping_charges', 'final_total']);
             $status = $request->input('status');
 
@@ -874,12 +898,18 @@ class StockTransferController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $owned = \App\Support\StockOperationAccess::transaction($id, 'sell_transfer');
+        $paired = Transaction::where('business_id', $owned->business_id)->where('transfer_parent_id', $owned->id)
+            ->where('type', 'purchase_transfer')->firstOrFail();
+        \App\Support\StockOperationAccess::location($paired->location_id);
+        $request->validate(['status' => 'required|in:pending,in_transit,completed']);
         try {
+            DB::beginTransaction();
             $business_id = request()->session()->get('user.business_id');
 
             $sell_transfer = Transaction::where('business_id', $business_id)
                     ->where('type', 'sell_transfer')
-                    ->with(['sell_lines', 'sell_lines.product'])
+                    ->with(['sell_lines', 'sell_lines.product'])->lockForUpdate()
                     ->findOrFail($id);
 
             $purchase_transfer = Transaction::where('business_id', 
@@ -891,8 +921,11 @@ class StockTransferController extends Controller
 
             $status = $request->input('status');
 
-            DB::beginTransaction();
-            if ($status == 'completed' && $sell_transfer->status != 'completed' ) {
+            if ($sell_transfer->status === 'final') {
+                DB::commit();
+                return ['success' => $status === 'completed' ? 1 : 0, 'msg' => 'Transfer is already completed.'];
+            }
+            if ($status == 'completed') {
 
                 foreach ($sell_transfer->sell_lines as $sell_line) {
                     if ($sell_line->product->enable_stock) {

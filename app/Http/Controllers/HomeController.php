@@ -562,17 +562,8 @@ class HomeController extends Controller
     private function __chartOptions($title)
     {
         return [
-            'yAxis' => [
-                    'title' => [
-                        'text' => $title
-                    ]
-                ],
-            'legend' => [
-                'align' => 'right',
-                'verticalAlign' => 'top',
-                'floating' => true,
-                'layout' => 'vertical'
-            ],
+            'scales' => ['y' => ['beginAtZero' => true, 'title' => ['display' => true, 'text' => $title]]],
+            'plugins' => ['legend' => ['position' => 'top']],
         ];
     }
 

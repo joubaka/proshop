@@ -2737,6 +2737,7 @@ $(document).on('click', '.delete-media', function () {
             var thumbnail = $(this).closest('.img-thumbnail');
             var tr = $(this).closest('tr');
             $.ajax({
+                method: 'DELETE',
                 url: url,
                 dataType: 'json',
                 success: function(result) {

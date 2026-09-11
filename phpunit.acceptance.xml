@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="vendor/autoload.php" colors="true" cacheResult="false">
+    <testsuites><testsuite name="Local MySQL Acceptance"><directory>tests/Acceptance</directory></testsuite></testsuites>
+    <source><include><directory>app</directory></include></source>
+</phpunit>

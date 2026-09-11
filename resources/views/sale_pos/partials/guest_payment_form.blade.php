@@ -67,7 +67,20 @@
                         </tr>
                     </table>
 
-                    @if($transaction->payment_status != 'paid')
+                    @if(!empty($payment_attempt))
+                        <div class="alert alert-warning" role="alert">
+                            Payment is processing or requires review. Do not pay again; contact the shop.
+                            Reference: {{ $payment_attempt->id }}
+                        </div>
+                        @if($payment_attempt->status === 'provider_succeeded')
+                            <form action="{{ route('confirm_payment', ['id' => $transaction->id]) }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="invoice_token" value="{{ $transaction->invoice_token }}">
+                                <input type="hidden" name="gateway" value="{{ $payment_attempt->gateway }}">
+                                <button class="btn btn-primary" type="submit">Update payment status (no new charge)</button>
+                            </form>
+                        @endif
+                    @elseif($transaction->payment_status != 'paid')
                     <table class="table no-border">
                         <tr>
                             <td><h4>@lang('sale.total_payable'): <span>{{$total_payable_formatted}}</span></h4></td>
@@ -75,8 +88,10 @@
                     </table>
                     <div class="spacer"></div>
                     <div class="spacer"></div>
+                    @if(!empty($pos_settings['razor_pay_key_id']) && !empty($pos_settings['razor_pay_key_secret']))
                     <div class="width-50 text-center f-left">
                         <form action="{{route('confirm_payment', ['id' => $transaction->id])}}" method="POST">
+                            <input type="hidden" name="invoice_token" value="{{$transaction->invoice_token}}">
                             <input type="hidden" name="gateway" value="razorpay">
                                 <!-- Note that the amount is in paise -->
                             <script
@@ -90,6 +105,7 @@
                             {{ csrf_field() }}
                         </form>
                     </div>
+                    @endif
                         @if(!empty($pos_settings['stripe_public_key']) && !empty($pos_settings['stripe_secret_key']))
                             @php
                                 $code = strtolower($business_details->currency_code);
@@ -97,12 +113,13 @@
 
                             <div class="width-50 text-center f-left">
                                 <form action="{{route('confirm_payment', ['id' => $transaction->id])}}" method="POST">
+                                    <input type="hidden" name="invoice_token" value="{{$transaction->invoice_token}}">
                                     {{ csrf_field() }}
                                     <input type="hidden" name="gateway" value="stripe">
                                     <script
                                             src="https://checkout.stripe.com/checkout.js" class="stripe-button"
                                             data-key="{{$pos_settings['stripe_public_key']}}"
-                                            data-amount="@if(in_array($code, ['bif','clp','djf','gnf','jpy','kmf','krw','mga','pyg','rwf','ugx','vnd','vuv','xaf','xof','xpf'])) {{$total_payable}} @else {{$total_payable*100}} @endif"
+                                            data-amount="{{ \App\Support\GatewayAmount::stripe($total_payable, $code) }}"
                                             data-name="{{$transaction->business->name}}"
                                             data-description="Pay with stripe"
                                             data-image="https://stripe.com/img/documentation/checkout/marketplace.png"

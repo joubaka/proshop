@@ -70,6 +70,8 @@ $(document).ready(function() {
 
     //Default setting for jQuey validator
     jQuery.validator.setDefaults({
+        // The submitted field is the synchronized textarea, not editor internals.
+        ignore: ':hidden, .jodit-container [contenteditable], .jodit-container textarea',
         errorPlacement: function(error, element) {
             if (element.hasClass('select2') && element.parent().hasClass('input-group')) {
                 error.insertAfter(element.parent());
@@ -524,7 +526,7 @@ tinymce.overrideDefaults({
 
 // Prevent Bootstrap dialog from blocking focusin
 $(document).on('focusin', function(e) {
-  if ($(e.target).closest(".tox-tinymce-aux, .moxman-window, .tam-assetmanager-root").length) {
+  if ($(e.target).closest(".jodit-popup, .jodit-dialog, .jodit-container").length) {
     e.stopImmediatePropagation();
   }
 });

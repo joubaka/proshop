@@ -1,0 +1,147 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Lights\AccountTokens;
+use App\Lights\Member;
+use App\Lights\Portal;
+use App\Lights\SafetySessions;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
+use Tests\Support\RegressionTestCase;
+
+class LightsClientReadinessTest extends RegressionTestCase
+{
+    private Portal $portal;
+    private Member $admin;
+    private Member $member;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['lights.enabled' => true, 'lights.mode' => 'simulation', 'lights.require_verified_email' => true,
+            'database.connections.lights' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '', 'foreign_key_constraints' => true]]);
+        DB::purge('lights');
+        foreach (glob(database_path('migrations/lights/*.php')) as $file) { (require $file)->up(); }
+        $this->portal = app(Portal::class);
+        $this->admin = Member::create(['name' => 'Admin', 'email' => 'admin@test.test', 'password' => bcrypt('TestPassword!2026')]);
+        $this->admin->forceFill(['is_admin' => true, 'email_verified_at' => time(), 'terms_accepted_at' => time()])->save();
+        $this->member = Member::create(['name' => 'Member', 'email' => 'member@test.test', 'password' => bcrypt('TestPassword!2026')]);
+        $this->portal->saveCourt($this->admin->id, null, ['name' => 'Court 3', 'rate_cents' => 6000, 'device_label' => 'demo', 'channel' => 0, 'active' => true]);
+    }
+
+    public function test_registration_requires_terms_and_simulation_verifies_immediately(): void
+    {
+        $payload = ['name' => 'New Player', 'email' => 'new@test.test', 'password' => 'Abc123', 'password_confirmation' => 'Abc123'];
+        $this->post('/lights/register', $payload)->assertSessionHasErrors('terms');
+        $this->post('/lights/register', $payload + ['terms' => '1'])->assertRedirect(route('lights.home'));
+        $created = Member::where('email', 'new@test.test')->firstOrFail();
+        $this->assertNotNull($created->terms_accepted_at); $this->assertNotNull($created->email_verified_at);
+    }
+
+    public function test_unverified_member_cannot_pay_or_start_until_one_time_verification(): void
+    {
+        $this->actingAs($this->member, 'lights');
+        $this->postJson('/lights/topups', ['amount' => '10.00', 'request_key' => (string) Str::uuid()])->assertUnprocessable();
+        [$token] = app(AccountTokens::class)->issue($this->member, 'verify');
+        $this->get(route('lights.verify', $token))->assertRedirect(route('lights.home'));
+        $this->assertNotNull($this->member->fresh()->email_verified_at);
+        $this->get(route('lights.verify', $token))->assertSessionHasErrors('token');
+    }
+
+    public function test_password_reset_token_is_one_time_and_admin_adjustments_are_audited(): void
+    {
+        [$token] = app(AccountTokens::class)->issue($this->member, 'reset');
+        $this->post('/lights/reset-password', ['token' => $token, 'password' => 'ChangedPassword!2026', 'password_confirmation' => 'ChangedPassword!2026'])
+            ->assertRedirect(route('lights.home'));
+        $this->post('/lights/reset-password', ['token' => $token, 'password' => 'ChangedAgain!2026', 'password_confirmation' => 'ChangedAgain!2026'])
+            ->assertSessionHasErrors('token');
+
+        $this->actingAs($this->admin, 'lights'); $key = (string) Str::uuid();
+        $payload = ['direction' => 'credit', 'amount' => '25.00', 'reason' => 'Customer service correction', 'request_key' => $key];
+        $this->postJson(route('lights.admin.members.adjustment', $this->member->id), $payload)->assertOk()->assertJson(['balance_cents' => 2500]);
+        $this->postJson(route('lights.admin.members.adjustment', $this->member->id), $payload)->assertOk()->assertJson(['balance_cents' => 2500]);
+        $this->assertSame(1, $this->portal->db()->table('lights_ledger')->where('reference', 'adjustment:'.$key)->count());
+        $this->assertSame(1, $this->portal->db()->table('lights_events')->where('kind', 'admin_balance_adjusted')->count());
+    }
+
+    public function test_password_reset_request_does_not_disclose_accounts(): void
+    {
+        Notification::fake();
+        $known = $this->post('/lights/forgot-password', ['email' => $this->member->email]);
+        $unknown = $this->post('/lights/forgot-password', ['email' => 'absent@test.test']);
+        $this->assertSame($known->getSession()->get('status'), $unknown->getSession()->get('status'));
+    }
+
+    public function test_live_commissioning_never_falls_back_to_simulated_money_or_sessions(): void
+    {
+        $this->app['env'] = 'production';
+        config([
+            'lights.mode' => 'live',
+            'lights.payfast.enabled' => false,
+            'lights.control.customer_enabled' => false,
+        ]);
+        $this->member->forceFill(['email_verified_at' => time(), 'balance_cents' => 1000])->save();
+        $this->actingAs($this->member, 'lights');
+
+        $this->get('/lights')->assertOk()
+            ->assertSee('Online payments are being commissioned')
+            ->assertSee('Continue to PayFast', false);
+        $this->withSession(['_token' => 'lights-csrf'])->postJson('/lights/topups', [
+            '_token' => 'lights-csrf', 'amount' => '100.00', 'request_key' => (string) Str::uuid(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment');
+        $this->withSession(['_token' => 'lights-csrf'])->postJson('/lights/courts/1/start', [
+            '_token' => 'lights-csrf', 'request_key' => (string) Str::uuid(), 'quoted_rate_cents' => 6000,
+        ])->assertUnprocessable()->assertJsonValidationErrors('lights');
+
+        $this->assertSame(0, $this->portal->db()->table('lights_topups')->count());
+        $this->assertSame(0, $this->portal->db()->table('lights_sessions')->count());
+    }
+
+    public function test_explicit_local_customer_hardware_mode_does_not_require_repeated_pilot_arming(): void
+    {
+        $this->app['env'] = 'acceptance';
+        config([
+            'lights.control.live_enabled' => true,
+            'lights.control.customer_enabled' => true,
+            'lights.control.local_approval_required' => false,
+        ]);
+        $this->member->forceFill(['balance_cents' => 1000])->save();
+        $this->portal->db()->table('lights_worker')->insert(['id' => 1, 'seen_at' => $this->portal->now()]);
+
+        $session = app(SafetySessions::class)->startCustomer(
+            $this->member->id,
+            1,
+            (string) Str::uuid(),
+            6000
+        );
+
+        $this->assertSame('cloud_customer', $this->portal->db()->table('lights_control_sessions')->find($session)->driver);
+    }
+
+    public function test_customer_can_reserve_both_physical_courts_with_one_wallet(): void
+    {
+        $this->app['env'] = 'acceptance';
+        config([
+            'lights.control.live_enabled' => true,
+            'lights.control.customer_enabled' => true,
+            'lights.control.local_approval_required' => false,
+        ]);
+        $this->portal->saveCourt($this->admin->id, null, [
+            'name' => 'Court 4', 'rate_cents' => 6000, 'device_label' => 'demo', 'channel' => 1, 'active' => true,
+        ]);
+        $this->member->forceFill(['balance_cents' => 1000])->save();
+        $this->portal->db()->table('lights_worker')->insert(['id' => 1, 'seen_at' => $this->portal->now()]);
+        $safety = app(SafetySessions::class);
+
+        $first = $safety->startCustomer($this->member->id, 1, (string) Str::uuid(), 6000);
+        $second = $safety->startCustomer($this->member->id, 2, (string) Str::uuid(), 6000);
+
+        $sessions = $this->portal->db()->table('lights_control_sessions')->where('active_user_id', $this->member->id)->get();
+        $this->assertCount(2, $sessions);
+        $this->assertEqualsCanonicalizing([$first, $second], $sessions->pluck('id')->all());
+        $this->assertSame(300, $sessions->min('duration_seconds'));
+        $this->assertCount(2, $this->portal->snapshot($this->member->id)['sessions']);
+    }
+}

@@ -155,6 +155,34 @@ $(document).ready(function() {
     });
 
     //Add products
+    function receive_purchase_barcode() {
+        var input = $('#receiving_barcode');
+        var code = $.trim(input.val());
+        var status = $('#receiving_barcode_status').removeClass('text-danger text-success');
+        if (!code || !$('#location_id').val()) { status.addClass('text-danger').text('Choose a location and scan a barcode or SKU.'); return; }
+        var existing = $('#purchase_entry_table tbody tr').filter(function() {
+            return String($(this).find('.hidden_variation_id').val() || '') !== '' && String($(this).data('scan-sku') || '').toLowerCase() === code.toLowerCase();
+        }).first();
+        function incrementRow(row) {
+            var quantity = row.find('.purchase_quantity');
+            __write_number(quantity, __read_number(quantity, true) + 1, true);
+            quantity.trigger('change'); input.val('').focus(); status.addClass('text-success').text('Added one unit.');
+        }
+        if (existing.length) { incrementRow(existing); return; }
+        $.getJSON('/purchases/get_products', {location_id: $('#location_id').val(), term: code, only_variations: true}).done(function(items) {
+            var exact = items.filter(function(item) { return String(item.sub_sku || '').toLowerCase() === code.toLowerCase(); });
+            if (exact.length !== 1) { status.addClass('text-danger').text(exact.length ? 'Barcode matches more than one product; correct duplicate SKUs first.' : 'Barcode/SKU not found. Add the product, then scan again.'); input.select(); return; }
+            var before = parseInt($('#row_count').val(), 10);
+            get_purchase_entry_row(exact[0].product_id, exact[0].variation_id);
+            var attempts = 0, timer = window.setInterval(function() {
+                var row = $('#purchase_entry_table tbody tr').filter(function(){ return String($(this).find('.hidden_variation_id').val()) === String(exact[0].variation_id); }).last();
+                if (row.length || ++attempts > 20) { window.clearInterval(timer); if(row.length){ row.attr('data-scan-sku', code); input.val('').focus(); status.addClass('text-success').text('Product added with quantity one.'); } }
+            }, 100);
+        }).fail(function(){ status.addClass('text-danger').text('Could not look up that barcode.'); });
+    }
+    $(document).on('click', '#receive_barcode_button', receive_purchase_barcode);
+    $(document).on('keydown', '#receiving_barcode', function(e){ if(e.keyCode === 13){ e.preventDefault(); receive_purchase_barcode(); } });
+
     if ($('#search_product').length > 0) {
         $('#search_product')
             .autocomplete({
@@ -1271,5 +1299,4 @@ function submitQuickAddPurchaseContactForm(form) {
         },
     });
 }
-
 

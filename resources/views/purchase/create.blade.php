@@ -24,6 +24,7 @@
 
 	{!! Form::open(['url' => action('App\Http\Controllers\PurchaseController@store'), 'method' => 'post', 'id' => 'add_purchase_form', 'files' => true ]) !!}
 	@component('components.widget', ['class' => 'box-primary'])
+		<div class="row"><div class="col-sm-12"><div class="form-group"><label for="receiving_barcode"><i class="fa fa-barcode"></i> Receive by barcode / SKU</label><div class="input-group"><input id="receiving_barcode" class="form-control input-lg" autocomplete="off" placeholder="Scan repeatedly to increase received quantity"><span class="input-group-btn"><button type="button" id="receive_barcode_button" class="btn btn-primary btn-lg">Add one</button></span></div><p id="receiving_barcode_status" class="help-block">Choose a location first. Unknown codes can be added with “Add new product”. Stock changes only when this purchase is saved as received.</p></div></div></div>
 		<div class="row">
 			<div class="@if(!empty($default_purchase_status)) col-sm-4 @else col-sm-3 @endif">
 				<div class="form-group">

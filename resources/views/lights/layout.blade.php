@@ -40,6 +40,6 @@
 <footer class="footer"><span>Separate lights wallet · ZAR</span><span>Keep playing. Pay only for your light time.</span></footer>
 @if(request()->routeIs('lights.admin', 'lights.admin.control'))<script defer src="/lights-assets/hardware-status.js?v=2"></script>@endif
 @if(request()->routeIs('lights.admin.control'))<script defer src="/lights-assets/control.js?v=4"></script>@endif
-@if(request()->routeIs('lights.admin'))<script defer src="/lights-assets/admin.js?v=2"></script>@endif
+@if(request()->routeIs('lights.admin'))<script defer src="/lights-assets/admin.js?v=3"></script>@endif
 </body>
 </html>

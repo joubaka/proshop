@@ -21,10 +21,17 @@
     });
     activateTab(location.hash.slice(1) || 'overview');
     window.addEventListener('hashchange', () => activateTab(location.hash.slice(1) || 'overview'));
-    document.getElementById('member-search')?.addEventListener('input', event => {
-        const query = event.target.value.trim().toLowerCase(); let visible = 0;
+    const memberSearch = document.getElementById('member-search');
+    const filterMembers = () => {
+        const query = memberSearch.value.trim().toLowerCase(); let visible = 0;
         document.querySelectorAll('[data-member-search]').forEach(row => { row.hidden = !row.dataset.memberSearch.includes(query); if (!row.hidden) visible++; });
         const empty = document.getElementById('member-search-empty'); if (empty) empty.hidden = visible !== 0;
+        const count = document.getElementById('member-result-count'); if (count) count.textContent = visible;
+        const clear = document.getElementById('member-search-clear'); if (clear) clear.hidden = query === '';
+    };
+    memberSearch?.addEventListener('input', filterMembers);
+    document.getElementById('member-search-clear')?.addEventListener('click', () => {
+        memberSearch.value = ''; filterMembers(); memberSearch.focus();
     });
     document.querySelectorAll('[data-admin-action]').forEach(form => form.addEventListener('submit', async event => {
         event.preventDefault();

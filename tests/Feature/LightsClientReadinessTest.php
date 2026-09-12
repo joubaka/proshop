@@ -79,7 +79,7 @@ class LightsClientReadinessTest extends RegressionTestCase
     public function test_admin_can_record_cash_received_as_an_audited_wallet_topup(): void
     {
         $this->actingAs($this->admin, 'lights');
-        $this->get(route('lights.admin'))->assertOk()->assertSee('Cash wallet top-up')->assertSee('Add cash to wallet');
+        $this->get(route('lights.admin'))->assertOk()->assertSee('Find a member and add cash')->assertSee('Add cash to wallet');
         $key = (string) Str::uuid();
         $payload = ['direction' => 'credit', 'payment_type' => 'cash', 'amount' => '125.50',
             'reason' => 'Cash receipt 1042', 'request_key' => $key];

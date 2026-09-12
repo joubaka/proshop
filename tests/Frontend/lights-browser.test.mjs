@@ -103,7 +103,7 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             await page.getByRole('tab', { name: /Members/ }).click();
             await page.locator('#member-search').fill(email);
             const row = page.locator('[data-member-search]:visible');
-            const cashForm = row.locator('form:has-text("Cash wallet top-up")');
+            const cashForm = row.locator('.cash-topup-form');
             await cashForm.locator('[name=amount]').fill('12.50');
             await cashForm.locator('[name=reason]').fill('Browser cash receipt');
             const responsePromise = page.waitForResponse(response => response.url().includes('/adjustment') && response.request().method() === 'POST');

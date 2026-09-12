@@ -175,9 +175,9 @@ class LightsSafetyTest extends RegressionTestCase
         $this->safety->tick($driver);
         $this->assertSame('review', $this->controlSession($id)->state);
 
-        // The release guard uses the device timer deadline plus its 30-second
-        // in-flight-command margin, not merely the last OFF acknowledgement.
-        $this->travel(5)->minutes();
+        // A definite OFF acknowledgement replaces the original device timer,
+        // while retaining the 30-second in-flight-command safety margin.
+        $this->travel(31)->seconds();
         $this->actingAs($this->admin, 'lights')->post(route('lights.admin.control.review', $id), [
             'action' => 'confirmed_off', 'physical_off' => '1',
         ])->assertRedirect(route('lights.admin'));

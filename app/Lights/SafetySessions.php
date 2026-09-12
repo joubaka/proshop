@@ -283,8 +283,12 @@ class SafetySessions
                 $this->db()->table('lights_control_sessions')->where('id', $id)->update(['state' => 'running', 'stop_requested_at' => $s->stop_requested_at ?? $this->now()]);
                 $this->event('safety_off_requested', $s, $actor);
             } elseif ($action === 'confirmed_off') {
-                // Wait out the maximum possible in-flight request and device timer before reuse.
-                if ($this->now() < max((int) $s->deadline_at + 30, (int) $s->command_at + 30)) { $this->fail('Wait until the timer and in-flight-command safety window have passed before release.'); }
+                // A definite OFF acknowledgement supersedes the original device
+                // timer. Without one, retain the conservative timer deadline.
+                $releaseAfter = $s->stopped_at !== null
+                    ? max((int) $s->stopped_at + 30, (int) $s->command_at + 30)
+                    : max((int) $s->deadline_at + 30, (int) $s->command_at + 30);
+                if ($this->now() < $releaseAfter) { $this->fail('Wait until the timer and in-flight-command safety window have passed before release.'); }
                 $this->charge($s); $this->complete($s); $this->event('operator_confirmed_off', $s, $actor);
             } else { abort(422); }
         });

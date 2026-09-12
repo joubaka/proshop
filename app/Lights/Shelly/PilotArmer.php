@@ -20,7 +20,7 @@ class PilotArmer
             throw ValidationException::withMessages(['lights' => 'Cannot arm ON: the selected court must report online, OFF and fault-free.']);
         }
         $heartbeat = (int) $this->portal->db()->table('lights_worker')->where('id', 1)->value('seen_at');
-        if ($heartbeat < $this->portal->now() - 5 || $heartbeat > $this->portal->now() + 5) {
+        if ($heartbeat < $this->portal->now() - (int) config('lights.worker_healthy_seconds', 15) || $heartbeat > $this->portal->now() + 5) {
             throw ValidationException::withMessages(['lights' => 'Cannot arm ON while the accounting worker is unhealthy.']);
         }
         $directory = base_path('.local-acceptance/private/shelly');

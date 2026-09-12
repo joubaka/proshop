@@ -56,7 +56,7 @@ class SafetySessions
             if ($this->db()->table('lights_control_sessions')->where('active_channel', $channel)->exists()) { $this->fail('This channel is reserved, including any unresolved command.'); }
             if ($driver === 'cloud') {
                 $heartbeat = (int) $this->db()->table('lights_worker')->where('id', 1)->value('seen_at');
-                if ($heartbeat < $this->now() - 5 || $heartbeat > $this->now() + 5) { $this->fail('A healthy accounting worker is required before physical ON.'); }
+                if ($heartbeat < $this->now() - (int) config('lights.worker_healthy_seconds', 15) || $heartbeat > $this->now() + 5) { $this->fail('A healthy accounting worker is required before physical ON.'); }
             }
             $balance = (int) $this->db()->table('lights_users')->where('id', $actor)->value('balance_cents');
             $fundedSeconds = min(300, max(1, (int) config('lights.control.max_seconds', 60)), intdiv($balance * 3600, $rate));
@@ -101,7 +101,7 @@ class SafetySessions
                 $this->fail('This court is already in use or awaiting a safety check.');
             }
             $heartbeat = (int) $this->db()->table('lights_worker')->where('id', 1)->value('seen_at');
-            if ($heartbeat < $this->now() - 5 || $heartbeat > $this->now() + 5) {
+            if ($heartbeat < $this->now() - (int) config('lights.worker_healthy_seconds', 15) || $heartbeat > $this->now() + 5) {
                 $this->fail('Light control is temporarily unavailable. Please contact the venue.');
             }
             $activeForUser = $this->db()->table('lights_control_sessions')->where('active_user_id', $user)->get();

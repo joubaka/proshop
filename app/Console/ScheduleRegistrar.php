@@ -9,7 +9,7 @@ class ScheduleRegistrar
     public static function register(Schedule $schedule): void
     {
         if (config('lights.enabled') && config('lights.mode') === 'live') {
-            $schedule->command('lights:tick')->everySecond()->withoutOverlapping(1)->runInBackground();
+            $schedule->command('lights:tick')->everyFiveSeconds()->withoutOverlapping(1)->runInBackground();
         }
         if (in_array(config('app.env'), ['live', 'production'], true)) {
             $schedule->command('backup:run')->dailyAt('23:50')->withoutOverlapping();

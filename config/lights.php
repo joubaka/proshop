@@ -7,6 +7,8 @@ return [
     // Set to live only in a dedicated deployment after payment and hardware acceptance.
     'mode' => env('LIGHTS_MODE', 'simulation'),
     'max_session_seconds' => 14400,
+    // Shared-host scheduler cadence is five seconds; tolerate two missed ticks before ON is locked.
+    'worker_healthy_seconds' => 15,
     // Venue-wide hard closing boundary, independent of the shop application's timezone.
     'cutoff_timezone' => env('LIGHTS_CUTOFF_TIMEZONE', 'Africa/Johannesburg'),
     'cutoff_dispatch_buffer_seconds' => 10,

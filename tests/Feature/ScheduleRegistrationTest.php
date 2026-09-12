@@ -49,7 +49,7 @@ class ScheduleRegistrationTest extends TestCase
         $event = collect($schedule->events())->first(fn ($event) => str_contains($event->command, 'lights:tick'));
         $this->assertNotNull($event);
         $this->assertSame('* * * * *', $event->expression);
-        $this->assertSame(1, $event->repeatSeconds);
+        $this->assertSame(5, $event->repeatSeconds);
         $this->assertTrue($event->withoutOverlapping);
         $this->assertTrue($event->runInBackground);
     }

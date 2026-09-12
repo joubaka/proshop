@@ -52,8 +52,13 @@ synchronizes static assets, restarts queues, checks the scheduler, and restores
 the site. A failure after maintenance mode automatically attempts to bring the
 existing site back online. Completion is reported with the deployed commit.
 
-Set `DEPLOY_HEALTH_URL` in `deploy.config` to an HTTPS page such as the login
-screen when the final deployment should also fail on a bad public HTTP response.
+Set `DEPLOY_HEALTH_URL` in the terminal invocation to an HTTPS page such as the
+login screen when the final deployment should also fail on a bad public HTTP
+response:
+
+```sh
+DEPLOY_HEALTH_URL=https://shop.example.com/login deploy-hsc main
+```
 
 ## First Lights database deployment
 

@@ -13,6 +13,8 @@ RUN_LIGHTS_MIGRATIONS="${RUN_LIGHTS_MIGRATIONS:-false}"
 INSTALL_DEPENDENCIES="${INSTALL_DEPENDENCIES:-true}"
 BUILD_ASSETS="${BUILD_ASSETS:-true}"
 NPM_BUILD_COMMAND="${NPM_BUILD_COMMAND:-npm run production}"
+FRONTEND_ASSET_ARCHIVE="${FRONTEND_ASSET_ARCHIVE:-deployment/frontend-assets.tar.gz}"
+FRONTEND_ASSET_CHECKSUM="${FRONTEND_ASSET_CHECKSUM:-deployment/frontend-assets.sha256}"
 SYNC_FOLDERS="${SYNC_FOLDERS:-css js fonts webfonts images modules}"
 SYNC_ROOT_FILES="${SYNC_ROOT_FILES:-favicon.ico manifest.json manifest.webmanifest mix-manifest.json offline.html service-worker.js robots.txt}"
 DEPLOY_HEALTH_URL="${DEPLOY_HEALTH_URL:-}"
@@ -83,7 +85,11 @@ case " $DEPLOY_BRANCHES " in *" $REQUESTED_BRANCH "*) ;; *) fail "Branch '$REQUE
 command -v php >/dev/null 2>&1 || fail 'php is unavailable'
 command -v git >/dev/null 2>&1 || fail 'git is unavailable'
 if [ "$SKIP_DEPS" = false ] && [ "$INSTALL_DEPENDENCIES" = true ]; then command -v composer >/dev/null 2>&1 || fail 'composer is unavailable'; fi
-if [ "$SKIP_BUILD" = false ] && [ "$BUILD_ASSETS" = true ]; then command -v npm >/dev/null 2>&1 || fail 'npm is unavailable'; fi
+if [ "$SKIP_BUILD" = false ] && [ "$BUILD_ASSETS" = true ] && ! command -v npm >/dev/null 2>&1; then
+    [ -f "$APP_PATH/$FRONTEND_ASSET_ARCHIVE" ] || fail 'npm is unavailable and the reviewed frontend release bundle is missing'
+    [ -f "$APP_PATH/$FRONTEND_ASSET_CHECKSUM" ] || fail 'frontend release bundle checksum is missing'
+    command -v tar >/dev/null 2>&1 || fail 'tar is required to install the frontend release bundle'
+fi
 
 git -C "$APP_PATH" fetch origin main
 
@@ -110,8 +116,23 @@ if [ "$SKIP_DEPS" = false ] && [ "$INSTALL_DEPENDENCIES" = true ]; then
     composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --working-dir="$APP_PATH"
 fi
 if [ "$SKIP_BUILD" = false ] && [ "$BUILD_ASSETS" = true ]; then
-    npm --prefix "$APP_PATH" ci --no-audit --no-fund
-    (cd "$APP_PATH" && $NPM_BUILD_COMMAND)
+    if command -v npm >/dev/null 2>&1; then
+        npm --prefix "$APP_PATH" ci --no-audit --no-fund
+        (cd "$APP_PATH" && $NPM_BUILD_COMMAND)
+    else
+        log INFO 'npm unavailable; installing the reviewed frontend release bundle'
+        EXPECTED_CHECKSUM="$(awk '{print $1}' "$APP_PATH/$FRONTEND_ASSET_CHECKSUM")"
+        [ -n "$EXPECTED_CHECKSUM" ] || fail 'frontend release bundle checksum is empty'
+        if command -v sha256sum >/dev/null 2>&1; then
+            ACTUAL_CHECKSUM="$(sha256sum "$APP_PATH/$FRONTEND_ASSET_ARCHIVE" | awk '{print $1}')"
+        elif command -v shasum >/dev/null 2>&1; then
+            ACTUAL_CHECKSUM="$(shasum -a 256 "$APP_PATH/$FRONTEND_ASSET_ARCHIVE" | awk '{print $1}')"
+        else
+            fail 'sha256sum or shasum is required to verify the frontend release bundle'
+        fi
+        [ "$ACTUAL_CHECKSUM" = "$EXPECTED_CHECKSUM" ] || fail 'frontend release bundle checksum mismatch'
+        tar -xzf "$APP_PATH/$FRONTEND_ASSET_ARCHIVE" -C "$APP_PATH"
+    fi
 fi
 
 run_php "$APP_PATH/artisan" optimize:clear

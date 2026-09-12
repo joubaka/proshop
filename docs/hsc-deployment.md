@@ -52,6 +52,12 @@ synchronizes static assets, restarts queues, checks the scheduler, and restores
 the site. A failure after maintenance mode automatically attempts to bring the
 existing site back online. Completion is reported with the deployed commit.
 
+When the shared host has no Node.js/npm runtime, the command verifies and
+extracts the versioned `deployment/frontend-assets.tar.gz` release bundle. This
+is a reviewed build of the same commit, not a `--skip-build` bypass. Maintainers
+regenerate the bundle locally with `scripts/build-deploy-assets.ps1` whenever
+frontend inputs change.
+
 Set `DEPLOY_HEALTH_URL` in the terminal invocation to an HTTPS page such as the
 login screen when the final deployment should also fail on a bad public HTTP
 response:

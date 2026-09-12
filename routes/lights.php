@@ -33,6 +33,7 @@ Route::prefix('lights')->name('lights.')->middleware(LightsAccess::class.':publi
             Route::get('admin/health', [LightsController::class, 'health'])->name('admin.health');
             Route::post('admin/members/{member}/status', [LightsController::class, 'memberStatus'])->whereNumber('member')->name('admin.members.status');
             Route::post('admin/members/{member}/adjustment', [LightsController::class, 'memberAdjustment'])->whereNumber('member')->middleware('throttle:10,1')->name('admin.members.adjustment');
+            Route::post('admin/members/{member}/cash-topup', [LightsController::class, 'memberCashTopup'])->whereNumber('member')->middleware('throttle:10,1')->name('admin.members.cash-topup');
             Route::get('admin/hardware-state', [LightsController::class, 'hardwareState'])->name('admin.hardware-state');
             Route::get('admin/control', [LightsController::class, 'control'])->name('admin.control');
             Route::post('admin/control/manual-on', [LightsController::class, 'controlManualOn'])->middleware('throttle:12,1')->name('admin.control.manual-on');

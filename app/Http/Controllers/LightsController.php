@@ -256,6 +256,21 @@ class LightsController extends Controller
             ? response()->json(['message' => 'Audited wallet adjustment recorded.', 'balance_cents' => $balance])
             : back()->with('status', 'Audited wallet adjustment recorded.');
     }
+    public function memberCashTopup(Request $request, int $member)
+    {
+        $data = $request->validate(['amount' => 'required|string', 'note' => 'nullable|string|max:200',
+            'request_key' => 'required|uuid']);
+        $amount = Portal::cents($data['amount']);
+        if ($amount < 100 || $amount > 500000) {
+            throw ValidationException::withMessages(['amount' => 'Cash received must be between R1 and R5,000.']);
+        }
+        $this->portal->recordCashTopup($this->member()->id, $member, $amount,
+            $data['note'] ?? 'Cash received by administrator', $data['request_key']);
+        $balance = (int) $this->portal->db()->table('lights_users')->where('id', $member)->value('balance_cents');
+        return $request->expectsJson()
+            ? response()->json(['message' => 'Cash received and wallet credited.', 'balance_cents' => $balance])
+            : redirect(route('lights.admin').'#members')->with('status', 'Cash received and wallet credited.');
+    }
     public function hardwareState(\App\Lights\Shelly\HardwareStatus $hardwareStatus, \App\Lights\ManualSwitches $switches)
     {
         $report = $hardwareStatus->latest() ?? ['online' => false, 'checked_at' => null, 'channels' => []];

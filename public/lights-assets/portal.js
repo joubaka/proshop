@@ -102,8 +102,35 @@
     }));
     if (state) { render(); setInterval(render, 1000); setInterval(refresh, 5000); window.addEventListener('online', refresh); }
     let installPrompt;
-    window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installPrompt = event; const button = document.getElementById('install-app'); if (button) button.hidden = false; });
-    document.getElementById('install-app')?.addEventListener('click', async () => { if (installPrompt) { await installPrompt.prompt(); installPrompt = null; document.getElementById('install-app').hidden = true; } });
+    const installButton = document.getElementById('install-app');
+    const installHelp = document.getElementById('install-help');
+    const installHelpCopy = document.getElementById('install-help-copy');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    if (installButton && !isStandalone && isIos) installButton.hidden = false;
+    window.addEventListener('beforeinstallprompt', event => {
+        event.preventDefault(); installPrompt = event;
+        if (installButton && !isStandalone) installButton.hidden = false;
+    });
+    window.addEventListener('appinstalled', () => {
+        installPrompt = null;
+        if (installButton) installButton.hidden = true;
+        if (installHelp) installHelp.hidden = true;
+    });
+    installButton?.addEventListener('click', async () => {
+        if (installPrompt) {
+            await installPrompt.prompt();
+            const choice = await installPrompt.userChoice;
+            installPrompt = null;
+            if (choice.outcome === 'accepted') installButton.hidden = true;
+            return;
+        }
+        if (installHelpCopy) installHelpCopy.textContent = isIos
+            ? 'On iPhone or iPad, tap Share, then choose “Add to Home Screen”.'
+            : 'Open your browser menu and choose “Install app” or “Add to Home Screen”.';
+        if (installHelp) { installHelp.hidden = false; installHelp.focus(); }
+        installButton.setAttribute('aria-expanded', 'true');
+    });
     const targetedControl = location.hash ? document.querySelector(location.hash) : null;
     if (targetedControl?.matches('details')) targetedControl.open = true;
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/lights/service-worker.js', { scope: '/lights/' }).catch(() => {});

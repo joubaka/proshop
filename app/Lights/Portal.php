@@ -132,6 +132,19 @@ class Portal
         });
     }
 
+    public function recordCashTopup(int $actor, int $user, int $amount, string $note, string $requestKey): void
+    {
+        if ($amount < 100 || $amount > 500000 || !Str::isUuid($requestKey)) { abort(422); }
+        $this->locked(function () use ($actor, $user, $amount, $note, $requestKey) {
+            abort_unless($this->db()->table('lights_users')->where('id', $actor)->where('is_admin', true)->where('active', true)->exists(), 403);
+            abort_unless($this->db()->table('lights_users')->where('id', $user)->exists(), 404);
+            if ($this->db()->table('lights_ledger')->where('reference', 'cash:'.$requestKey)->exists()) { return; }
+            $this->post($user, $amount, 'cash_topup', 'cash:'.$requestKey);
+            $this->event('cash_topup_recorded', ['member' => $user, 'amount_cents' => $amount,
+                'note' => mb_substr($note, 0, 200), 'request_key' => $requestKey], $actor);
+        });
+    }
+
     public function setMemberActive(int $actor, int $user, bool $active): void
     {
         $this->locked(function () use ($actor, $user, $active) {

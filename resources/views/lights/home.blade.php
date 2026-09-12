@@ -18,7 +18,8 @@
         return ($hours ? $hours.'h ' : '').($minutes ? $minutes.'m ' : '').$remaining.'s';
     };
 @endphp
-<div class="page-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h1>Let’s play, {{ explode(' ', Auth::guard('lights')->user()->name)[0] }}.</h1><p class="muted">Choose a court. Switch on. Make the most of your time.</p></div><button class="button secondary" id="install-app" hidden>Add to phone</button></div>
+<div class="page-heading home-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h1>Let’s play, {{ explode(' ', Auth::guard('lights')->user()->name)[0] }}.</h1><p class="muted">Choose a court. Switch on. Make the most of your time.</p></div><button class="button install-button" id="install-app" type="button" aria-controls="install-help" aria-expanded="false" hidden><span aria-hidden="true">↧</span> Install Court Lights</button></div>
+<div class="notice install-help" id="install-help" role="status" tabindex="-1" hidden><strong>Add Court Lights to your Home Screen</strong><span id="install-help-copy">Use your browser menu and choose “Install app” or “Add to Home Screen”.</span></div>
 @if(config('lights.require_verified_email') && !Auth::guard('lights')->user()->email_verified_at)
 <div class="notice warning" id="verification-notice"><strong>Verify your email to continue.</strong> Payments and light controls stay locked until verification.
     <form method="POST" action="{{ route('lights.verification.send') }}" class="inline-form">@csrf<button class="text-button">Send a new verification link</button></form>

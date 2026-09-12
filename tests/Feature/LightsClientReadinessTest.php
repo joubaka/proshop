@@ -76,6 +76,37 @@ class LightsClientReadinessTest extends RegressionTestCase
         $this->assertSame($known->getSession()->get('status'), $unknown->getSession()->get('status'));
     }
 
+    public function test_admin_can_record_cash_received_as_an_audited_wallet_topup(): void
+    {
+        $this->actingAs($this->admin, 'lights');
+        $this->get(route('lights.admin'))->assertOk()->assertSee('Cash wallet top-up')->assertSee('Add cash to wallet');
+        $key = (string) Str::uuid();
+        $payload = ['amount' => '125.50', 'note' => 'Cash receipt 1042', 'request_key' => $key];
+
+        $this->postJson(route('lights.admin.members.cash-topup', $this->member->id), $payload)
+            ->assertOk()->assertJson(['message' => 'Cash received and wallet credited.', 'balance_cents' => 12550]);
+        $this->postJson(route('lights.admin.members.cash-topup', $this->member->id), $payload)
+            ->assertOk()->assertJson(['balance_cents' => 12550]);
+
+        $this->assertDatabaseHas('lights_ledger', ['user_id' => $this->member->id, 'amount_cents' => 12550,
+            'balance_after' => 12550, 'kind' => 'cash_topup', 'reference' => 'cash:'.$key], 'lights');
+        $this->assertSame(1, $this->portal->db()->table('lights_events')->where('kind', 'cash_topup_recorded')->count());
+    }
+
+    public function test_cash_topup_is_admin_only_and_rejects_invalid_amounts(): void
+    {
+        $payload = ['amount' => '10.00', 'request_key' => (string) Str::uuid()];
+        $this->actingAs($this->member, 'lights');
+        $this->postJson(route('lights.admin.members.cash-topup', $this->member->id), $payload)->assertForbidden();
+
+        $this->actingAs($this->admin, 'lights');
+        foreach (['0.00', '-10.00', '5000.01'] as $amount) {
+            $this->postJson(route('lights.admin.members.cash-topup', $this->member->id),
+                ['amount' => $amount, 'request_key' => (string) Str::uuid()])->assertUnprocessable();
+        }
+        $this->assertSame(0, $this->member->fresh()->balance_cents);
+    }
+
     public function test_admin_command_accepts_four_character_passwords(): void
     {
         $this->artisan('lights:create-admin', ['email' => 'owner@test.test', '--name' => 'Owner'])

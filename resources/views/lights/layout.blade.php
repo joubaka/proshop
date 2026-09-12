@@ -3,9 +3,11 @@
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}"><meta name="theme-color" content="#102f2d">
+    <meta name="description" content="Prepaid court-light access: top up, choose a court and pay only for the light time you use.">
+    <meta name="application-name" content="Court Lights"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>@yield('title', 'Court lights') · Lights</title>
     <link rel="manifest" href="/lights-assets/manifest.webmanifest"><link rel="icon" href="/lights-assets/icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/lights-assets/portal.css?v=6"><link rel="stylesheet" href="/lights-assets/live-status.css?v=2"><script defer src="/lights-assets/portal.js?v=4"></script>
+    <link rel="stylesheet" href="/lights-assets/portal.css?v=7"><link rel="stylesheet" href="/lights-assets/live-status.css?v=2"><script defer src="/lights-assets/portal.js?v=5"></script>
 </head>
 <body>
 <header class="topbar"><a class="brand" href="{{ route('lights.home') }}"><span class="brand-icon">↯</span> COURT<span class="brand-light">LIGHTS</span></a>

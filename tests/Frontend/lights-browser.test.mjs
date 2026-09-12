@@ -58,10 +58,10 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
         });
         await t.test('switch on and show live mobile countdown', async () => {
             await Promise.all([page.waitForResponse(r => r.url().endsWith('/lights/courts/1/start')), page.locator('[data-court="1"] .court-start').click()]);
-            await page.locator('#active-session').waitFor({ state: 'visible' });
-            await page.waitForFunction(() => /Court 3/.test(document.getElementById('session-court')?.textContent || ''));
-            assert.match(await page.locator('#session-court').textContent(), /Court 3/);
-            assert.equal(await page.locator('.court-start:enabled').count(), 0);
+            await page.locator('.active-session').waitFor({ state: 'visible' });
+            await page.waitForFunction(() => /Court 3/.test(document.querySelector('.session-court')?.textContent || ''));
+            assert.match(await page.locator('.session-court').textContent(), /Court 3/);
+            assert.equal(await page.locator('.court-start:enabled').count(), 1, 'the second court remains available to the same funded member');
             await mkdir('.local-acceptance/screenshots', { recursive: true });
             await page.screenshot({ path: '.local-acceptance/screenshots/lights-mobile.png', fullPage: true });
         });
@@ -74,8 +74,8 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             const resumed = await (await context.request.get(base + '/lights/state')).json();
             assert.ok(resumed.session.charged_cents > before.session.charged_cents);
             const session = resumed.session.id;
-            await Promise.all([page.waitForResponse(r => r.url().endsWith('/sessions/' + session + '/stop')), page.locator('#stop-session-form button').click()]);
-            await page.locator('#active-session').waitFor({ state: 'hidden' });
+            await Promise.all([page.waitForResponse(r => r.url().endsWith('/sessions/' + session + '/stop')), page.locator('.stop-session-form button').click()]);
+            await page.locator('.active-session').waitFor({ state: 'hidden' });
             const finished = await (await context.request.get(base + '/lights/state')).json();
             assert.equal(finished.session, null);
             assert.ok(finished.balance_cents < 1000 && finished.balance_cents > 950);
@@ -93,6 +93,7 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             await form.locator('[name=password]').fill('LocalLights!2026');
             await form.locator('button').click();
             await page.getByRole('link', { name: 'Admin', exact: true }).click();
+            await page.getByRole('tab', { name: 'Activity' }).click();
             await page.getByRole('heading', { name: 'Wallet ledger' }).waitFor();
             assert.deepEqual(errors, []);
         });
@@ -103,6 +104,7 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
                 await appPage.goto(base + '/lights/login');
                 await appPage.evaluate(() => navigator.serviceWorker.ready);
                 const manifest = await (await appContext.request.get(base + '/lights-assets/manifest.webmanifest')).json();
+                assert.equal(manifest.id, '/lights/'); assert.equal(manifest.start_url, '/lights/');
                 assert.equal(manifest.scope, '/lights/'); assert.equal(manifest.display, 'standalone');
                 await appPage.reload();
                 assert.equal(await appPage.evaluate(() => !!navigator.serviceWorker.controller), true);

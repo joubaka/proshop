@@ -7,6 +7,7 @@ use App\Lights\PayFast\Gateway;
 use App\Lights\Portal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Tests\Support\RegressionTestCase;
 
@@ -52,6 +53,7 @@ class LightsPayFastTest extends RegressionTestCase
 
     public function test_invalid_signature_or_amount_never_credits_the_wallet(): void
     {
+        Log::spy();
         $topup = $this->portal->topup($this->member->id, 1000, (string) Str::uuid(), 'payfast');
         $badSignature = $this->payload($topup, 'PF-124', '10.00');
         $badSignature['signature'] = str_repeat('0', 32);
@@ -61,6 +63,13 @@ class LightsPayFastTest extends RegressionTestCase
         $this->post('/lights/payfast/notify', $wrongAmount)->assertBadRequest();
         $this->assertSame(0, $this->member->fresh()->balance_cents);
         $this->assertSame(0, $this->portal->db()->table('lights_ledger')->count());
+        Log::shouldHaveReceived('warning')->twice()->withArgs(function (string $message, array $context) use ($topup): bool {
+            return $message === 'PayFast ITN rejected.'
+                && $context['topup_id'] === $topup
+                && $context['source_ip'] === '127.0.0.1'
+                && !array_key_exists('signature', $context)
+                && !array_key_exists('payload', $context);
+        });
     }
 
     public function test_admin_can_store_encrypted_payfast_settings_without_exposing_secrets(): void

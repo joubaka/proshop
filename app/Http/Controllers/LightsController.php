@@ -180,11 +180,25 @@ class LightsController extends Controller
             $payment = $gateway->verify($request);
             $this->portal->confirmPayFast($payment['topup'], $payment['reference'], $payment['amount_cents']);
             return response('OK', 200)->header('Content-Type', 'text/plain');
-        } catch (\App\Lights\PayFast\VerificationUnavailable) {
+        } catch (\App\Lights\PayFast\VerificationUnavailable $exception) {
+            \Illuminate\Support\Facades\Log::warning('PayFast ITN verification unavailable.', $this->payfastLogContext($request, $exception));
             return response('RETRY', 503)->header('Content-Type', 'text/plain');
-        } catch (\App\Lights\PayFast\InvalidNotification|\UnexpectedValueException|\Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
+        } catch (\App\Lights\PayFast\InvalidNotification|\UnexpectedValueException|\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $exception) {
+            \Illuminate\Support\Facades\Log::warning('PayFast ITN rejected.', $this->payfastLogContext($request, $exception));
             return response('INVALID', 400)->header('Content-Type', 'text/plain');
         }
+    }
+
+    private function payfastLogContext(Request $request, \Throwable $exception): array
+    {
+        $topup = $request->input('m_payment_id');
+
+        return [
+            'reason' => $exception->getMessage(),
+            'exception' => $exception::class,
+            'source_ip' => $request->ip(),
+            'topup_id' => is_string($topup) && preg_match('/\A[0-9a-f-]{36}\z/i', $topup) ? $topup : null,
+        ];
     }
     public function admin(\App\Lights\HealthReport $health, \App\Lights\PayFast\Settings $payFastSettings)
     {

@@ -51,6 +51,9 @@ only migration files allowlisted in `deploy.config`, rebuilds caches,
 synchronizes static assets, restarts queues, checks the scheduler, and restores
 the site. A failure after maintenance mode automatically attempts to bring the
 existing site back online. Completion is reported with the deployed commit.
+The synchronized folders include the dedicated `public/lights` CSS, JavaScript,
+manifest, icons, and service-worker assets. Public folders that already resolve
+to the same symlink target are detected and skipped safely.
 
 When the shared host has no Node.js/npm runtime, the command verifies and
 extracts the versioned `deployment/frontend-assets.tar.gz` release bundle. This

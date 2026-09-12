@@ -15,7 +15,7 @@ BUILD_ASSETS="${BUILD_ASSETS:-true}"
 NPM_BUILD_COMMAND="${NPM_BUILD_COMMAND:-npm run production}"
 FRONTEND_ASSET_ARCHIVE="${FRONTEND_ASSET_ARCHIVE:-deployment/frontend-assets.tar.gz}"
 FRONTEND_ASSET_CHECKSUM="${FRONTEND_ASSET_CHECKSUM:-deployment/frontend-assets.sha256}"
-SYNC_FOLDERS="${SYNC_FOLDERS:-css js fonts webfonts images modules}"
+SYNC_FOLDERS="${SYNC_FOLDERS:-css js fonts webfonts images modules lights}"
 SYNC_ROOT_FILES="${SYNC_ROOT_FILES:-favicon.ico manifest.json manifest.webmanifest mix-manifest.json offline.html service-worker.js robots.txt}"
 DEPLOY_HEALTH_URL="${DEPLOY_HEALTH_URL:-}"
 
@@ -174,6 +174,12 @@ if [ "$PUBLIC_HTML" != "$APP_PATH/public" ]; then
     for folder in $SYNC_FOLDERS; do
         [ -d "$APP_PATH/public/$folder" ] || continue
         mkdir -p "$PUBLIC_HTML/$folder"
+        SOURCE_FOLDER="$(cd "$APP_PATH/public/$folder" && pwd -P)"
+        TARGET_FOLDER="$(cd "$PUBLIC_HTML/$folder" && pwd -P)"
+        if [ "$SOURCE_FOLDER" = "$TARGET_FOLDER" ]; then
+            log INFO "Skipping already-linked public folder: $folder"
+            continue
+        fi
         if command -v rsync >/dev/null 2>&1; then
             rsync -a --delete "$APP_PATH/public/$folder/" "$PUBLIC_HTML/$folder/"
         else
@@ -181,7 +187,9 @@ if [ "$PUBLIC_HTML" != "$APP_PATH/public" ]; then
         fi
     done
     for file in $SYNC_ROOT_FILES; do
-        [ -f "$APP_PATH/public/$file" ] && cp "$APP_PATH/public/$file" "$PUBLIC_HTML/$file"
+        [ -f "$APP_PATH/public/$file" ] || continue
+        [ -e "$PUBLIC_HTML/$file" ] && [ "$APP_PATH/public/$file" -ef "$PUBLIC_HTML/$file" ] && continue
+        cp "$APP_PATH/public/$file" "$PUBLIC_HTML/$file"
     done
 fi
 

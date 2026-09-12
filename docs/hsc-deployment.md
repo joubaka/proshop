@@ -51,9 +51,12 @@ only migration files allowlisted in `deploy.config`, rebuilds caches,
 synchronizes static assets, restarts queues, checks the scheduler, and restores
 the site. A failure after maintenance mode automatically attempts to bring the
 existing site back online. Completion is reported with the deployed commit.
-The synchronized folders include the dedicated `public/lights` CSS, JavaScript,
+The synchronized folders include the dedicated `public/lights-assets` CSS, JavaScript,
 manifest, icons, and service-worker assets. Public folders that already resolve
 to the same symlink target are detected and skipped safely.
+The deploy also removes the exact legacy static `public_html/lights` bundle after
+validating every contained filename. That old directory collides with Laravel's
+authenticated `/lights` route on LiteSpeed.
 
 When the shared host has no Node.js/npm runtime, the command verifies and
 extracts the versioned `deployment/frontend-assets.tar.gz` release bundle. This

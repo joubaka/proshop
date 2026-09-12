@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('lights')->name('lights.')->middleware(LightsAccess::class.':public')->group(function () {
     Route::post('payfast/notify', [LightsController::class, 'payfastNotify'])->middleware('throttle:120,1')->name('payfast.notify');
+    Route::get('service-worker.js', [LightsController::class, 'serviceWorker'])->name('service-worker');
     Route::get('login', [LightsController::class, 'login'])->name('login');
     Route::post('login', [LightsController::class, 'authenticate'])->middleware('throttle:10,1');
     Route::post('register', [LightsController::class, 'register'])->middleware('throttle:5,1')->name('register');

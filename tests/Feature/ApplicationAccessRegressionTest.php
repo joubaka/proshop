@@ -61,6 +61,7 @@ class ApplicationAccessRegressionTest extends RegressionTestCase
             'SellPosController@showInvoice', 'SellPosController@invoicePayment',
             'SellPosController@confirmPayment',
             'LightsController@login', 'LightsController@authenticate', 'LightsController@register',
+            'LightsController@serviceWorker',
             'LightsController@payfastNotify', 'LightsController@terms', 'LightsController@privacy',
             'LightsController@forgotPassword', 'LightsController@resetPasswordForm',
             'LightsController@resetPassword', 'LightsController@verifyEmail',

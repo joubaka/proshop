@@ -15,7 +15,7 @@ BUILD_ASSETS="${BUILD_ASSETS:-true}"
 NPM_BUILD_COMMAND="${NPM_BUILD_COMMAND:-npm run production}"
 FRONTEND_ASSET_ARCHIVE="${FRONTEND_ASSET_ARCHIVE:-deployment/frontend-assets.tar.gz}"
 FRONTEND_ASSET_CHECKSUM="${FRONTEND_ASSET_CHECKSUM:-deployment/frontend-assets.sha256}"
-SYNC_FOLDERS="${SYNC_FOLDERS:-css js fonts webfonts images modules lights}"
+SYNC_FOLDERS="${SYNC_FOLDERS:-css js fonts webfonts images modules lights-assets}"
 SYNC_ROOT_FILES="${SYNC_ROOT_FILES:-favicon.ico manifest.json manifest.webmanifest mix-manifest.json offline.html service-worker.js robots.txt}"
 DEPLOY_HEALTH_URL="${DEPLOY_HEALTH_URL:-}"
 
@@ -191,6 +191,29 @@ if [ "$PUBLIC_HTML" != "$APP_PATH/public" ]; then
         [ -e "$PUBLIC_HTML/$file" ] && [ "$APP_PATH/public/$file" -ef "$PUBLIC_HTML/$file" ] && continue
         cp "$APP_PATH/public/$file" "$PUBLIC_HTML/$file"
     done
+fi
+
+# A prior release used /lights for static files, which collides with Laravel's
+# /lights application route on LiteSpeed. Remove only that exact known bundle.
+LEGACY_LIGHTS="$PUBLIC_HTML/lights"
+if [ -d "$LEGACY_LIGHTS" ]; then
+    [ ! -L "$LEGACY_LIGHTS" ] || fail 'Legacy public_html/lights is a symlink; inspect it manually before removal'
+    PUBLIC_REAL="$(cd "$PUBLIC_HTML" && pwd -P)"
+    LEGACY_PARENT="$(cd "$(dirname "$LEGACY_LIGHTS")" && pwd -P)"
+    [ "$PUBLIC_REAL" = "$LEGACY_PARENT" ] || fail 'Legacy Lights directory is outside PUBLIC_HTML'
+    [ -f "$LEGACY_LIGHTS/portal.css" ] || fail 'Unexpected public_html/lights directory; portal.css marker is missing'
+    for entry in "$LEGACY_LIGHTS"/* "$LEGACY_LIGHTS"/.[!.]* "$LEGACY_LIGHTS"/..?*; do
+        [ -e "$entry" ] || continue
+        case "$(basename "$entry")" in
+            admin.js|control.js|hardware-status.js|icon.svg|live-status.css|manifest.webmanifest|portal.css|portal.js|service-worker.js) ;;
+            *) fail "Unexpected file in legacy Lights asset directory: $entry" ;;
+        esac
+    done
+    rm -f "$LEGACY_LIGHTS/admin.js" "$LEGACY_LIGHTS/control.js" "$LEGACY_LIGHTS/hardware-status.js" \
+        "$LEGACY_LIGHTS/icon.svg" "$LEGACY_LIGHTS/live-status.css" "$LEGACY_LIGHTS/manifest.webmanifest" \
+        "$LEGACY_LIGHTS/portal.css" "$LEGACY_LIGHTS/portal.js" "$LEGACY_LIGHTS/service-worker.js"
+    rmdir "$LEGACY_LIGHTS"
+    log INFO 'Removed legacy static /lights directory so Laravel owns the route'
 fi
 
 run_php "$APP_PATH/artisan" queue:restart

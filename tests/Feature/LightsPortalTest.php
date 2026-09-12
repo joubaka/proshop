@@ -63,6 +63,19 @@ class LightsPortalTest extends RegressionTestCase
         $this->get('/')->assertRedirect(route('lights.login'));
     }
 
+    public function test_lights_assets_do_not_collide_with_the_application_route(): void
+    {
+        $this->assertDirectoryDoesNotExist(public_path('lights'));
+        $this->assertFileExists(public_path('lights-assets/portal.css'));
+
+        $this->get('/lights/login')->assertOk()
+            ->assertSee('/lights-assets/portal.css?v=6', false)
+            ->assertSee('/lights-assets/portal.js?v=4', false);
+        $this->get('/lights/service-worker.js')->assertOk()
+            ->assertHeader('Service-Worker-Allowed', '/lights/')
+            ->assertHeader('Cache-Control', 'no-store, private');
+    }
+
     public function test_legacy_local_login_opens_isolated_lights_portal_when_wamp_lights_are_disabled(): void
     {
         config(['lights.enabled' => false, 'lights.local_acceptance_url' => 'http://127.0.0.1:8097/lights/login']);

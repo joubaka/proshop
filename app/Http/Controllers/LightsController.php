@@ -12,6 +12,15 @@ use Illuminate\Validation\ValidationException;
 
 class LightsController extends Controller
 {
+    public function serviceWorker()
+    {
+        return response()->file(public_path('lights-assets/service-worker.js'), [
+            'Content-Type' => 'application/javascript; charset=UTF-8',
+            'Service-Worker-Allowed' => '/lights/',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    }
+
     public function __construct(private Portal $portal) {}
     private function member(): Member { return Auth::guard('lights')->user(); }
     private function requireVerified(): void

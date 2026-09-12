@@ -102,7 +102,7 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             try {
                 await appPage.goto(base + '/lights/login');
                 await appPage.evaluate(() => navigator.serviceWorker.ready);
-                const manifest = await (await appContext.request.get(base + '/lights/manifest.webmanifest')).json();
+                const manifest = await (await appContext.request.get(base + '/lights-assets/manifest.webmanifest')).json();
                 assert.equal(manifest.scope, '/lights/'); assert.equal(manifest.display, 'standalone');
                 await appPage.reload();
                 assert.equal(await appPage.evaluate(() => !!navigator.serviceWorker.controller), true);

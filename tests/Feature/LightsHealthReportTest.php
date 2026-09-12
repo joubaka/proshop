@@ -74,7 +74,7 @@ class LightsHealthReportTest extends RegressionTestCase
             'mail.from.address' => 'lights@club.test',
             'database.default' => 'mysql',
             'database.connections.mysql.database' => 'proshop',
-            'database.connections.lights.database' => 'proshop_lights',
+            'database.connections.lights.database' => 'proshop',
         ]);
         $this->makeRuntimeHealthy();
 
@@ -82,6 +82,7 @@ class LightsHealthReportTest extends RegressionTestCase
 
         $this->assertTrue($report['healthy']);
         $this->assertTrue($report['ready_for_live']);
+        $this->assertTrue($report['launch_gates']['lights_database_configured']);
         $this->assertNotContains(false, $report['launch_gates'], true);
         $this->artisan('lights:health --json')->assertExitCode(0);
     }

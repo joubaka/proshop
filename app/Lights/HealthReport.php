@@ -21,8 +21,6 @@ class HealthReport
         $oldPendingPayments = $db->table('lights_topups')->where('gateway', 'payfast')->where('status', 'pending')
             ->where('created_at', '<', $now - 3600)->count();
 
-        $defaultConnection = (string) config('database.default');
-        $defaultDatabase = (string) config("database.connections.{$defaultConnection}.database");
         $lightsDatabase = (string) config('database.connections.lights.database');
         $payfastCredentials = ['merchant_id', 'merchant_key', 'passphrase'];
 
@@ -30,8 +28,10 @@ class HealthReport
             'lights_enabled' => (bool) config('lights.enabled'),
             'mode_live' => config('lights.mode') === 'live',
             'https_app_url' => str_starts_with(strtolower((string) config('app.url')), 'https://'),
-            'separate_lights_database' => $lightsDatabase !== '' && $lightsDatabase !== 'lights_not_configured'
-                && $lightsDatabase !== $defaultDatabase,
+            // A shared database is supported. The dedicated `lights` connection
+            // still has to be configured so all Lights queries use one explicit
+            // connection and can be separated later without application changes.
+            'lights_database_configured' => $lightsDatabase !== '' && $lightsDatabase !== 'lights_not_configured',
             'mail_sender_configured' => filter_var(config('mail.from.address'), FILTER_VALIDATE_EMAIL) !== false,
             'payfast_enabled' => (bool) config('lights.payfast.enabled'),
             'payfast_live' => ! (bool) config('lights.payfast.sandbox'),

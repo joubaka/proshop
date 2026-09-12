@@ -35,7 +35,7 @@ class LightsController extends Controller
     {
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
         $data = $request->validate(['name' => 'required|string|max:100', 'email' => 'required|email|max:255|unique:lights.lights_users,email',
-            'password' => 'required|string|min:6|max:72|confirmed', 'terms' => 'accepted']);
+            'password' => 'required|string|min:4|max:72|confirmed', 'terms' => 'accepted']);
         $user = Member::create(['name' => $data['name'], 'email' => $data['email'], 'password' => Hash::make($data['password'])]);
         $user->terms_accepted_at = $this->portal->now();
         if (config('lights.mode') !== 'live') { $user->email_verified_at = $this->portal->now(); }
@@ -64,7 +64,7 @@ class LightsController extends Controller
     public function resetPasswordForm(string $token) { return view('lights.reset-password', compact('token')); }
     public function resetPassword(Request $request, \App\Lights\AccountTokens $tokens)
     {
-        $data = $request->validate(['token' => 'required|size:64', 'password' => 'required|string|min:6|max:72|confirmed']);
+        $data = $request->validate(['token' => 'required|size:64', 'password' => 'required|string|min:4|max:72|confirmed']);
         $member = $tokens->resetPassword($data['token'], $data['password']);
         Auth::guard('lights')->login($member); $request->session()->regenerate();
         return redirect()->route('lights.home')->with('status', 'Your password has been changed.');

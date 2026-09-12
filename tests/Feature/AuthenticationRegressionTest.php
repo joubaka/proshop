@@ -85,9 +85,9 @@ class AuthenticationRegressionTest extends RegressionTestCase
             ->assertRedirect('/user/profile')->assertSessionHas('status.success', 0);
         $this->assertTrue(Hash::check('test-password', $user->fresh()->password));
         $this->post('/user/update-password', [
-            'current_password' => 'test-password', 'new_password' => 'updated-password', 'confirm_password' => 'updated-password', 'user_id' => $other->id,
+            'current_password' => 'test-password', 'new_password' => 'A123', 'confirm_password' => 'A123', 'user_id' => $other->id,
         ])->assertRedirect('/user/profile')->assertSessionHas('status.success', 1);
-        $this->assertTrue(Hash::check('updated-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('A123', $user->fresh()->password));
         $this->assertTrue(Hash::check('correct-password', $other->fresh()->password));
     }
 

@@ -33,7 +33,9 @@ class LightsClientReadinessTest extends RegressionTestCase
 
     public function test_registration_requires_terms_and_simulation_verifies_immediately(): void
     {
-        $payload = ['name' => 'New Player', 'email' => 'new@test.test', 'password' => 'Abc123', 'password_confirmation' => 'Abc123'];
+        $payload = ['name' => 'New Player', 'email' => 'new@test.test', 'password' => 'A123', 'password_confirmation' => 'A123'];
+        $this->post('/lights/register', array_merge($payload, ['password' => 'A12', 'password_confirmation' => 'A12', 'terms' => '1']))
+            ->assertSessionHasErrors('password');
         $this->post('/lights/register', $payload)->assertSessionHasErrors('terms');
         $this->post('/lights/register', $payload + ['terms' => '1'])->assertRedirect(route('lights.home'));
         $created = Member::where('email', 'new@test.test')->firstOrFail();
@@ -53,7 +55,7 @@ class LightsClientReadinessTest extends RegressionTestCase
     public function test_password_reset_token_is_one_time_and_admin_adjustments_are_audited(): void
     {
         [$token] = app(AccountTokens::class)->issue($this->member, 'reset');
-        $this->post('/lights/reset-password', ['token' => $token, 'password' => 'ChangedPassword!2026', 'password_confirmation' => 'ChangedPassword!2026'])
+        $this->post('/lights/reset-password', ['token' => $token, 'password' => 'B456', 'password_confirmation' => 'B456'])
             ->assertRedirect(route('lights.home'));
         $this->post('/lights/reset-password', ['token' => $token, 'password' => 'ChangedAgain!2026', 'password_confirmation' => 'ChangedAgain!2026'])
             ->assertSessionHasErrors('token');
@@ -72,6 +74,19 @@ class LightsClientReadinessTest extends RegressionTestCase
         $known = $this->post('/lights/forgot-password', ['email' => $this->member->email]);
         $unknown = $this->post('/lights/forgot-password', ['email' => 'absent@test.test']);
         $this->assertSame($known->getSession()->get('status'), $unknown->getSession()->get('status'));
+    }
+
+    public function test_admin_command_accepts_four_character_passwords(): void
+    {
+        $this->artisan('lights:create-admin', ['email' => 'owner@test.test', '--name' => 'Owner'])
+            ->expectsQuestion('New password (minimum 4 characters)', 'C789')
+            ->expectsQuestion('Confirm password', 'C789')
+            ->expectsOutput('Lights administrator saved. The password was not printed or logged.')
+            ->assertSuccessful();
+
+        $owner = Member::where('email', 'owner@test.test')->firstOrFail();
+        $this->assertTrue($owner->is_admin);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('C789', $owner->password));
     }
 
     public function test_live_commissioning_never_falls_back_to_simulated_money_or_sessions(): void

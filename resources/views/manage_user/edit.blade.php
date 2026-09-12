@@ -263,7 +263,7 @@
                         }
                     },
                     password: {
-                        minlength: 5
+                        minlength: 4
                     },
                     confirm_password: {
                         equalTo: "#password",
@@ -286,7 +286,7 @@
                 },
                 messages: {
                     password: {
-                        minlength: 'Password should be minimum 5 characters',
+                        minlength: 'Password should be minimum 4 characters',
                     },
                     confirm_password: {
                         equalTo: 'Should be same as password'

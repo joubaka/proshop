@@ -20,10 +20,10 @@ class CreateLightsAdmin extends Command
         $name = trim((string) $this->option('name'));
         $validation = Validator::make(compact('email', 'name'), ['email' => 'required|email|max:255', 'name' => 'required|string|max:100']);
         if ($validation->fails()) { $this->error($validation->errors()->first()); return self::FAILURE; }
-        $password = $this->secret('New password (minimum 12 characters)');
+        $password = $this->secret('New password (minimum 4 characters)');
         $confirmation = $this->secret('Confirm password');
-        if (!is_string($password) || strlen($password) < 12 || strlen($password) > 72 || !hash_equals($password, (string) $confirmation)) {
-            $this->error('Passwords must match and contain 12 to 72 characters.'); return self::FAILURE;
+        if (!is_string($password) || strlen($password) < 4 || strlen($password) > 72 || !hash_equals($password, (string) $confirmation)) {
+            $this->error('Passwords must match and contain 4 to 72 characters.'); return self::FAILURE;
         }
         $member = Member::firstOrNew(['email' => $email]);
         $member->name = $name; $member->password = Hash::make($password); $member->active = true; $member->is_admin = true; $member->save();

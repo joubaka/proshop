@@ -43,7 +43,7 @@
                             <span class="input-group-addon">
                                 <i class="fa fa-lock"></i>
                             </span>
-                            {!! Form::password('new_password', ['class' => 'form-control','placeholder' => __('user.new_password'), 'required', 'minlength' => 6, 'maxlength' => 72, 'autocomplete' => 'new-password']); !!}
+                            {!! Form::password('new_password', ['class' => 'form-control','placeholder' => __('user.new_password'), 'required', 'minlength' => 4, 'maxlength' => 72, 'autocomplete' => 'new-password']); !!}
                         </div>
                     </div>
                 </div>

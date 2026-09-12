@@ -127,6 +127,13 @@ class ManageUserController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        if ($request->boolean('allow_login')) {
+            $request->validate([
+                'password' => ['required', 'string', 'min:4', 'max:72'],
+                'confirm_password' => ['required', 'string', 'same:password'],
+            ]);
+        }
+
         try {
             
             if (!empty($request->input('dob'))) {
@@ -235,6 +242,13 @@ class ManageUserController extends Controller
     {
         if (!auth()->user()->can('user.update')) {
             abort(403, 'Unauthorized action.');
+        }
+
+        if ($request->filled('password')) {
+            $request->validate([
+                'password' => ['string', 'min:4', 'max:72'],
+                'confirm_password' => ['required', 'string', 'same:password'],
+            ]);
         }
 
         try {

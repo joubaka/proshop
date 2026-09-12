@@ -45,6 +45,7 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         });
         await t.test('simulate a PayFast topup without a real provider and reject replay', async () => {
+            await page.getByRole('tab', { name: 'Top up' }).click();
             await page.locator('#topup-amount').fill('10.00');
             await page.locator('#topup form button[type=submit], #topup form button:not([type])').click();
             await page.waitForURL('**/lights/topups/**');
@@ -79,6 +80,7 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             const finished = await (await context.request.get(base + '/lights/state')).json();
             assert.equal(finished.session, null);
             assert.ok(finished.balance_cents < 1000 && finished.balance_cents > 950);
+            await page.getByRole('tab', { name: 'Activity' }).click();
             assert.match(await page.locator('.history-row small').first().textContent(), /\d+(?:h |m |s).*used/);
             assert.match(await page.locator('.history-row').first().textContent(), /−R \d+\.\d{2}/);
             await page.setViewportSize({ width: 1366, height: 900 });

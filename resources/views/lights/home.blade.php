@@ -25,10 +25,8 @@
     <form method="POST" action="{{ route('lights.verification.send') }}" class="inline-form">@csrf<button class="text-button">Send a new verification link</button></form>
 </div>
 @endif
-<div class="dashboard-grid">
-    <section>
-        <div class="wallet panel"><div><p class="eyebrow">YOUR LIGHTS BALANCE</p><div class="balance" id="wallet-balance">R {{ number_format($state['balance_cents'] / 100, 2) }}</div><p>Pay as you play. No subscription.</p></div><a class="button light" href="#topup">+ Top up</a></div>
-        <div id="active-sessions">
+<div class="wallet panel"><div><p class="eyebrow">YOUR LIGHTS BALANCE</p><div class="balance" id="wallet-balance">R {{ number_format($state['balance_cents'] / 100, 2) }}</div><p>Pay as you play. No subscription.</p></div><a class="button light" href="#topup" data-open-home-tab="topup">+ Top up</a></div>
+<div id="active-sessions">
         @foreach($state['sessions'] as $activeSession)
         <section class="panel active-panel active-session" data-session="{{ $activeSession->id }}" aria-label="Active session">
             <div class="section-title"><h2 class="session-heading"><span class="live-dot"></span>Lights are on</h2><span class="tag session-court"></span></div>
@@ -38,6 +36,13 @@
         </section>
         @endforeach
         </div>
+<nav class="home-tabs" role="tablist" aria-label="My lights sections">
+    <button type="button" role="tab" id="home-tab-courts" aria-controls="home-panel-courts" aria-selected="true" data-home-tab="courts">Courts</button>
+    <button type="button" role="tab" id="home-tab-topup" aria-controls="home-panel-topup" aria-selected="false" tabindex="-1" data-home-tab="topup">Top up</button>
+    <button type="button" role="tab" id="home-tab-activity" aria-controls="home-panel-activity" aria-selected="false" tabindex="-1" data-home-tab="activity">Activity</button>
+</nav>
+<div class="dashboard-grid home-tab-content">
+    <section role="tabpanel" id="home-panel-courts" aria-labelledby="home-tab-courts" data-home-panel="courts">
         <div class="section-title"><h2>Choose your court</h2><span class="muted">{{ config('lights.control.customer_enabled') ? 'Shelly safety control' : 'Shelly simulator' }}</span></div>
         <div class="courts">
         @forelse($state['courts'] as $court)
@@ -54,7 +59,7 @@
         @empty<div class="panel"><p>No courts configured yet. An administrator can add them.</p></div>@endforelse
         </div>
     </section>
-    <aside>
+    <aside role="tabpanel" id="home-panel-topup" aria-labelledby="home-tab-topup" data-home-panel="topup">
         <section class="panel" id="topup"><p class="eyebrow">KEEP THE GAME GOING</p><h2>Top up your wallet</h2><p class="muted">PayFast is the only top-up method. {{ config('lights.mode') === 'live' ? ($paymentsReady ? 'Credit is added only after PayFast confirms the payment.' : 'Online payments are being commissioned and are not available yet.') : 'This demo uses a clearly labelled simulator.' }}</p>
             <form method="POST" action="{{ route('lights.topup') }}">@csrf<input type="hidden" name="request_key" value="{{ (string) Illuminate\Support\Str::uuid() }}">
                 <div class="amounts">@foreach([50,100,200] as $amount)<button type="button" class="amount-button" data-amount="{{ $amount }}">R{{ $amount }}</button>@endforeach</div>
@@ -65,7 +70,7 @@
         <section class="panel guide"><h3>A few things to know</h3><ol><li>You may run both courts at the same time.</li><li>Switch each court off separately to settle it.</li><li>Credit is reserved safely between concurrent sessions and funds an automatic cutoff.</li></ol><p class="muted">Top-ups during play are added to your wallet but do not extend a current cutoff. Stop and restart to use the new credit.</p><p class="muted" id="worker-status"></p></section>
     </aside>
 </div>
-<section class="panel history"><div class="section-title"><h2>Your activity</h2><span class="muted">Latest 20 of each</span></div>
+<section class="panel history" role="tabpanel" id="home-panel-activity" aria-labelledby="home-tab-activity" data-home-panel="activity"><div class="section-title"><h2>Your activity</h2><span class="muted">Latest 20 of each</span></div>
     <div class="history-grid"><div><h3>Light sessions</h3>
     @foreach($hardwareSessions as $session)<div class="history-row"><div><strong>{{ $session->name ?? 'Court' }}</strong><small>{{ gmdate('d M Y H:i', $session->created_at + 7200) }} SAST · {{ str_replace('_', ' ', $session->state) }} · {{ $sessionDuration($session, true) }} used</small></div><strong>−R {{ number_format($session->charged_cents / 100, 2) }}</strong></div>@endforeach
     @foreach($sessions as $session)<div class="history-row"><div><strong>{{ $session->name }}</strong><small>{{ gmdate('d M Y H:i', $session->started_at + 7200) }} SAST · {{ $session->stopped_at ? str_replace('_', ' ', $session->stop_reason) : 'Active' }} · {{ $sessionDuration($session) }} used</small></div><strong>−R {{ number_format($session->charged_cents / 100, 2) }}</strong></div>@endforeach

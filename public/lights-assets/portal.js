@@ -131,6 +131,38 @@
         if (installHelp) { installHelp.hidden = false; installHelp.focus(); }
         installButton.setAttribute('aria-expanded', 'true');
     });
+    const homeTabs = [...document.querySelectorAll('[data-home-tab]')];
+    const homePanels = [...document.querySelectorAll('[data-home-panel]')];
+    const compactHome = window.matchMedia('(max-width: 800px)');
+    function selectHomeTab(name, focus = false) {
+        if (!homeTabs.length) return;
+        homeTabs.forEach(tab => {
+            const selected = tab.dataset.homeTab === name;
+            tab.setAttribute('aria-selected', String(selected));
+            tab.tabIndex = selected ? 0 : -1;
+            if (selected && focus) tab.focus();
+        });
+        homePanels.forEach(panel => { panel.hidden = compactHome.matches && panel.dataset.homePanel !== name; });
+    }
+    if (homeTabs.length) {
+        const initialHomeTab = location.hash === '#topup' ? 'topup' : 'courts';
+        selectHomeTab(initialHomeTab);
+        homeTabs.forEach((tab, index) => {
+            tab.addEventListener('click', () => selectHomeTab(tab.dataset.homeTab));
+            tab.addEventListener('keydown', event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                const next = event.key === 'Home' ? 0 : event.key === 'End' ? homeTabs.length - 1
+                    : (index + (event.key === 'ArrowRight' ? 1 : -1) + homeTabs.length) % homeTabs.length;
+                selectHomeTab(homeTabs[next].dataset.homeTab, true);
+            });
+        });
+        document.querySelectorAll('[data-open-home-tab]').forEach(link => link.addEventListener('click', () => selectHomeTab(link.dataset.openHomeTab)));
+        compactHome.addEventListener('change', () => {
+            const selected = document.querySelector('[data-home-tab][aria-selected="true"]')?.dataset.homeTab || 'courts';
+            selectHomeTab(selected);
+        });
+    }
     const targetedControl = location.hash ? document.querySelector(location.hash) : null;
     if (targetedControl?.matches('details')) targetedControl.open = true;
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/lights/service-worker.js', { scope: '/lights/' }).catch(() => {});

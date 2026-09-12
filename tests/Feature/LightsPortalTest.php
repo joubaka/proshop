@@ -70,9 +70,11 @@ class LightsPortalTest extends RegressionTestCase
 
         $this->get('/lights/login')->assertOk()
             ->assertSee('/lights-assets/portal.css?v=7', false)
-            ->assertSee('/lights-assets/portal.js?v=5', false);
+            ->assertSee('/lights-assets/portal.js?v=6', false);
         $this->actingAs($this->player, 'lights')->get('/lights')->assertOk()
-            ->assertSee('Install Court Lights');
+            ->assertSee('Install Court Lights')
+            ->assertSee('data-home-tab="courts"', false)
+            ->assertSee('data-home-panel="activity"', false);
         $this->get('/lights/service-worker.js')->assertOk()
             ->assertHeader('Service-Worker-Allowed', '/lights/')
             ->assertHeader('Cache-Control', 'no-store, private');

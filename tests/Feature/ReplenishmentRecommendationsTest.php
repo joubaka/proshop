@@ -33,5 +33,6 @@ class ReplenishmentRecommendationsTest extends TestCase
         DB::table('purchase_lines')->insert(['transaction_id'=>2,'variation_id'=>1,'quantity'=>12,'po_quantity_purchased'=>6]);
         $row=(new ReplenishmentService)->recommendations(1,1,30)->first();
         $this->assertSame(1.0,$row->daily_sales);$this->assertSame(6.0,(float)$row->open_po);$this->assertSame(6.0,(float)$row->suggested_order);
+        $this->assertSame(6.0,(float)$row->minimum_order_quantity);$this->assertSame(6.0,(float)$row->order_multiple);
     }
 }

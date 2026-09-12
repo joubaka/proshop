@@ -56,6 +56,7 @@ class ReplenishmentService
                 $row->daily_sales = $daily; $row->days_cover = $daily > 0 ? $available / $daily : null;
                 $row->open_po = $incoming; $row->target_stock = $target; $row->suggested_order = $suggested;
                 $row->supplier_id = $policy?->supplier_id; $row->lead_time_days = $lead; $row->safety_stock_days = $safetyDays;
+                $row->minimum_order_quantity = $minimum; $row->order_multiple = $multiple;
                 return $row;
             })->filter(fn ($row) => $row->suggested_order > 0)->values();
     }

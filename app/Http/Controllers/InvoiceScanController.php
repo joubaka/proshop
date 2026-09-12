@@ -12,6 +12,7 @@ use App\InvoiceScanning\PostScannedPurchase;
 use App\InvoiceScanning\InvoiceAmounts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -110,10 +111,15 @@ class InvoiceScanController extends Controller
         $scan = $this->scan($request, $uuid)->load(['documents', 'lines.variation.product', 'supplier', 'location', 'purchase']);
         $suppliers = Contact::contactDropdown($scan->business_id, true, true, false);
         $locations = BusinessLocation::forDropdown($scan->business_id, false, false);
+        $permittedLocations = auth()->user()->permitted_locations();
         $purchaseOrderLines = PurchaseLine::query()
             ->with(['transaction', 'product', 'variations'])
-            ->whereHas('transaction', fn ($q) => $q->where('business_id', $scan->business_id)
-                ->where('type', 'purchase_order')->whereNotIn('status', ['completed', 'cancelled']))
+            ->whereHas('transaction', function ($query) use ($scan, $permittedLocations) {
+                $query->where('business_id', $scan->business_id)->where('type', 'purchase_order')->whereNotIn('status', ['completed', 'cancelled']);
+                if ($permittedLocations !== 'all') $query->whereIn('location_id', $permittedLocations);
+                if ($scan->supplier_id) $query->where('contact_id', $scan->supplier_id);
+                if ($scan->location_id) $query->where('location_id', $scan->location_id);
+            })
             ->whereColumn('po_quantity_purchased', '<', 'quantity')
             ->get()->mapWithKeys(function ($line) {
                 $remaining = max(0, (float) $line->quantity - (float) $line->po_quantity_purchased);
@@ -142,6 +148,7 @@ class InvoiceScanController extends Controller
         $this->authorizeCreate();
         $scan = $this->scan($request, $uuid);
         abort_if($scan->status === 'posted', 409, 'A posted invoice cannot be changed.');
+        abort_if(in_array($scan->status, ['queued', 'processing'], true), 409, 'Wait for invoice processing to finish before reviewing it.');
         $data = $this->reviewData($request);
         if (!$amounts->isBalanced((float) $data['subtotal'], (float) ($data['discount_total'] ?? 0), (float) $data['tax_total'], (float) ($data['freight_total'] ?? 0), (float) $data['invoice_total'])) {
             return back()->withInput()->withErrors(['invoice_total' => 'Invoice totals do not balance: subtotal minus discount plus VAT and freight must equal the invoice total.']);
@@ -174,19 +181,24 @@ class InvoiceScanController extends Controller
         BusinessLocation::where('business_id', $scan->business_id)->findOrFail($data['location_id']);
         abort_unless($this->canUseLocation((int) $data['location_id']), 403);
 
-        $scan->update([
-            'supplier_id' => $data['supplier_id'], 'location_id' => $data['location_id'],
-            'invoice_number' => $data['invoice_number'], 'invoice_date' => $data['invoice_date'],
-            'subtotal' => $data['subtotal'], 'discount_total' => $data['discount_total'] ?? 0, 'tax_total' => $data['tax_total'],
-            'freight_total' => $data['freight_total'], 'invoice_total' => $data['invoice_total'],
-            'status' => 'ready', 'reviewed_by' => auth()->id(), 'reviewed_at' => now(),
-        ]);
-        foreach ($data['lines'] as $id => $lineData) {
-            $line = $scan->lines()->findOrFail($id);
-            $variation = \App\Variation::whereKey($lineData['variation_id'])->whereHas('product', fn ($q) => $q->where('business_id', $scan->business_id))->firstOrFail();
-            $lineData['price_approved_by'] = !empty($lineData['price_change_approved']) ? auth()->id() : null;
-            $line->update($lineData + ['match_method' => 'reviewed', 'match_confidence' => 1]);
-        }
+        DB::transaction(function () use ($scan, $data) {
+            $lockedScan = InvoiceScan::whereKey($scan->id)->lockForUpdate()->firstOrFail();
+            abort_if($lockedScan->status === 'posted', 409, 'A posted invoice cannot be changed.');
+            abort_if(in_array($lockedScan->status, ['queued', 'processing'], true), 409, 'Wait for invoice processing to finish before reviewing it.');
+            foreach ($data['lines'] as $id => $lineData) {
+                $line = $lockedScan->lines()->whereKey($id)->lockForUpdate()->firstOrFail();
+                \App\Variation::whereKey($lineData['variation_id'])->whereHas('product', fn ($q) => $q->where('business_id', $lockedScan->business_id))->firstOrFail();
+                $lineData['price_approved_by'] = !empty($lineData['price_change_approved']) ? auth()->id() : null;
+                $line->update($lineData + ['match_method' => 'reviewed', 'match_confidence' => 1]);
+            }
+            $lockedScan->update([
+                'supplier_id' => $data['supplier_id'], 'location_id' => $data['location_id'],
+                'invoice_number' => $data['invoice_number'], 'invoice_date' => $data['invoice_date'],
+                'subtotal' => $data['subtotal'], 'discount_total' => $data['discount_total'] ?? 0, 'tax_total' => $data['tax_total'],
+                'freight_total' => $data['freight_total'], 'invoice_total' => $data['invoice_total'],
+                'status' => 'ready', 'reviewed_by' => auth()->id(), 'reviewed_at' => now(),
+            ]);
+        });
         return back()->with('status', ['success' => 1, 'msg' => 'Invoice review saved.']);
     }
 

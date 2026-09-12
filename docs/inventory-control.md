@@ -31,5 +31,5 @@
 - Disable application debug mode in production.
 - Pilot genuine invoices from each major supplier and record header and line accuracy.
 - Test USB/Bluetooth scanners and the phone layout at the actual receiving desk.
-- Assign purchase-order, stock-adjustment and product-price permissions to the correct roles.
+- Assign purchase-order creation, purchase receiving and product-update permissions to the correct roles. Stock-count entry and posting use the existing `purchase.create` permission.
 - Review initial supplier lead times, pack sizes, MOQ values and order multiples before confirming recommendations.

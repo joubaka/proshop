@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class ProcessInvoiceScan implements ShouldQueue
@@ -36,26 +37,30 @@ class ProcessInvoiceScan implements ShouldQueue
         try {
             $payload = $extractors->driver()->extract($scan);
             $date = !empty($payload['invoice_date']) ? Carbon::parse($payload['invoice_date'])->toDateString() : null;
-            $scan->fill([
-                'supplier_name' => $payload['supplier_name'] ?? null,
-                'supplier_tax_number' => $payload['supplier_tax_number'] ?? null,
-                'invoice_number' => $payload['invoice_number'] ?? null,
-                'invoice_date' => $date,
-                'currency' => $payload['currency'] ?? null,
-                'subtotal' => $payload['subtotal'] ?? null,
-                'discount_total' => $payload['discount_total'] ?? 0,
-                'tax_total' => $payload['tax_total'] ?? null,
-                'freight_total' => $payload['freight_total'] ?? 0,
-                'invoice_total' => $payload['invoice_total'] ?? null,
-                'confidence' => $payload['confidence'] ?? null,
-                'provider_reference' => $payload['_provider_reference'] ?? null,
-                'extracted_payload' => $payload,
-                'processed_at' => now(),
-                'status' => 'needs_review',
-            ])->save();
-            $matcher->match($scan, $payload);
+            DB::transaction(function () use ($matcher, $payload, $date) {
+                $scan = InvoiceScan::whereKey($this->scanId)->lockForUpdate()->firstOrFail();
+                if ($scan->status !== 'processing') return;
+                $scan->fill([
+                    'supplier_name' => $payload['supplier_name'] ?? null,
+                    'supplier_tax_number' => $payload['supplier_tax_number'] ?? null,
+                    'invoice_number' => $payload['invoice_number'] ?? null,
+                    'invoice_date' => $date,
+                    'currency' => $payload['currency'] ?? null,
+                    'subtotal' => $payload['subtotal'] ?? null,
+                    'discount_total' => $payload['discount_total'] ?? 0,
+                    'tax_total' => $payload['tax_total'] ?? null,
+                    'freight_total' => $payload['freight_total'] ?? 0,
+                    'invoice_total' => $payload['invoice_total'] ?? null,
+                    'confidence' => $payload['confidence'] ?? null,
+                    'provider_reference' => $payload['_provider_reference'] ?? null,
+                    'extracted_payload' => $payload,
+                    'processed_at' => now(),
+                    'status' => 'needs_review',
+                ])->save();
+                $matcher->match($scan, $payload);
+            });
         } catch (Throwable $e) {
-            $scan->update(['status' => 'failed', 'failure_message' => mb_substr($e->getMessage(), 0, 2000)]);
+            InvoiceScan::whereKey($this->scanId)->where('status', 'processing')->update(['status' => 'failed', 'failure_message' => mb_substr($e->getMessage(), 0, 2000)]);
             throw $e;
         }
     }

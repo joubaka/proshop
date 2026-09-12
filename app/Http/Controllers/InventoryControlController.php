@@ -30,7 +30,10 @@ class InventoryControlController extends Controller
         $this->authorizeLocation($locationId);
         $recommendations = $locationId ? $service->recommendations($businessId, $locationId, $request->integer('days', 30)) : collect();
         $suppliers = Contact::suppliersDropdown($businessId, false);
-        $counts = StockCount::where('business_id', $businessId)->with('location')->latest()->limit(15)->get();
+        $permittedLocations = auth()->user()->permitted_locations();
+        $counts = StockCount::where('business_id', $businessId)
+            ->when($permittedLocations !== 'all', fn ($query) => $query->whereIn('location_id', $permittedLocations))
+            ->with('location')->latest()->limit(15)->get();
         $priceChanges=ProductPriceChange::where('business_id',$businessId)->with(['variation.product','user'])->latest()->limit(25)->get();
         return view('inventory_control.index', compact('locations','locationId','recommendations','suppliers','counts','priceChanges'));
     }
@@ -91,6 +94,7 @@ class InventoryControlController extends Controller
             if(!hash_equals($batch->proposal_fingerprint,$service->fingerprint($current)))throw new RuntimeException('Stock, sales or open orders changed. Discard this stale preview and calculate it again.');
             $currency=$transactions->purchaseCurrencyDetails($batch->business_id);$orderIds=[];
             foreach($batch->lines->groupBy('supplier_id') as $supplierId=>$lines){
+                Contact::where('business_id',$batch->business_id)->whereIn('type',['supplier','both'])->lockForUpdate()->findOrFail($supplierId);
                 $refCount=$products->setAndGetReferenceCount('purchase_order',$batch->business_id);
                 $ref=$products->generateReferenceNumber('purchase_order',$refCount,$batch->business_id);
                 $total=$lines->sum(fn($line)=>(float)$line->quantity*(float)$line->unit_cost);
@@ -131,23 +135,35 @@ class InventoryControlController extends Controller
 
     public function scan(Request $request, string $uuid)
     {
+        $this->authorizeCountMutation();
         $count = $this->count($request,$uuid); abort_if($count->status !== 'draft',409,'Count is closed.');
         $data=$request->validate(['barcode'=>'required|string|max:255','quantity'=>'nullable|numeric|min:0.0001']);
         $matches=Variation::where('sub_sku',trim($data['barcode']))->whereHas('product',fn($q)=>$q->where('business_id',$count->business_id))->with('product')->limit(2)->get();
         if($matches->isEmpty()) return response()->json(['message'=>'Barcode/SKU not found.'],422);
         if($matches->count()>1) return response()->json(['message'=>'Barcode/SKU is duplicated. Correct the catalogue before counting it.'],422);
         $variation=$matches->first();
-        $line=$count->lines()->where('variation_id',$variation->id)->first();
+        $line=DB::transaction(function()use($count,$variation,$data){
+            $lockedCount=StockCount::whereKey($count->id)->lockForUpdate()->firstOrFail();
+            abort_if($lockedCount->status!=='draft',409,'Count is closed.');
+            $line=$lockedCount->lines()->where('variation_id',$variation->id)->lockForUpdate()->first();
+            if(!$line)return null;
+            $line->update(['counted_quantity'=>(float)($line->counted_quantity??0)+(float)($data['quantity']??1),'counted_by'=>auth()->id(),'counted_at'=>now()]);
+            return $line->fresh();
+        });
         if(!$line) return response()->json(['message'=>'Product is not stocked at this count location.'],422);
-        $line->update(['counted_quantity'=>(float)($line->counted_quantity??0)+(float)($data['quantity']??1),'counted_by'=>auth()->id(),'counted_at'=>now()]);
         return response()->json(['line_id'=>$line->id,'counted_quantity'=>(float)$line->fresh()->counted_quantity,'name'=>$variation->product->name]);
     }
 
     public function updateCount(Request $request, string $uuid)
     {
+        $this->authorizeCountMutation();
         $count=$this->count($request,$uuid); abort_if($count->status!=='draft',409);
         $data=$request->validate(['lines'=>'required|array','lines.*'=>'required|numeric|min:0']);
-        foreach($data['lines'] as $id=>$quantity) $count->lines()->whereKey($id)->update(['counted_quantity'=>$quantity,'counted_by'=>auth()->id(),'counted_at'=>now()]);
+        DB::transaction(function()use($count,$data){
+            $lockedCount=StockCount::whereKey($count->id)->lockForUpdate()->firstOrFail();
+            abort_if($lockedCount->status!=='draft',409,'Count is closed.');
+            foreach($data['lines'] as $id=>$quantity)$lockedCount->lines()->whereKey($id)->update(['counted_quantity'=>$quantity,'counted_by'=>auth()->id(),'counted_at'=>now()]);
+        });
         return back()->with('status',['success'=>1,'msg'=>'Count saved. Stock has not been adjusted.']);
     }
 
@@ -181,5 +197,6 @@ class InventoryControlController extends Controller
     private function count(Request $request,string $uuid): StockCount { $this->authorizeView(); $count=StockCount::where('business_id',(int)$request->session()->get('user.business_id'))->where('uuid',$uuid)->firstOrFail();$this->authorizeLocation($count->location_id);return $count; }
     private function batch(Request $request,string $uuid): ReplenishmentBatch { abort_unless(auth()->user()->can('purchase_order.create'),403);$batch=ReplenishmentBatch::where('business_id',(int)$request->session()->get('user.business_id'))->where('uuid',$uuid)->firstOrFail();$this->authorizeLocation($batch->location_id);return $batch; }
     private function authorizeView(): void { abort_unless(auth()->user()?->can('stock_report.view')||auth()->user()?->can('purchase.create'),403); }
+    private function authorizeCountMutation(): void { abort_unless(auth()->user()?->can('purchase.create'),403); }
     private function authorizeLocation(int $id): void { $locations=auth()->user()->permitted_locations(); abort_unless($locations==='all'||in_array($id,array_map('intval',$locations),true),403); }
 }

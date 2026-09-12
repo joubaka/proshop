@@ -37,4 +37,15 @@ class InventoryControlWorkflowTest extends \Tests\TestCase
         DB::table('variation_location_details')->where('variation_id',$variation->id)->where('location_id',$location->id)->update(['qty_available'=>2]);
         $this->withSession(['_token'=>'inventory-token'])->post(route('inventory-control.replenishment.confirm',$batch->uuid),['_token'=>'inventory-token'])->assertSessionHasErrors('batch');$this->assertSame('preview',$batch->fresh()->status);$this->assertSame($before,Transaction::where('business_id',$businessId)->where('type','purchase_order')->count());
     }
+
+    public function test_replenishment_confirmation_rejects_a_supplier_that_is_no_longer_valid():void
+    {
+        $user=$this->login();$businessId=$user->business_id;$location=\App\BusinessLocation::where('business_id',$businessId)->firstOrFail();$product=Product::where('business_id',$businessId)->where('name','Test Tennis Balls')->firstOrFail();$variation=$product->variations()->firstOrFail();$supplier=Contact::where('business_id',$businessId)->where('type','supplier')->firstOrFail();$product->update(['alert_quantity'=>10]);
+        DB::table('variation_location_details')->updateOrInsert(['product_id'=>$product->id,'variation_id'=>$variation->id,'location_id'=>$location->id],['product_variation_id'=>$variation->product_variation_id,'qty_available'=>0,'created_at'=>now(),'updated_at'=>now()]);InventoryPolicy::updateOrCreate(['business_id'=>$businessId,'location_id'=>$location->id,'variation_id'=>$variation->id],['supplier_id'=>$supplier->id,'lead_time_days'=>7,'safety_stock_days'=>7,'minimum_order_quantity'=>5,'order_multiple'=>5]);
+        $this->withSession(['_token'=>'inventory-token'])->post(route('inventory-control.replenishment.preview'),['_token'=>'inventory-token','location_id'=>$location->id,'days'=>30,'selected'=>[$variation->id=>1],'quantity'=>[$variation->id=>10],'supplier'=>[$variation->id=>$supplier->id]]);$batch=ReplenishmentBatch::where('business_id',$businessId)->latest('id')->firstOrFail();$before=Transaction::where('business_id',$businessId)->where('type','purchase_order')->count();
+        $supplier->update(['type'=>'customer']);
+
+        $this->withSession(['_token'=>'inventory-token'])->post(route('inventory-control.replenishment.confirm',$batch->uuid),['_token'=>'inventory-token'])->assertSessionHasErrors('batch');
+        $this->assertSame('preview',$batch->fresh()->status);$this->assertSame($before,Transaction::where('business_id',$businessId)->where('type','purchase_order')->count());
+    }
 }

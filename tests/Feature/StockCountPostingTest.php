@@ -26,4 +26,16 @@ class StockCountPostingTest extends RegressionTestCase
         $this->post(route('inventory-control.counts.post',$count->uuid))->assertSessionHasErrors('count');$this->assertSame(10.0,(float)DB::table('variation_location_details')->value('qty_available'));
         $line->update(['counted_quantity'=>8]);$this->post(route('inventory-control.counts.post',$count->uuid))->assertSessionHasNoErrors();$this->assertSame(8.0,(float)DB::table('variation_location_details')->value('qty_available'));$this->assertSame('posted',$count->fresh()->status);
     }
+
+    public function test_stock_report_viewer_cannot_change_a_draft_count():void
+    {
+        $this->signInWithPermissions(['stock_report.view','access_all_locations']);
+        $count=StockCount::create(['uuid'=>'count-read-only','business_id'=>1,'location_id'=>1,'created_by'=>1,'status'=>'draft','name'=>'Read only']);
+        $line=StockCountLine::create(['stock_count_id'=>$count->id,'product_id'=>1,'variation_id'=>1,'system_quantity'=>10,'counted_quantity'=>null]);
+
+        $this->put(route('inventory-control.counts.update',$count->uuid),['lines'=>[$line->id=>8]])->assertForbidden();
+        $this->postJson(route('inventory-control.counts.scan',$count->uuid),['barcode'=>'BALL'])->assertForbidden();
+
+        $this->assertNull($line->fresh()->counted_quantity);
+    }
 }

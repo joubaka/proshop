@@ -176,9 +176,14 @@ class LightsController extends Controller
     }
     public function payfastNotify(Request $request, \App\Lights\PayFast\Gateway $gateway)
     {
+        \Illuminate\Support\Facades\Log::info('PayFast ITN received.', [
+            'source_ip' => $request->ip(),
+            'topup_id' => is_string($request->input('m_payment_id')) ? $request->input('m_payment_id') : null,
+        ]);
         try {
             $payment = $gateway->verify($request);
             $this->portal->confirmPayFast($payment['topup'], $payment['reference'], $payment['amount_cents']);
+            \Illuminate\Support\Facades\Log::info('PayFast ITN credited.', ['topup_id' => $payment['topup']]);
             return response('OK', 200)->header('Content-Type', 'text/plain');
         } catch (\App\Lights\PayFast\VerificationUnavailable $exception) {
             \Illuminate\Support\Facades\Log::warning('PayFast ITN verification unavailable.', $this->payfastLogContext($request, $exception));

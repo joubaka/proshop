@@ -35,7 +35,9 @@ class Gateway
         if (!$this->validSource($request->ip())) { throw new InvalidNotification('Unrecognised payment source.'); }
         $provided = strtolower((string) $data['signature']);
         unset($data['signature']);
-        if (!preg_match('/\A[a-f0-9]{32}\z/', $provided) || !hash_equals($this->signature($data), $provided)) {
+        $parameters = $this->notificationParameterString($request, $data);
+        $expected = md5($parameters.'&passphrase='.urlencode(trim((string) config('lights.payfast.passphrase'))));
+        if (!preg_match('/\A[a-f0-9]{32}\z/', $provided) || !hash_equals($expected, $provided)) {
             throw new InvalidNotification('Payment signature rejected.');
         }
         if ((string) $data['merchant_id'] !== (string) config('lights.payfast.merchant_id')) {
@@ -43,7 +45,7 @@ class Gateway
         }
         if ((string) $data['payment_status'] !== 'COMPLETE') { throw new InvalidNotification('Payment is not complete.'); }
         $amountCents = $this->cents((string) $data['amount_gross']);
-        if (!$this->serverConfirmation($this->parameterString($data))) {
+        if (!$this->serverConfirmation($parameters)) {
             throw new InvalidNotification('PayFast did not validate the notification.');
         }
         return ['topup' => (string) $data['m_payment_id'], 'reference' => (string) $data['pf_payment_id'], 'amount_cents' => $amountCents];
@@ -79,6 +81,19 @@ class Gateway
                 $parts[] = $key.'='.urlencode(trim((string) $value));
             }
         }
+        return implode('&', $parts);
+    }
+
+    private function notificationParameterString(Request $request, array $data): string
+    {
+        $raw = $request->getContent();
+        if (!is_string($raw) || $raw === '') { return $this->parameterString($data); }
+
+        $parts = array_filter(explode('&', $raw), static function (string $part): bool {
+            $key = explode('=', $part, 2)[0];
+            return urldecode($key) !== 'signature';
+        });
+
         return implode('&', $parts);
     }
 

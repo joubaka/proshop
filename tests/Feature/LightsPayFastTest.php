@@ -8,6 +8,7 @@ use App\Lights\Portal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Tests\Support\RegressionTestCase;
 
@@ -70,6 +71,26 @@ class LightsPayFastTest extends RegressionTestCase
                 && !array_key_exists('signature', $context)
                 && !array_key_exists('payload', $context);
         });
+    }
+
+    public function test_notification_signature_preserves_payfast_raw_encoding(): void
+    {
+        $topup = $this->portal->topup($this->member->id, 1000, (string) Str::uuid(), 'payfast');
+        $data = [
+            'm_payment_id' => $topup, 'pf_payment_id' => 'PF-RAW', 'payment_status' => 'COMPLETE',
+            'amount_gross' => '10.00', 'merchant_id' => '10000100', 'item_name' => 'Court Lights wallet top-up',
+        ];
+        $raw = 'm_payment_id='.$topup.'&pf_payment_id=PF-RAW&payment_status=COMPLETE&amount_gross=10.00'
+            .'&merchant_id=10000100&item_name=Court%20Lights%20wallet%20top-up';
+        $data['signature'] = md5($raw.'&passphrase='.urlencode('test passphrase'));
+        $request = Request::create('/lights/payfast/notify', 'POST', $data, [], [], [
+            'REMOTE_ADDR' => '127.0.0.1', 'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+        ], $raw.'&signature='.$data['signature']);
+
+        $payment = app(Gateway::class)->verify($request);
+
+        $this->assertSame($topup, $payment['topup']);
+        $this->assertSame(1000, $payment['amount_cents']);
     }
 
     public function test_admin_can_store_encrypted_payfast_settings_without_exposing_secrets(): void

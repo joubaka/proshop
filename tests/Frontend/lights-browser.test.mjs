@@ -101,8 +101,11 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
         });
         await t.test('administrator can record cash received from the member list', async () => {
             await page.getByRole('tab', { name: /Members/ }).click();
+            assert.equal(await page.locator('[data-member-search]:visible').count(), 0, 'member accounts stay hidden until searched');
+            await page.getByText('Search before adding cash', { exact: true }).waitFor();
             await page.locator('#member-search').fill(email);
             const row = page.locator('[data-member-search]:visible');
+            assert.equal(await row.count(), 1, 'exact email search identifies one account');
             const cashForm = row.locator('.cash-topup-form');
             await cashForm.locator('[name=amount]').fill('12.50');
             await cashForm.locator('[name=reason]').fill('Browser cash receipt');

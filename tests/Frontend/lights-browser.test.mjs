@@ -99,12 +99,30 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             await page.getByRole('heading', { name: 'Wallet ledger' }).waitFor();
             assert.deepEqual(errors, []);
         });
+        await t.test('administrator can record cash received from the member list', async () => {
+            await page.getByRole('tab', { name: /Members/ }).click();
+            await page.locator('#member-search').fill(email);
+            const row = page.locator('[data-member-search]:visible');
+            const cashForm = row.locator('form:has-text("Cash wallet top-up")');
+            await cashForm.locator('[name=amount]').fill('12.50');
+            await cashForm.locator('[name=reason]').fill('Browser cash receipt');
+            const responsePromise = page.waitForResponse(response => response.url().includes('/adjustment') && response.request().method() === 'POST');
+            await cashForm.getByRole('button', { name: 'Add cash to wallet' }).click();
+            const response = await responsePromise;
+            assert.equal(response.status(), 200);
+            await page.getByText('Cash received and wallet credited.', { exact: true }).waitFor();
+            assert.match(await row.locator('[data-member-balance]').textContent(), /^R \d+\.\d{2}$/);
+            assert.deepEqual(errors, []);
+        });
         await t.test('phone app manifest and offline shell never cache wallet pages', async () => {
             const appContext = await browser.newContext({ serviceWorkers: 'allow' });
             const appPage = await appContext.newPage();
             try {
                 await appPage.goto(base + '/lights/login');
-                await appPage.evaluate(() => navigator.serviceWorker.ready);
+                await appPage.evaluate(async () => {
+                    await navigator.serviceWorker.register('/lights/service-worker.js', { scope: '/lights/' });
+                    await navigator.serviceWorker.ready;
+                });
                 const manifest = await (await appContext.request.get(base + '/lights-assets/manifest.webmanifest')).json();
                 assert.equal(manifest.id, '/lights/'); assert.equal(manifest.start_url, '/lights/');
                 assert.equal(manifest.scope, '/lights/'); assert.equal(manifest.display, 'standalone');

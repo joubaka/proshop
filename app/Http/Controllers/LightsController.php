@@ -14,7 +14,7 @@ class LightsController extends Controller
 {
     public function serviceWorker()
     {
-        return response()->file(public_path('lights-assets/service-worker.js'), [
+        return response()->file(base_path('public/lights-assets/service-worker.js'), [
             'Content-Type' => 'application/javascript; charset=UTF-8',
             'Service-Worker-Allowed' => '/lights/',
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
@@ -248,28 +248,24 @@ class LightsController extends Controller
     public function memberAdjustment(Request $request, int $member)
     {
         $data = $request->validate(['direction' => 'required|in:credit,debit', 'amount' => 'required|string',
-            'reason' => 'required|string|min:5|max:200', 'request_key' => 'required|uuid']);
+            'reason' => 'required|string|min:5|max:200', 'payment_type' => 'nullable|in:cash',
+            'request_key' => 'required|uuid']);
         $amount = Portal::cents($data['amount']) * ($data['direction'] === 'credit' ? 1 : -1);
+        if (($data['payment_type'] ?? null) === 'cash') {
+            if ($data['direction'] !== 'credit' || $amount < 100 || $amount > 500000) {
+                throw ValidationException::withMessages(['amount' => 'Cash received must be between R1 and R5,000.']);
+            }
+            $this->portal->recordCashTopup($this->member()->id, $member, $amount, $data['reason'], $data['request_key']);
+            $balance = (int) $this->portal->db()->table('lights_users')->where('id', $member)->value('balance_cents');
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Cash received and wallet credited.', 'balance_cents' => $balance])
+                : redirect(route('lights.admin').'#members')->with('status', 'Cash received and wallet credited.');
+        }
         $this->portal->adjustBalance($this->member()->id, $member, $amount, $data['reason'], $data['request_key']);
         $balance = (int) $this->portal->db()->table('lights_users')->where('id', $member)->value('balance_cents');
         return $request->expectsJson()
             ? response()->json(['message' => 'Audited wallet adjustment recorded.', 'balance_cents' => $balance])
             : back()->with('status', 'Audited wallet adjustment recorded.');
-    }
-    public function memberCashTopup(Request $request, int $member)
-    {
-        $data = $request->validate(['amount' => 'required|string', 'note' => 'nullable|string|max:200',
-            'request_key' => 'required|uuid']);
-        $amount = Portal::cents($data['amount']);
-        if ($amount < 100 || $amount > 500000) {
-            throw ValidationException::withMessages(['amount' => 'Cash received must be between R1 and R5,000.']);
-        }
-        $this->portal->recordCashTopup($this->member()->id, $member, $amount,
-            $data['note'] ?? 'Cash received by administrator', $data['request_key']);
-        $balance = (int) $this->portal->db()->table('lights_users')->where('id', $member)->value('balance_cents');
-        return $request->expectsJson()
-            ? response()->json(['message' => 'Cash received and wallet credited.', 'balance_cents' => $balance])
-            : redirect(route('lights.admin').'#members')->with('status', 'Cash received and wallet credited.');
     }
     public function hardwareState(\App\Lights\Shelly\HardwareStatus $hardwareStatus, \App\Lights\ManualSwitches $switches)
     {

@@ -81,11 +81,12 @@ class LightsClientReadinessTest extends RegressionTestCase
         $this->actingAs($this->admin, 'lights');
         $this->get(route('lights.admin'))->assertOk()->assertSee('Cash wallet top-up')->assertSee('Add cash to wallet');
         $key = (string) Str::uuid();
-        $payload = ['amount' => '125.50', 'note' => 'Cash receipt 1042', 'request_key' => $key];
+        $payload = ['direction' => 'credit', 'payment_type' => 'cash', 'amount' => '125.50',
+            'reason' => 'Cash receipt 1042', 'request_key' => $key];
 
-        $this->postJson(route('lights.admin.members.cash-topup', $this->member->id), $payload)
+        $this->postJson(route('lights.admin.members.adjustment', $this->member->id), $payload)
             ->assertOk()->assertJson(['message' => 'Cash received and wallet credited.', 'balance_cents' => 12550]);
-        $this->postJson(route('lights.admin.members.cash-topup', $this->member->id), $payload)
+        $this->postJson(route('lights.admin.members.adjustment', $this->member->id), $payload)
             ->assertOk()->assertJson(['balance_cents' => 12550]);
 
         $this->assertDatabaseHas('lights_ledger', ['user_id' => $this->member->id, 'amount_cents' => 12550,
@@ -95,14 +96,15 @@ class LightsClientReadinessTest extends RegressionTestCase
 
     public function test_cash_topup_is_admin_only_and_rejects_invalid_amounts(): void
     {
-        $payload = ['amount' => '10.00', 'request_key' => (string) Str::uuid()];
+        $payload = ['direction' => 'credit', 'payment_type' => 'cash', 'amount' => '10.00',
+            'reason' => 'Cash received', 'request_key' => (string) Str::uuid()];
         $this->actingAs($this->member, 'lights');
-        $this->postJson(route('lights.admin.members.cash-topup', $this->member->id), $payload)->assertForbidden();
+        $this->postJson(route('lights.admin.members.adjustment', $this->member->id), $payload)->assertForbidden();
 
         $this->actingAs($this->admin, 'lights');
         foreach (['0.00', '-10.00', '5000.01'] as $amount) {
-            $this->postJson(route('lights.admin.members.cash-topup', $this->member->id),
-                ['amount' => $amount, 'request_key' => (string) Str::uuid()])->assertUnprocessable();
+            $this->postJson(route('lights.admin.members.adjustment', $this->member->id), array_merge($payload,
+                ['amount' => $amount, 'request_key' => (string) Str::uuid()]))->assertUnprocessable();
         }
         $this->assertSame(0, $this->member->fresh()->balance_cents);
     }

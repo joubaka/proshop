@@ -39,6 +39,7 @@ Route::prefix('lights')->name('lights.')->middleware(LightsAccess::class.':publi
             Route::post('admin/control/emergency-off', [LightsController::class, 'controlEmergencyOff'])->middleware('throttle:6,1')->name('admin.control.emergency-off');
             Route::post('admin/control/arm-customer', [LightsController::class, 'armCustomerControl'])->middleware('throttle:6,1')->name('admin.control.arm-customer');
             Route::post('admin/control/{session}/stop', [LightsController::class, 'controlStop'])->whereUuid('session')->name('admin.control.stop');
+            Route::post('admin/control/{session}/review', [LightsController::class, 'controlReview'])->whereUuid('session')->name('admin.control.review');
             Route::get('admin/shelly', [LightsController::class, 'shelly'])->name('admin.shelly');
             Route::post('admin/shelly', [LightsController::class, 'saveShelly'])->middleware('throttle:6,1')->name('admin.shelly.save');
             Route::post('admin/shelly/check', [LightsController::class, 'checkShelly'])->middleware('throttle:6,1')->name('admin.shelly.check');

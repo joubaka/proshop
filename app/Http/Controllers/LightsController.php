@@ -346,7 +346,20 @@ class LightsController extends Controller
     public function controlStop(Request $request, string $session, \App\Lights\SafetySessions $safety)
     {
         $safety->stop($this->member()->id, $session);
-        return redirect()->route('lights.admin.control')->with('status', 'OFF request queued. Billing is frozen while the safety worker confirms the result.');
+        return redirect()->route('lights.admin')->with('status', 'OFF request queued. Billing is frozen while the safety worker confirms the result.');
+    }
+
+    public function controlReview(Request $request, string $session, \App\Lights\SafetySessions $safety)
+    {
+        $data = $request->validate([
+            'action' => 'required|in:off,confirmed_off',
+            'physical_off' => 'nullable|accepted_if:action,confirmed_off',
+        ]);
+        $safety->review($this->member()->id, $session, $data['action']);
+        $message = $data['action'] === 'confirmed_off'
+            ? 'Physical OFF confirmed. The court reservation was safely released.'
+            : 'Another OFF request was queued. Confirm the physical court is OFF before releasing it.';
+        return redirect()->route('lights.admin')->with('status', $message);
     }
 
     public function shelly(Request $request)

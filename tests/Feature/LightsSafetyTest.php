@@ -165,6 +165,29 @@ class LightsSafetyTest extends RegressionTestCase
         $this->safety->review($this->admin->id, $id, 'confirmed_off');
         $this->assertSame('completed', $this->controlSession($id)->state);
     }
+
+    public function test_admin_can_confirm_physical_off_and_release_a_reviewed_session(): void
+    {
+        $id = $this->start();
+        $driver = $this->driver();
+        $driver->failOn = true;
+        $this->safety->tick($driver);
+        $this->safety->tick($driver);
+        $this->assertSame('review', $this->controlSession($id)->state);
+
+        // The release guard uses the device timer deadline plus its 30-second
+        // in-flight-command margin, not merely the last OFF acknowledgement.
+        $this->travel(5)->minutes();
+        $this->actingAs($this->admin, 'lights')->post(route('lights.admin.control.review', $id), [
+            'action' => 'confirmed_off', 'physical_off' => '1',
+        ])->assertRedirect(route('lights.admin'));
+
+        $session = $this->controlSession($id);
+        $this->assertSame('completed', $session->state);
+        $this->assertNull($session->active_user_id);
+        $this->assertNull($session->active_channel);
+        $this->assertSame(1000, $this->admin->fresh()->balance_cents);
+    }
     public function test_stop_during_on_handoff_is_not_lost(): void
     {
         $id = $this->start(); $driver = $this->driver();

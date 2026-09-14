@@ -54,7 +54,10 @@ class LightsPortalTest extends RegressionTestCase
     {
         $this->get('/')->assertRedirect(route('lights.login'))->assertHeader('Cache-Control', 'no-store, private');
         $this->get('/login')->assertRedirect(route('lights.login'));
-        $this->get('/lights/login')->assertOk()->assertSee('POS staff access')->assertSee(route('pos.login'));
+        $this->get('/lights/login')->assertOk()
+            ->assertSee('POS staff access')->assertSee(route('pos.login'))
+            ->assertSee(route('lights.login').'#login', false)
+            ->assertSee('id="login" tabindex="-1"', false);
         $this->assertSame(url('/pos/login'), route('pos.login'));
         $this->actingAs($this->player, 'lights');
         $this->get('/')->assertRedirect(route('lights.home'));
@@ -70,7 +73,7 @@ class LightsPortalTest extends RegressionTestCase
 
         $this->get('/lights/login')->assertOk()
             ->assertSee('/lights-assets/portal.css?v=7', false)
-            ->assertSee('/lights-assets/portal.js?v=6', false);
+            ->assertSee('/lights-assets/portal.js?v=7', false);
         $this->actingAs($this->player, 'lights')->get('/lights')->assertOk()
             ->assertSee('Install Court Lights')
             ->assertSee('data-home-tab="courts"', false)

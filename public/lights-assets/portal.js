@@ -165,5 +165,18 @@
     }
     const targetedControl = location.hash ? document.querySelector(location.hash) : null;
     if (targetedControl?.matches('details')) targetedControl.open = true;
+    const loginPanel = document.getElementById('login');
+    function revealLogin() {
+        if (!loginPanel) return;
+        loginPanel.focus({ preventScroll: true });
+        loginPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (targetedControl === loginPanel) revealLogin();
+    document.querySelectorAll('a[href$="#login"]').forEach(link => link.addEventListener('click', event => {
+        if (!loginPanel || new URL(link.href).pathname !== location.pathname) return;
+        event.preventDefault();
+        history.replaceState(null, '', '#login');
+        revealLogin();
+    }));
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/lights/service-worker.js', { scope: '/lights/' }).catch(() => {});
 })();

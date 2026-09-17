@@ -54,6 +54,10 @@ class ApplicationAccessRegressionTest extends RegressionTestCase
             'App\\Http\\Controllers\\Auth\\ForgotPasswordController',
             'App\\Http\\Controllers\\Auth\\ResetPasswordController',
             'App\\Http\\Controllers\\Auth\\ConfirmPasswordController',
+            'App\\Http\\Controllers\\Shop\\CatalogController',
+            'App\\Http\\Controllers\\Shop\\CartController',
+            'App\\Http\\Controllers\\Shop\\CheckoutController',
+            'App\\Http\\Controllers\\Shop\\PayFastController',
         ];
         $publicActions = [
             'BusinessController@getRegister', 'BusinessController@postRegister',

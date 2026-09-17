@@ -32,7 +32,8 @@ class OrderPlacementService
                 $product = $shopProduct->product; $variation = $shopVariation->variation;
                 if (!$shopVariation->published || !$shopProduct->published_at || $shopProduct->published_at->isFuture()
                     || ($shopProduct->unpublished_at && $shopProduct->unpublished_at->isPast())
-                    || $product->business_id !== $channel->business_id || $product->is_inactive || $product->not_for_selling) {
+                    || $product->business_id !== $channel->business_id || $product->is_inactive || $product->not_for_selling
+                    || $product->type === 'combo') {
                     throw ValidationException::withMessages(['cart' => 'A product in your cart is no longer available.']);
                 }
                 $stock = DB::table('variation_location_details')->where('location_id', $channel->location_id)

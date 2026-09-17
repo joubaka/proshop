@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule([\App\Console\ScheduleRegistrar::class, 'register'])
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->validateCsrfTokens(except: ['lights/payfast/notify']);
+        $middleware->validateCsrfTokens(except: ['lights/payfast/notify', 'shop/payfast/notify']);
         $middleware->prepend(\App\Http\Middleware\ShellySetupPrivacy::class);
         $middleware->prependToPriorityList(
             \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,

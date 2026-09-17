@@ -3,6 +3,7 @@
 use App\Http\Controllers\Shop\CatalogController;
 use App\Http\Controllers\Shop\CartController;
 use App\Http\Controllers\Shop\CheckoutController;
+use App\Http\Controllers\Shop\PayFastController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('shop')->name('shop.')->group(function () {
@@ -15,4 +16,8 @@ Route::prefix('shop')->name('shop.')->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'create'])->name('checkout');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/orders/{uuid}', [CheckoutController::class, 'show'])->middleware('signed')->name('orders.show');
+    Route::post('/orders/{uuid}/pay', [PayFastController::class, 'start'])->middleware('signed')->name('payfast.start');
+    Route::get('/payfast/return/{payment}', [PayFastController::class, 'returned'])->middleware('signed')->name('payfast.return');
+    Route::get('/payfast/cancel/{payment}', [PayFastController::class, 'cancelled'])->middleware('signed')->name('payfast.cancel');
+    Route::post('/payfast/notify', [PayFastController::class, 'notify'])->name('payfast.notify');
 });

@@ -17,4 +17,5 @@ class Order extends Model
     public function items() { return $this->hasMany(OrderItem::class, 'shop_order_id'); }
     public function reservations() { return $this->hasMany(StockReservation::class, 'shop_order_id'); }
     public function events() { return $this->hasMany(OrderEvent::class, 'shop_order_id'); }
+    public function payments() { return $this->hasMany(Payment::class, 'shop_order_id'); }
 }

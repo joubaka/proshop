@@ -50,7 +50,11 @@ class CheckoutController extends Controller
     {
         $channel = $catalog->channel();
         $order = Order::query()->where('shop_channel_id', $channel->id)->where('uuid', $uuid)->with('items')->firstOrFail();
-        return response()->view('shop.orders.show', compact('channel', 'order'))->header('Cache-Control', 'no-store, private');
+        $payUrl = null;
+        if (config('shop.payfast.enabled') && $order->payment_status === 'pending' && $order->reservation_expires_at->isFuture()) {
+            $payUrl = URL::temporarySignedRoute('shop.payfast.start', $order->reservation_expires_at, ['uuid' => $order->uuid]);
+        }
+        return response()->view('shop.orders.show', compact('channel', 'order', 'payUrl'))->header('Cache-Control', 'no-store, private');
     }
 
     private function cart(Request $request, Channel $channel, CartService $carts)

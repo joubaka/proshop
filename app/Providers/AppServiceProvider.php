@@ -207,6 +207,7 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->singleton(\App\Services\MenuManager::class);
+        $this->app->bind(\App\Shop\PaidOrderFinalizer::class, \App\Shop\PosSaleFinalizer::class);
     }
 
     /**

@@ -12,6 +12,7 @@ class ScheduleRegistrar
             $schedule->command('lights:tick')->everyFiveSeconds()->withoutOverlapping(1)->runInBackground();
         }
         if (in_array(config('app.env'), ['live', 'production'], true)) {
+            $schedule->command('shop:expire-reservations')->everyMinute()->withoutOverlapping();
             $schedule->command('backup:run')->dailyAt('23:50')->withoutOverlapping();
             $schedule->command('pos:generateSubscriptionInvoices')->dailyAt('23:30')->withoutOverlapping();
             $schedule->command('pos:updateRewardPoints')->dailyAt('23:45')->withoutOverlapping();

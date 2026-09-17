@@ -8,15 +8,15 @@ use Tests\TestCase;
 
 class ScheduleRegistrationTest extends TestCase
 {
-    public function test_live_and_production_register_all_four_jobs(): void
+    public function test_live_and_production_register_all_five_jobs(): void
     {
         foreach (['live', 'production'] as $env) {
             config(['app.env' => $env]);
             $schedule = new Schedule;
             ScheduleRegistrar::register($schedule);
             $events = $schedule->events();
-            $this->assertCount(4, $events);
-            $this->assertSame(['50 23 * * *', '30 23 * * *', '45 23 * * *', '0 8 * * *'], array_column($events, 'expression'));
+            $this->assertCount(5, $events);
+            $this->assertSame(['* * * * *', '50 23 * * *', '30 23 * * *', '45 23 * * *', '0 8 * * *'], array_column($events, 'expression'));
             foreach ($events as $event) {
                 $this->assertTrue($event->withoutOverlapping);
                 $this->assertStringNotContainsString('dummyBusiness', $event->command);
@@ -28,7 +28,7 @@ class ScheduleRegistrationTest extends TestCase
     {
         config(['app.env' => 'production']);
         $this->artisan('schedule:list')->expectsOutputToContain('pos:generateSubscriptionInvoices')->assertSuccessful();
-        $this->assertCount(4, app(Schedule::class)->events());
+        $this->assertCount(5, app(Schedule::class)->events());
     }
 
     public function test_local_and_testing_do_not_register_business_jobs(): void

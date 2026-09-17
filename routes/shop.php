@@ -4,6 +4,7 @@ use App\Http\Controllers\Shop\CatalogController;
 use App\Http\Controllers\Shop\CartController;
 use App\Http\Controllers\Shop\CheckoutController;
 use App\Http\Controllers\Shop\PayFastController;
+use App\Http\Controllers\Shop\AdminOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('shop')->name('shop.')->group(function () {
@@ -21,3 +22,12 @@ Route::prefix('shop')->name('shop.')->group(function () {
     Route::get('/payfast/cancel/{payment}', [PayFastController::class, 'cancelled'])->middleware('signed')->name('payfast.cancel');
     Route::post('/payfast/notify', [PayFastController::class, 'notify'])->name('payfast.notify');
 });
+
+Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 'AdminSidebarMenu', 'CheckUserLogin'])
+    ->prefix('shop-admin')->name('shop.admin.')->group(function () {
+        Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{uuid}', [AdminOrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{uuid}/ready', [AdminOrderController::class, 'ready'])->name('orders.ready');
+        Route::post('/orders/{uuid}/collected', [AdminOrderController::class, 'collected'])->name('orders.collected');
+        Route::post('/orders/{uuid}/cancel', [AdminOrderController::class, 'cancel'])->name('orders.cancel');
+    });

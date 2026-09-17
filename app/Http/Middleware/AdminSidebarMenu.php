@@ -244,6 +244,13 @@ class AdminSidebarMenu
                         }
 
                         if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'sell.create', 'direct_sell.access', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell', 'access_shipping', 'access_own_shipping', 'access_commission_agent_shipping']) ) {
+                            if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'sell.create'])) {
+                                $sub->url(
+                                    route('shop.admin.orders.index'),
+                                    'Online orders',
+                                    ['icon' => 'fa fas fa-shopping-bag', 'active' => request()->segment(1) == 'shop-admin']
+                                );
+                            }
                             $sub->url(
                                 action('App\Http\Controllers\SellController@index'),
                                 __('lang_v1.all_sales'),

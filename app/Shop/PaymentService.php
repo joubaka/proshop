@@ -45,12 +45,13 @@ class PaymentService
         $verified = $this->gateway->verify($request);
 
         return DB::transaction(function () use ($verified) {
-            $payment = Payment::query()->where('merchant_payment_id', $verified['merchant_payment_id'])
-                ->lockForUpdate()->first();
-            if (!$payment) {
+            $reference = Payment::query()->where('merchant_payment_id', $verified['merchant_payment_id'])
+                ->first(['id', 'shop_order_id']);
+            if (!$reference) {
                 throw new InvalidNotification('Payment reference is unknown.');
             }
-            $order = Order::query()->whereKey($payment->shop_order_id)->lockForUpdate()->firstOrFail();
+            $order = Order::query()->whereKey($reference->shop_order_id)->lockForUpdate()->firstOrFail();
+            $payment = Payment::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();
 
             if ($payment->status === 'paid' && $order->payment_status === 'paid') {
                 return 'already_paid';

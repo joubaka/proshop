@@ -7,6 +7,7 @@ use App\Shop\Channel;
 use App\Shop\DeliveryQuote;
 use App\Shop\Exceptions\InsufficientStock;
 use App\Shop\OrderPlacementService;
+use App\Shop\OrderOperationsService;
 use App\Shop\Order;
 use App\Shop\PaidOrderFinalizer;
 use App\Shop\Payment;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Tests\Support\RegressionTestCase;
 use Mockery;
 
@@ -320,6 +322,59 @@ class ShopOrderPlacementTest extends RegressionTestCase
         $this->assertDatabaseHas('contacts', ['business_id' => 1, 'email' => 'jamie@example.test', 'created_by' => 9]);
         $this->assertSame(555, $order->fresh()->transaction_id);
         $this->assertNotNull($order->fresh()->contact_id);
+    }
+
+    public function test_expiry_job_releases_unpaid_reservations_and_payment_attempts_once(): void
+    {
+        $order = $this->placedOrder(100, 2);
+        app(PaymentService::class)->checkout($order);
+        $order->update(['reservation_expires_at' => now()->subMinute()]);
+        $order->reservations()->update(['expires_at' => now()->subMinute()]);
+
+        $this->assertSame(1, app(OrderOperationsService::class)->expireReservations());
+        $this->assertSame(0, app(OrderOperationsService::class)->expireReservations());
+
+        $this->assertSame('expired', $order->fresh()->payment_status);
+        $this->assertSame('released', $order->reservations()->first()->status);
+        $this->assertSame('expired', $order->payments()->first()->status);
+        $this->assertSame(1, $order->events()->where('event_type', 'reservation_expired')->count());
+    }
+
+    public function test_paid_collection_fulfilment_is_ordered_idempotent_and_audited(): void
+    {
+        $order = $this->placedOrder(100, 1);
+        $order->update(['payment_status' => 'paid', 'order_status' => 'confirmed', 'paid_at' => now()]);
+        $operations = app(OrderOperationsService::class);
+
+        $operations->markReady($order, 71);
+        $operations->markReady($order->fresh(), 71);
+        $operations->markCollected($order->fresh(), 72);
+        $operations->markCollected($order->fresh(), 72);
+
+        $this->assertSame('completed', $order->fresh()->order_status);
+        $this->assertSame('collected', $order->fresh()->fulfilment_status);
+        $this->assertSame(1, $order->events()->where('event_type', 'order_ready')->count());
+        $this->assertSame(1, $order->events()->where('event_type', 'order_collected')->count());
+        $this->assertSame(71, $order->events()->where('event_type', 'order_ready')->value('actor_id'));
+    }
+
+    public function test_unpaid_cancellation_releases_stock_but_paid_order_requires_refund_workflow(): void
+    {
+        $order = $this->placedOrder(100, 1);
+        app(PaymentService::class)->checkout($order);
+        $operations = app(OrderOperationsService::class);
+        $operations->cancelUnpaid($order, 73, 'Customer requested cancellation');
+
+        $this->assertSame('cancelled', $order->fresh()->order_status);
+        $this->assertSame('released', $order->reservations()->first()->status);
+        $this->assertSame('cancelled', $order->payments()->first()->status);
+        $this->assertSame('Customer requested cancellation',
+            $order->events()->where('event_type', 'order_cancelled')->firstOrFail()->metadata['reason']);
+
+        $paid = $this->placedOrder(100, 1);
+        $paid->update(['payment_status' => 'paid', 'order_status' => 'confirmed']);
+        $this->expectException(ValidationException::class);
+        $operations->cancelUnpaid($paid, 73, 'Cannot silently cancel paid order');
     }
 
     private function cartWith(ShopVariation $variation, int $quantity)

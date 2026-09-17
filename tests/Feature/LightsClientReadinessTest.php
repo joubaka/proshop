@@ -94,6 +94,26 @@ class LightsClientReadinessTest extends RegressionTestCase
         $this->assertSame(1, $this->portal->db()->table('lights_events')->where('kind', 'cash_topup_recorded')->count());
     }
 
+    public function test_admin_member_cards_show_credit_debit_and_activity_totals(): void
+    {
+        $this->portal->db()->table('lights_ledger')->insert([
+            ['user_id' => $this->member->id, 'amount_cents' => 5000, 'balance_after' => 5000,
+                'kind' => 'cash_topup', 'reference' => 'cash:summary-credit', 'created_at' => 1700000000],
+            ['user_id' => $this->member->id, 'amount_cents' => -1250, 'balance_after' => 3750,
+                'kind' => 'usage', 'reference' => 'usage:summary-debit', 'created_at' => 1700000600],
+        ]);
+        $this->member->forceFill(['balance_cents' => 3750])->save();
+
+        $this->actingAs($this->admin, 'lights')->get(route('lights.admin'))
+            ->assertOk()
+            ->assertSee('Total credits')
+            ->assertSee('+ R 50.00')
+            ->assertSee('Total debits')
+            ->assertSee('− R 12.50')
+            ->assertSee('Transactions')
+            ->assertSee('15 Nov 2023 00:23 SAST');
+    }
+
     public function test_cash_topup_is_admin_only_and_rejects_invalid_amounts(): void
     {
         $payload = ['direction' => 'credit', 'payment_type' => 'cash', 'amount' => '10.00',

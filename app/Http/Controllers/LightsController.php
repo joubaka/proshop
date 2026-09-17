@@ -218,7 +218,18 @@ class LightsController extends Controller
                 ->leftJoin('lights_courts', 'lights_courts.id', '=', 'court_id')->whereIn('driver', ['customer_cloud', 'cloud_customer'])
                 ->whereNotNull('active_user_id')->get(['lights_control_sessions.*', 'lights_users.name as member_name', 'lights_courts.name as court_name'])
             : collect();
-        $members = $this->portal->db()->table('lights_users')->orderByDesc('created_at')->limit(100)->get();
+        $memberLedger = $this->portal->db()->table('lights_ledger')
+            ->select('user_id')
+            ->selectRaw('SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END) as total_credit_cents')
+            ->selectRaw('SUM(CASE WHEN amount_cents < 0 THEN -amount_cents ELSE 0 END) as total_debit_cents')
+            ->selectRaw('COUNT(*) as movement_count')
+            ->selectRaw('MAX(created_at) as last_movement_at')
+            ->groupBy('user_id');
+        $members = $this->portal->db()->table('lights_users')
+            ->leftJoinSub($memberLedger, 'member_ledger', 'member_ledger.user_id', '=', 'lights_users.id')
+            ->orderByDesc('lights_users.created_at')->limit(100)
+            ->get(['lights_users.*', 'member_ledger.total_credit_cents', 'member_ledger.total_debit_cents',
+                'member_ledger.movement_count', 'member_ledger.last_movement_at']);
         $payments = $this->portal->db()->table('lights_topups')->join('lights_users', 'lights_users.id', '=', 'user_id')
             ->where('gateway', 'payfast')->orderByDesc('lights_topups.created_at')->limit(50)
             ->get(['lights_topups.*', 'lights_users.name as member_name', 'lights_users.email as member_email']);

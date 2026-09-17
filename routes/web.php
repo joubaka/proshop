@@ -15,6 +15,7 @@ require __DIR__.'/install_r.php';
 require __DIR__.'/lights.php';
 require __DIR__.'/invoice_scans.php';
 require __DIR__.'/inventory_control.php';
+require __DIR__.'/shop.php';
 
 Route::middleware(['setData'])->group(function () {
     Route::get('/', function () {

@@ -85,7 +85,10 @@ class PosSaleFinalizer implements PaidOrderFinalizer
             'shipping_status' => $order->fulfilment_method === 'collection' ? 'ordered' : null,
             'shipping_charges' => $order->delivery_cents / 100,
         ];
-        $invoiceTotal = ['total_before_tax' => $order->subtotal_cents / 100, 'tax' => 0];
+        $invoiceTotal = [
+            'total_before_tax' => ($order->subtotal_cents - $order->tax_cents) / 100,
+            'tax' => $order->tax_cents / 100,
+        ];
         $transaction = $this->transactions->createSellTransaction(
             $business->id, $input, $invoiceTotal, $business->owner_id, false
         );

@@ -297,22 +297,25 @@ class ShopOrderPlacementTest extends RegressionTestCase
             $table->softDeletes(); $table->timestamps();
         });
 
-        $order = $this->placedOrder(100, 2);
+        $order = $this->placedOrder(115, 2, 15);
         app(PaymentService::class)->checkout($order);
         $payment = Payment::firstOrFail();
         $payment->provider_reference = 'PF-POS-1';
 
-        $transaction = (object) ['id' => 555, 'final_total' => 200.0, 'sell_lines' => collect([(object) ['id' => 1]])];
+        $transaction = (object) ['id' => 555, 'final_total' => 230.0, 'sell_lines' => collect([(object) ['id' => 1]])];
         $transactions = Mockery::mock(\App\Utils\TransactionUtil::class);
-        $transactions->shouldReceive('createSellTransaction')->once()->andReturn($transaction);
+        $transactions->shouldReceive('createSellTransaction')->once()->withArgs(fn ($businessId, $input, $invoiceTotal, $ownerId) =>
+            $businessId === 1 && $ownerId === 9 && (float) $input['final_total'] === 230.0
+                && (float) $invoiceTotal['total_before_tax'] === 200.0 && (float) $invoiceTotal['tax'] === 30.0
+        )->andReturn($transaction);
         $transactions->shouldReceive('createOrUpdateSellLines')->once()->withArgs(fn ($sale, $lines, $location) =>
             $sale === $transaction && count($lines) === 1 && $location === 10 && $lines[0]['quantity'] === 2
         );
         $transactions->shouldReceive('createOrUpdatePaymentLines')->once()->withArgs(fn ($sale, $payments, $businessId, $ownerId) =>
-            $sale === $transaction && (float) $payments[0]['amount'] === 200.0 && $payments[0]['method'] === 'other'
+            $sale === $transaction && (float) $payments[0]['amount'] === 230.0 && $payments[0]['method'] === 'other'
                 && $businessId === 1 && $ownerId === 9
         );
-        $transactions->shouldReceive('updatePaymentStatus')->once()->with(555, 200.0);
+        $transactions->shouldReceive('updatePaymentStatus')->once()->with(555, 230.0);
         $transactions->shouldReceive('mapPurchaseSell')->once();
         $products = Mockery::mock(\App\Utils\ProductUtil::class);
         $products->shouldReceive('decreaseProductQuantity')->once()->with(400, 2400, 10, 2);
@@ -384,9 +387,15 @@ class ShopOrderPlacementTest extends RegressionTestCase
         return $cart;
     }
 
-    private function placedOrder(float $price, int $quantity): Order
+    private function placedOrder(float $price, int $quantity, float $taxRate = 0): Order
     {
-        $variation = $this->publish($this->channel, 400 + Payment::count(), price: $price, stock: 10);
+        $variation = $this->publish(
+            $this->channel,
+            400 + Payment::count(),
+            price: $price,
+            stock: 10,
+            taxRate: $taxRate,
+        );
         $cart = $this->cartWith($variation, $quantity);
         return app(OrderPlacementService::class)->place($cart, $this->customer(), DeliveryQuote::collection());
     }

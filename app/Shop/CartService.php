@@ -8,6 +8,8 @@ use Illuminate\Validation\ValidationException;
 
 class CartService
 {
+    public const COOKIE = 'proshop_shop_cart';
+
     public function create(Channel $channel): array
     {
         $token = Str::random(64);
@@ -49,5 +51,10 @@ class CartService
                 ['shop_cart_id' => $cart->id, 'shop_variation_id' => $shopVariation->id], ['quantity' => $quantity]
             );
         });
+    }
+
+    public function remove(Cart $cart, int $itemId): void
+    {
+        CartItem::query()->where('shop_cart_id', $cart->id)->whereKey($itemId)->delete();
     }
 }

@@ -122,6 +122,43 @@ class ShopOrderPlacementTest extends RegressionTestCase
         $this->assertSame('active', $cart->fresh()->status);
     }
 
+    public function test_customer_can_review_cart_submit_collection_checkout_and_open_only_a_signed_order_link(): void
+    {
+        config(['shop.checkout_enabled' => true]);
+        $variation = $this->publish($this->channel, 100, price: 249.95, stock: 4, taxRate: 15);
+        [$cart, $token] = app(CartService::class)->create($this->channel);
+        app(CartService::class)->put($cart, $variation->id, 2);
+
+        $this->withCookie(CartService::COOKIE, $token)->get('/shop/cart')
+            ->assertOk()->assertSee('Product 100')->assertSee('R 499.90')->assertHeader('Cache-Control', 'no-store, private');
+        $this->withCookie(CartService::COOKIE, $token)->get('/shop/checkout')
+            ->assertOk()->assertSee('SECURE CHECKOUT')->assertSee('Collection order');
+
+        $response = $this->withCookie(CartService::COOKIE, $token)->post('/shop/checkout', [
+            'name' => 'Jamie Player', 'email' => 'jamie@example.test', 'mobile' => '0821234567',
+            'address_line_1' => '1 Centre Court', 'city' => 'Cape Town',
+            'province' => 'Western Cape', 'postal_code' => '8001', 'terms' => '1',
+        ])->assertRedirect()->assertCookieExpired(CartService::COOKIE);
+
+        $signedUrl = $response->headers->get('Location');
+        $this->get($signedUrl)->assertOk()->assertSee('ORDER RESERVED')->assertSee('R 499.90');
+        $order = \App\Shop\Order::firstOrFail();
+        $this->get(route('shop.orders.show', $order->uuid))->assertForbidden();
+        $this->assertSame('converted', $cart->fresh()->status);
+        $this->assertSame(4.0, (float) DB::table('variation_location_details')->value('qty_available'));
+    }
+
+    public function test_checkout_mutations_remain_unavailable_while_checkout_feature_is_disabled(): void
+    {
+        config(['shop.checkout_enabled' => false]);
+        $variation = $this->publish($this->channel, 100);
+
+        $this->post('/shop/cart/items', ['shop_variation_id' => $variation->id, 'quantity' => 1])->assertNotFound();
+        $this->get('/shop/checkout')->assertNotFound();
+        $this->assertDatabaseCount('shop_carts', 0);
+        $this->assertDatabaseCount('shop_orders', 0);
+    }
+
     private function cartWith(ShopVariation $variation, int $quantity)
     {
         [$cart] = app(CartService::class)->create($this->channel);

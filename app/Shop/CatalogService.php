@@ -3,6 +3,7 @@
 namespace App\Shop;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class CatalogService
 {
@@ -28,6 +29,25 @@ class CatalogService
     public function product(Channel $channel, string $slug): ShopProduct
     {
         return $this->baseQuery($channel)->where('slug', $slug)->firstOrFail();
+    }
+
+    public function availability(Channel $channel, ShopProduct $product): array
+    {
+        $reserved = DB::table('shop_stock_reservations')->where('location_id', $channel->location_id)
+            ->where('status', 'active')->where('expires_at', '>', now())
+            ->whereIn('variation_id', $product->variations->pluck('variation_id'))
+            ->selectRaw('variation_id, SUM(quantity) as reserved_quantity')
+            ->groupBy('variation_id')->pluck('reserved_quantity', 'variation_id');
+
+        return $product->variations->mapWithKeys(function (ShopVariation $shopVariation) use ($reserved) {
+            $physical = (float) ($shopVariation->variation->variation_location_details->first()?->qty_available ?? 0);
+            $available = max(0, (int) floor($physical - (float) $shopVariation->safety_stock)
+                - (int) ($reserved[$shopVariation->variation_id] ?? 0));
+            if ($shopVariation->maximum_order_quantity !== null) {
+                $available = min($available, (int) $shopVariation->maximum_order_quantity);
+            }
+            return [$shopVariation->id => $available];
+        })->all();
     }
 
     private function baseQuery(Channel $channel)

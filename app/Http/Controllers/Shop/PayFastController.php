@@ -25,7 +25,7 @@ class PayFastController extends Controller
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
         }
-        return response()->view('shop.payfast-redirect', compact('checkout'))
+        return response()->view('shop.payfast-redirect', compact('checkout', 'channel'))
             ->header('Cache-Control', 'no-store, private');
     }
 

@@ -20,8 +20,9 @@ class CatalogController extends Controller
     {
         $channel = $catalog->channel();
         $shopProduct = $catalog->product($channel, $slug);
+        $availability = $catalog->availability($channel, $shopProduct);
 
-        return response()->view('shop.catalog.show', compact('channel', 'shopProduct'))
-            ->header('Cache-Control', 'public, max-age=60');
+        return response()->view('shop.catalog.show', compact('channel', 'shopProduct', 'availability'))
+            ->header('Cache-Control', 'no-store');
     }
 }

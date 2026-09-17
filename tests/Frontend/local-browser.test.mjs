@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
 const base = 'http://127.0.0.1:8097';
 test('isolated local frontend acceptance', { timeout: 120000 }, async t => {
@@ -15,11 +16,61 @@ test('isolated local frontend acceptance', { timeout: 120000 }, async t => {
     const errors = [];
     page.on('pageerror', error => { errors.push(error.message); console.error(error.stack); });
     try {
+        let shopOrderUrl;
+        const buyerName = 'Pilot Buyer '+Date.now();
+        let availableBefore;
+        await t.test('native shop completes catalogue cart checkout PayFast ITN and POS stock flow', async () => {
+            await page.goto(base+'/shop');
+            await page.getByText('Test Tennis Balls', { exact: true }).click();
+            availableBefore = Number((await page.getByText(/available online/).textContent()).match(/\d+/)[0]);
+            await page.getByLabel('Quantity').fill('1');
+            await page.getByRole('button', { name: 'Add to cart' }).click();
+            await page.getByRole('link', { name: 'Continue to checkout' }).click();
+            await page.getByLabel('Full name').fill(buyerName);
+            await page.getByLabel('Email').fill('pilot@example.invalid');
+            await page.getByLabel('Mobile number').fill('0820000000');
+            await page.getByLabel('Address line 1').fill('1 Acceptance Court');
+            await page.getByLabel('City').fill('Cape Town');
+            await page.getByLabel('Postal code').fill('8001');
+            await page.locator('input[name="terms"]').check();
+            await Promise.all([page.waitForURL('**/shop/orders/**'), page.getByRole('button', { name: 'Reserve order and continue' }).click()]);
+            shopOrderUrl = page.url();
+            await page.getByRole('button', { name: 'Pay securely with PayFast' }).click();
+            await page.getByRole('heading', { name: 'Continue to PayFast' }).waitFor();
+            const checkout = new URLSearchParams(await page.locator('#payfast-checkout').evaluate(form => new URLSearchParams(new FormData(form)).toString()));
+            const notification = new URLSearchParams({
+                m_payment_id: checkout.get('m_payment_id'), pf_payment_id: 'PF-ACCEPTANCE-'+Date.now(),
+                payment_status: 'COMPLETE', amount_gross: checkout.get('amount'), merchant_id: 'acceptance-merchant',
+            });
+            const signature = createHash('md5').update(notification.toString()+'&passphrase=acceptance-passphrase').digest('hex');
+            notification.set('signature', signature);
+            const response = await fetch(base+'/shop/payfast/notify', {
+                method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: notification.toString(),
+            });
+            assert.equal(response.status, 200);
+            assert.equal(await response.text(), 'OK');
+            await page.goto(shopOrderUrl);
+            await page.getByText('ORDER CONFIRMED', { exact: true }).waitFor();
+            await page.goto(base+'/shop/products/test-tennis-balls');
+            await page.getByText((availableBefore - 1)+' available online', { exact: true }).waitFor();
+            assert.deepEqual(errors, []);
+        });
         await page.goto(base+'/pos/login');
         await page.locator('[name="username"]').fill('local.admin');
         await page.locator('[name="password"]').fill('LocalAcceptance!2026');
         await Promise.all([page.waitForURL('**/home'), page.locator('button[type="submit"]').click()]);
+        await t.test('staff fulfils the paid online collection in sequence', async () => {
+            await page.goto(base+'/shop-admin/orders');
+            const row = page.locator('tr').filter({ hasText: buyerName }).first();
+            await row.getByRole('link', { name: 'Open' }).click();
+            await page.getByRole('button', { name: 'Mark ready for collection' }).click();
+            await page.getByRole('button', { name: 'Mark collected' }).click();
+            assert.match(await page.locator('.box-info p').filter({ hasText: 'Order:' }).innerText(), /Completed/);
+            assert.match(await page.locator('.box-info p').filter({ hasText: 'Fulfilment:' }).innerText(), /Collected/);
+            assert.deepEqual(errors, []);
+        });
         await t.test('dashboard renders local Chart.js 4 charts without JavaScript errors', async () => {
+            await page.goto(base+'/home');
             await page.waitForLoadState('networkidle');
             const charts = await page.evaluate(() => ({ version: Chart.version, count: Object.keys(Chart.instances).length }));
             assert.match(charts.version, /^4\./);

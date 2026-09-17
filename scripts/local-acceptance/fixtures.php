@@ -9,10 +9,34 @@ if (!app()->environment('acceptance') || DB::connection()->getDatabaseName() !==
 if (DB::table('migrations')->count() !== count(glob(database_path('migrations/*.php')))) {
     throw new RuntimeException('Complete all application migrations before creating acceptance fixtures.');
 }
+$ensureShopFixtures = function (): void {
+    $business = App\Business::where('name', 'Local Acceptance Proshop')->first();
+    if (!$business) return;
+    $location = $business->locations()->where('name', 'Test Court Shop')->firstOrFail();
+    $product = App\Product::where('business_id', $business->id)->where('name', 'Test Tennis Balls')->firstOrFail();
+    $variation = $product->variations()->firstOrFail();
+    App\VariationLocationDetails::updateOrCreate([
+        'product_id' => $product->id, 'product_variation_id' => $variation->product_variation_id,
+        'variation_id' => $variation->id, 'location_id' => $location->id,
+    ], ['qty_available' => 10]);
+    $channel = App\Shop\Channel::updateOrCreate(['slug' => 'main'], [
+        'business_id' => $business->id, 'location_id' => $location->id,
+        'name' => 'Local Acceptance ProShop', 'currency' => 'ZAR', 'enabled' => true,
+    ]);
+    app(App\Shop\CatalogAdminService::class)->saveProduct($channel, $product, [
+        'slug' => 'test-tennis-balls', 'short_description' => 'Synthetic tennis balls for the isolated shop pilot.',
+        'web_description' => 'Acceptance-only product using POS price and stock.', 'featured' => true,
+        'published' => true, 'sort_order' => 1, 'variations' => [$variation->id => [
+            'display_name' => 'Can', 'published' => true, 'sort_order' => 1,
+            'safety_stock' => 1, 'maximum_order_quantity' => 9,
+        ]],
+    ]);
+};
 if (App\User::where('username', 'local.admin')->exists()) {
     // Repair the first fixture revision's numeric ENUM binding; never overwrite a chosen format.
     App\Business::whereIn('name', ['Local Acceptance Proshop', 'Other Test Business'])->where('time_format', '')->update(['time_format' => '24']);
-    echo "Synthetic fixtures already exist; existing test work was preserved.\n";
+    $ensureShopFixtures();
+    echo "Synthetic fixtures already exist; existing test work was preserved and shop fixtures were checked.\n";
     return;
 }
 DB::transaction(function () {
@@ -65,5 +89,6 @@ DB::transaction(function () {
         }
     }
 });
+$ensureShopFixtures();
 echo "Synthetic businesses, staff, customers, suppliers, products and accounts created.\n";
 echo "Users: local.admin / local.cashier / local.other. Password: LocalAcceptance!2026\n";

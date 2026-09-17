@@ -36,6 +36,10 @@ class OrderPlacementService
                     || $product->type === 'combo') {
                     throw ValidationException::withMessages(['cart' => 'A product in your cart is no longer available.']);
                 }
+                if ($shopVariation->maximum_order_quantity !== null
+                    && $item->quantity > (int) $shopVariation->maximum_order_quantity) {
+                    throw ValidationException::withMessages(['cart' => 'A product in your cart exceeds its online order limit.']);
+                }
                 $stock = DB::table('variation_location_details')->where('location_id', $channel->location_id)
                     ->where('variation_id', $variation->id)->lockForUpdate()->first();
                 if (!$stock) { throw new InsufficientStock($variation->id, 0); }

@@ -12,5 +12,4 @@
         <button class="shop-button" type="submit">Pay securely with PayFast</button>
     </form>
 </div>
-<script>document.getElementById('payfast-checkout').submit();</script>
 @endsection

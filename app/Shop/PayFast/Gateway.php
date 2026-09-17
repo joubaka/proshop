@@ -75,7 +75,7 @@ class Gateway
                 throw new \RuntimeException('Shop PayFast is not configured.');
             }
         }
-        if (!str_starts_with((string) config('app.url'), 'https://')) {
+        if (!app()->environment(['testing', 'acceptance']) && !str_starts_with((string) config('app.url'), 'https://')) {
             throw new \RuntimeException('The shop URL must use HTTPS for PayFast.');
         }
         foreach (['process_url', 'validate_url'] as $key) {

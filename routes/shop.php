@@ -5,6 +5,7 @@ use App\Http\Controllers\Shop\CartController;
 use App\Http\Controllers\Shop\CheckoutController;
 use App\Http\Controllers\Shop\PayFastController;
 use App\Http\Controllers\Shop\AdminOrderController;
+use App\Http\Controllers\Shop\AdminCatalogController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('shop')->name('shop.')->group(function () {
@@ -30,4 +31,9 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
         Route::post('/orders/{uuid}/ready', [AdminOrderController::class, 'ready'])->name('orders.ready');
         Route::post('/orders/{uuid}/collected', [AdminOrderController::class, 'collected'])->name('orders.collected');
         Route::post('/orders/{uuid}/cancel', [AdminOrderController::class, 'cancel'])->name('orders.cancel');
+        Route::get('/catalog', [AdminCatalogController::class, 'index'])->name('catalog.index');
+        Route::post('/catalog/channels', [AdminCatalogController::class, 'storeChannel'])->name('catalog.channels.store');
+        Route::get('/catalog/{channel}/products', [AdminCatalogController::class, 'products'])->name('catalog.products');
+        Route::get('/catalog/{channel}/products/{product}', [AdminCatalogController::class, 'edit'])->name('catalog.products.edit');
+        Route::put('/catalog/{channel}/products/{product}', [AdminCatalogController::class, 'update'])->name('catalog.products.update');
     });

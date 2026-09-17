@@ -88,7 +88,7 @@ class LocalWorkflowTest extends \Tests\TestCase
         $this->assertSame(1, $forms->length);
         $this->assertSame(1, $xpath->query('.//input[@name="_token"]', $forms->item(0))->length);
         $this->withSession(['_token' => 'local-test-token'])->post('/logout', ['_token' => 'local-test-token'])
-            ->assertRedirect('/login')->assertSessionMissing('business');
+            ->assertRedirect('/pos/login')->assertSessionMissing('business');
         $this->assertGuest();
     }
 

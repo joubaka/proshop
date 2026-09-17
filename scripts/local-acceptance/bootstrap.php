@@ -65,6 +65,20 @@ $customerHardware = $hardwareCommissioning && getenv('LIGHTS_CUSTOMER_HARDWARE_A
 $app['config']->set('lights.control.live_enabled', $hardwareCommissioning);
 $app['config']->set('lights.control.local_approval_required', ! $customerHardware);
 $app['config']->set('lights.control.customer_enabled', $customerHardware);
+$app['config']->set('shop.enabled', true);
+$app['config']->set('shop.checkout_enabled', true);
+$app['config']->set('shop.channel', 'main');
+$app['config']->set('shop.reservation_minutes', 20);
+$app['config']->set('shop.payfast', [
+    'enabled' => true, 'sandbox' => true, 'merchant_id' => 'acceptance-merchant',
+    'merchant_key' => 'acceptance-key', 'passphrase' => 'acceptance-passphrase',
+    'process_url' => 'https://sandbox.payfast.invalid/eng/process',
+    'validate_url' => 'https://sandbox.payfast.invalid/eng/query/validate',
+    'source_cidrs' => ['127.0.0.1/32'],
+]);
+$app->bind(App\Shop\PayFast\Gateway::class, fn () => new class extends App\Shop\PayFast\Gateway {
+    protected function serverConfirmation(string $parameters): bool { return true; }
+});
 // External integrations are unavailable in this sandbox, including inherited machine credentials.
 foreach (['stripe', 'paypal', 'paystack', 'razorpay', 'pesapal', 'vonage', 'pusher'] as $integration) {
     $app['config']->set($integration, []);

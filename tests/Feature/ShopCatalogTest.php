@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Shop\Channel;
+use App\Shop\CatalogAdminService;
 use App\Shop\ShopProduct;
 use App\Shop\ShopVariation;
+use App\Product;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\Support\RegressionTestCase;
+use Illuminate\Validation\ValidationException;
 
 class ShopCatalogTest extends RegressionTestCase
 {
@@ -19,6 +22,7 @@ class ShopCatalogTest extends RegressionTestCase
         $this->createCatalogSchema();
         $migration = require database_path('migrations/2026_09_17_000100_create_shop_catalog_tables.php');
         $migration->up();
+        (require database_path('migrations/2026_09_17_000200_create_shop_commerce_tables.php'))->up();
         config(['shop.enabled' => true, 'shop.channel' => 'main', 'shop.products_per_page' => 24]);
     }
 
@@ -57,9 +61,56 @@ class ShopCatalogTest extends RegressionTestCase
         $this->get('/shop/products/published-racket')
             ->assertOk()
             ->assertSee('Published racket')
-            ->assertSee('In stock');
+            ->assertSee('3 available online');
         $this->get('/shop/products/draft-racket')->assertNotFound();
         $this->get('/shop/products/unknown')->assertNotFound();
+    }
+
+    public function test_catalogue_admin_explicitly_publishes_pos_product_and_variation_settings(): void
+    {
+        $channel = $this->channel();
+        $this->publish($channel, 100, 'Published racket', 'old-slug', published: false, variationPublished: false);
+        $product = Product::findOrFail(100);
+        $variationId = 2100;
+
+        $saved = app(CatalogAdminService::class)->saveProduct($channel, $product, [
+            'slug' => 'competition-racket', 'short_description' => 'Tournament racket',
+            'web_description' => 'A controlled online description.', 'featured' => true, 'published' => true,
+            'sort_order' => 5, 'variations' => [$variationId => [
+                'display_name' => 'Standard grip', 'published' => true, 'sort_order' => 2,
+                'safety_stock' => 1, 'maximum_order_quantity' => 2,
+            ]],
+        ]);
+
+        $this->assertSame('competition-racket', $saved->slug);
+        $this->assertTrue($saved->featured);
+        $this->assertNotNull($saved->published_at);
+        $this->assertDatabaseHas('shop_variations', [
+            'shop_product_id' => $saved->id, 'variation_id' => $variationId,
+            'published' => true, 'safety_stock' => 1, 'maximum_order_quantity' => 2,
+        ]);
+        $this->get('/shop')->assertOk()->assertSee('Published racket')->assertSee('Tournament racket');
+    }
+
+    public function test_catalogue_admin_rejects_foreign_variation_atomically(): void
+    {
+        $channel = $this->channel();
+        $this->publish($channel, 100, 'First racket', 'first', published: false, variationPublished: false);
+        $this->publish($channel, 101, 'Second racket', 'second', published: false, variationPublished: false);
+        $product = Product::findOrFail(100);
+
+        try {
+            app(CatalogAdminService::class)->saveProduct($channel, $product, [
+                'slug' => 'tampered', 'published' => true,
+                'variations' => [2101 => ['published' => true, 'safety_stock' => 0]],
+            ]);
+            $this->fail('A variation belonging to another product must be rejected.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('variations', $e->errors());
+        }
+
+        $this->assertSame('first', ShopProduct::where('product_id', 100)->value('slug'));
+        $this->assertNull(ShopProduct::where('product_id', 100)->value('published_at'));
     }
 
     private function channel(): Channel

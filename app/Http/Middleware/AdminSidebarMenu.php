@@ -250,6 +250,11 @@ class AdminSidebarMenu
                                     'Online orders',
                                     ['icon' => 'fa fas fa-shopping-bag', 'active' => request()->segment(1) == 'shop-admin']
                                 );
+                                $sub->url(
+                                    route('shop.admin.catalog.index'),
+                                    'Online catalogue',
+                                    ['icon' => 'fa fas fa-store', 'active' => request()->segment(1) == 'shop-admin' && request()->segment(2) == 'catalog']
+                                );
                             }
                             $sub->url(
                                 action('App\Http\Controllers\SellController@index'),

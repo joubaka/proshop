@@ -60,6 +60,8 @@ class LightsPortalTest extends RegressionTestCase
             ->assertSee('id="login" tabindex="-1"', false)
             ->assertSee('id="login-password" type="password"', false)
             ->assertSee('data-password-toggle="login-password"', false)
+            ->assertSee('data-password-toggle="register-password"', false)
+            ->assertSee('data-password-toggle="register-password-confirmation"', false)
             ->assertSee('aria-pressed="false"', false);
         $this->assertSame(url('/pos/login'), route('pos.login'));
         $this->actingAs($this->player, 'lights');
@@ -75,8 +77,8 @@ class LightsPortalTest extends RegressionTestCase
         $this->assertFileExists(public_path('lights-assets/portal.css'));
 
         $this->get('/lights/login')->assertOk()
-            ->assertSee('/lights-assets/portal.css?v=9', false)
-            ->assertSee('/lights-assets/portal.js?v=8', false);
+            ->assertSee('/lights-assets/portal.css?v=11', false)
+            ->assertSee('/lights-assets/portal.js?v=10', false);
         $this->actingAs($this->player, 'lights')->get('/lights')->assertOk()
             ->assertSee('Install Court Lights')
             ->assertSee('data-home-tab="courts"', false)

@@ -9,7 +9,7 @@
             <label for="login-password">Password</label>
             <div class="password-field">
                 <input id="login-password" type="password" name="password" autocomplete="current-password" required maxlength="72">
-                <button type="button" class="password-toggle" data-password-toggle="login-password" aria-controls="login-password" aria-pressed="false">Show</button>
+                <button type="button" class="password-toggle" data-password-toggle="login-password" aria-controls="login-password" aria-pressed="false" aria-label="Show password">Show</button>
             </div>
             <button class="button primary full">Sign in</button>
         </form>
@@ -23,8 +23,17 @@
             <form action="{{ route('lights.register') }}" method="POST">@csrf
                 <label>Your name<input name="name" required maxlength="100" autocomplete="name"></label>
                 <label>Email<input name="email" type="email" required autocomplete="email"></label>
-                <label>Password<input name="password" type="password" minlength="4" maxlength="72" required autocomplete="new-password"><small>At least 4 characters.</small></label>
-                <label>Confirm password<input name="password_confirmation" type="password" required autocomplete="new-password"></label>
+                <label for="register-password">Password</label>
+                <div class="password-field">
+                    <input id="register-password" name="password" type="password" minlength="4" maxlength="72" required autocomplete="new-password">
+                    <button type="button" class="password-toggle" data-password-toggle="register-password" aria-controls="register-password" aria-pressed="false" aria-label="Show password">Show</button>
+                </div>
+                <small>At least 4 characters.</small>
+                <label for="register-password-confirmation">Confirm password</label>
+                <div class="password-field">
+                    <input id="register-password-confirmation" name="password_confirmation" type="password" maxlength="72" required autocomplete="new-password">
+                    <button type="button" class="password-toggle" data-password-toggle="register-password-confirmation" aria-controls="register-password-confirmation" aria-pressed="false" aria-label="Show password confirmation">Show</button>
+                </div>
                 <label class="check-label"><input name="terms" type="checkbox" value="1" required> <span>I accept the <a href="{{ route('lights.terms') }}" target="_blank">service terms</a> and have read the <a href="{{ route('lights.privacy') }}" target="_blank">privacy notice</a>.</span></label>
                 <button class="button primary full">Create account</button>
             </form>

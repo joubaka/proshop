@@ -270,6 +270,10 @@ class Portal
                 $court->hardware_stale = !$observed || (int) $observed->checked_at < $now - 120;
                 $court->hardware_online = (bool) ($observed && $observed->online && !$court->hardware_stale && !$observed->has_errors);
                 $court->in_use = (bool) ($active || $hardware || $court->hardware_output === true);
+                $court->control_state = $hardware?->state;
+                $court->pending_action = $hardware && in_array($hardware->state, ['reserved', 'starting', 'stopping'], true)
+                    ? ($hardware->stop_requested_at !== null || $hardware->state === 'stopping' ? 'off' : 'on')
+                    : null;
                 $court->is_on = $court->hardware_output === true || ($hardware ? $hardware->state === 'running' && $hardware->started_at !== null
                     : $court->relay_on && $court->relay_until > $this->now());
                 $pilotReady = !app()->environment('acceptance') || !config('lights.control.local_approval_required')

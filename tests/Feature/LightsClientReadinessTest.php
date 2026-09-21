@@ -55,6 +55,9 @@ class LightsClientReadinessTest extends RegressionTestCase
     public function test_password_reset_token_is_one_time_and_admin_adjustments_are_audited(): void
     {
         [$token] = app(AccountTokens::class)->issue($this->member, 'reset');
+        $this->get(route('lights.password.reset', $token))->assertOk()
+            ->assertSee('data-password-toggle="reset-password"', false)
+            ->assertSee('data-password-toggle="reset-password-confirmation"', false);
         $this->post('/lights/reset-password', ['token' => $token, 'password' => 'B456', 'password_confirmation' => 'B456'])
             ->assertRedirect(route('lights.home'));
         $this->post('/lights/reset-password', ['token' => $token, 'password' => 'ChangedAgain!2026', 'password_confirmation' => 'ChangedAgain!2026'])
@@ -210,6 +213,13 @@ class LightsClientReadinessTest extends RegressionTestCase
         $this->assertCount(2, $sessions);
         $this->assertEqualsCanonicalizing([$first, $second], $sessions->pluck('id')->all());
         $this->assertSame(300, $sessions->min('duration_seconds'));
-        $this->assertCount(2, $this->portal->snapshot($this->member->id)['sessions']);
+        $snapshot = $this->portal->snapshot($this->member->id);
+        $this->assertCount(2, $snapshot['sessions']);
+        $this->assertSame(['on', 'on'], $snapshot['courts']->pluck('pending_action')->all());
+
+        $safety->stopCustomer($this->member->id, $first);
+        $snapshot = $this->portal->snapshot($this->member->id);
+        $this->assertSame('off', $snapshot['courts']->firstWhere('id', 1)->pending_action);
+        $this->assertSame('on', $snapshot['courts']->firstWhere('id', 2)->pending_action);
     }
 }

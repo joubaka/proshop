@@ -3,7 +3,8 @@
     document.querySelectorAll('[data-amount]').forEach(button => button.addEventListener('click', () => { document.getElementById('topup-amount').value = Number(button.dataset.amount).toFixed(2); }));
     const initial = document.getElementById('lights-state');
     const notice = document.getElementById('connection-notice');
-    let state = initial ? JSON.parse(initial.textContent) : null, received = performance.now(), busy = false, syncing = false, connected = true;
+    let state = initial ? JSON.parse(initial.textContent) : null, received = performance.now(), syncing = false, connected = true;
+    const pendingActions = new Set();
     const money = cents => 'R ' + (Math.max(0, cents) / 100).toFixed(2);
     const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
     function showNotice(message, error = false) {
@@ -32,24 +33,33 @@
             if (heading) heading.innerHTML = session.control_state && session.control_state !== 'running'
                 ? '<span class="live-dot warning"></span>Status needs attention' : '<span class="live-dot"></span>Lights are on';
             panel.querySelector('.stop-session-form').action = '/lights/sessions/' + session.id + '/stop';
+            const stopButton = panel.querySelector('.stop-session-form button');
+            const stopPending = pendingActions.has('stop:' + session.id) || session.control_state === 'stopping';
+            if (stopButton) {
+                stopButton.disabled = stopPending;
+                stopButton.textContent = stopPending ? 'Switching off…' : (stopButton.dataset.label || stopButton.textContent);
+            }
         }
         document.getElementById('wallet-balance').textContent = money(estimate);
         for (const court of state.courts) {
             const card = document.querySelector('[data-court="' + court.id + '"]');
             if (!card) continue;
+            const startPending = pendingActions.has('start:' + court.id) || court.pending_action === 'on';
+            const stopPending = court.pending_action === 'off';
             card.classList.toggle('is-on', !!court.is_on);
+            card.classList.toggle('is-pending', startPending || stopPending);
             card.querySelector('.court-rate').textContent = money(court.rate_cents);
             const quotedRate = card.querySelector('[name=quoted_rate_cents]');
             if (quotedRate) quotedRate.value = court.rate_cents;
-            card.querySelector('.court-status').textContent = !court.active ? 'Unavailable' : court.hardware_output === true ? 'Lights ON' : court.in_use ? 'In use' : !court.control_ready ? 'Temporarily offline' : 'Available';
+            card.querySelector('.court-status').textContent = startPending ? 'Switching on…' : stopPending ? 'Switching off…' : !court.active ? 'Unavailable' : court.is_on ? 'Lights ON' : court.in_use ? 'In use' : !court.control_ready ? 'Temporarily offline' : 'Available';
             const note = card.querySelector('.court-note');
             if (note) note.textContent = court.hardware_output === true
                 ? 'Cloud last reported this relay ON' + (court.hardware_stale ? ' — status is older than two minutes' : '')
                 : court.control_reason;
             const start = card.querySelector('.court-start');
             if (!start) continue;
-            start.textContent = court.hardware_output === true ? 'Lights already on' : 'Switch on';
-            start.disabled = busy || !state.email_verified || !connected || age > 15 || !court.active || court.in_use || !court.control_ready || estimate < 1;
+            start.textContent = startPending ? 'Switching on…' : court.is_on ? 'Lights already on' : 'Switch on';
+            start.disabled = startPending || !state.email_verified || !connected || age > 15 || !court.active || court.in_use || !court.control_ready || estimate < 1;
         }
         document.getElementById('worker-status').textContent = state.worker_seen_at && now - state.worker_seen_at < 15
             ? 'Local accounting and safety worker is running.' : state.customer_control
@@ -58,7 +68,7 @@
         if (age > 15) showNotice('Connection interrupted. Status may be out of date. Lights still have a server-side cutoff; reconnect to confirm or switch off.', true);
     }
     async function refresh() {
-        if (!state || syncing || busy) return;
+        if (!state || syncing) return;
         syncing = true;
         try {
             const response = await fetch('/lights/state', { headers: { Accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(8000) });
@@ -70,18 +80,23 @@
         finally { syncing = false; }
     }
     document.querySelectorAll('[data-light-action]').forEach(form => form.addEventListener('submit', async event => {
-        event.preventDefault(); if (busy) return;
+        event.preventDefault();
         const button = form.querySelector('button');
         const starting = form.action.includes('/start');
         const beforeIds = new Set((state.sessions || (state.session ? [state.session] : [])).map(session => session.id));
         const stoppingId = starting ? null : form.closest('[data-session]')?.dataset.session;
-        busy = true; button.disabled = true; button.dataset.label = button.textContent; button.textContent = starting ? 'Switching on…' : 'Switching off…'; render();
+        const courtId = starting ? form.closest('[data-court]')?.dataset.court : null;
+        const actionKey = starting ? 'start:' + courtId : 'stop:' + stoppingId;
+        if (pendingActions.has(actionKey)) return;
+        pendingActions.add(actionKey);
+        button.disabled = true; button.dataset.label = button.textContent; button.textContent = starting ? 'Switching on…' : 'Switching off…'; render();
+        let accepted = false;
         try {
             const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
             const data = await response.json();
             if (!response.ok) throw new Error(Object.values(data.errors || {}).flat().join(' ') || data.message || 'Request failed.');
             form.querySelector('[name=request_key]')?.setAttribute('value', crypto.randomUUID());
-            busy = false;
+            accepted = true;
             showNotice(starting ? 'Switch-on accepted. Confirming the court status…' : 'Switch-off accepted. Confirming the court status…');
             for (let attempt = 0; attempt < 8; attempt++) {
                 await refresh();
@@ -89,15 +104,15 @@
                 if ((starting && [...activeIds].some(id => !beforeIds.has(id))) || (!starting && !activeIds.has(stoppingId))) break;
                 await pause(750);
             }
-            location.reload();
         } catch (error) {
             showNotice(error.name === 'TimeoutError' ? 'Request timed out. Refreshing to check its outcome—do not start another session.' : error.message, true);
-            busy = false;
             // Fetch authoritative state after an uncertain result, never replay the mutation.
             setTimeout(refresh, 1500);
         } finally {
+            pendingActions.delete(actionKey);
             button.textContent = button.dataset.label || button.textContent;
             render();
+            if (accepted && pendingActions.size === 0) location.reload();
         }
     }));
     if (state) { render(); setInterval(render, 1000); setInterval(refresh, 5000); window.addEventListener('online', refresh); }
@@ -185,6 +200,8 @@
         input.type = revealing ? 'text' : 'password';
         button.textContent = revealing ? 'Hide' : 'Show';
         button.setAttribute('aria-pressed', String(revealing));
+        const subject = button.getAttribute('aria-label')?.replace(/^(Show|Hide) /, '') || 'password';
+        button.setAttribute('aria-label', `${revealing ? 'Hide' : 'Show'} ${subject}`);
         input.focus({ preventScroll: true });
     }));
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/lights/service-worker.js', { scope: '/lights/' }).catch(() => {});

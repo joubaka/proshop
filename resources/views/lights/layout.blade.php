@@ -7,7 +7,7 @@
     <meta name="application-name" content="Court Lights"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>@yield('title', 'Court lights') · Lights</title>
     <link rel="manifest" href="/lights-assets/manifest.webmanifest"><link rel="icon" href="/lights-assets/icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/lights-assets/portal.css?v=9"><link rel="stylesheet" href="/lights-assets/live-status.css?v=2"><script defer src="/lights-assets/portal.js?v=8"></script>
+    <link rel="stylesheet" href="/lights-assets/portal.css?v=11"><link rel="stylesheet" href="/lights-assets/live-status.css?v=2"><script defer src="/lights-assets/portal.js?v=10"></script>
 </head>
 <body>
 <header class="topbar"><a class="brand" href="{{ route('lights.home') }}"><span class="brand-icon">↯</span> COURT<span class="brand-light">LIGHTS</span></a>

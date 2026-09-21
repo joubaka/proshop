@@ -46,7 +46,14 @@
         <div class="section-title"><h2>Choose your court</h2><span class="muted">{{ config('lights.control.customer_enabled') ? 'Shelly safety control' : 'Shelly simulator' }}</span></div>
         <div class="courts">
         @forelse($state['courts'] as $court)
-            <article class="panel court {{ $court->is_on ? 'is-on' : '' }}" data-court="{{ $court->id }}"><div class="section-title"><h3>{{ $court->name }}</h3><span class="court-status tag">{{ !$court->active ? 'Unavailable' : ($court->hardware_output === true ? 'Lights ON' : ($court->in_use ? 'In use' : (!$court->control_ready ? 'Temporarily offline' : 'Available'))) }}</span></div><div class="mini-court" aria-hidden="true"><i></i></div><p><strong class="court-rate">R {{ number_format($court->rate_cents / 100, 2) }}</strong> <span class="muted">/ hour</span></p><small class="court-note muted">{{ $court->hardware_output === true ? 'Cloud last reported this relay ON'.($court->hardware_stale ? ' — status is older than two minutes' : '') : $court->control_reason }}</small>
+            @php
+                $courtStatus = !$court->active ? 'Unavailable'
+                    : ($court->pending_action === 'on' ? 'Switching on…'
+                    : ($court->pending_action === 'off' ? 'Switching off…'
+                    : ($court->is_on ? 'Lights ON'
+                    : ($court->in_use ? 'In use' : (!$court->control_ready ? 'Temporarily offline' : 'Available')))));
+            @endphp
+            <article class="panel court {{ $court->is_on ? 'is-on' : '' }} {{ $court->pending_action ? 'is-pending' : '' }}" data-court="{{ $court->id }}"><div class="section-title"><h3>{{ $court->name }}</h3><span class="court-status tag" role="status">{{ $courtStatus }}</span></div><div class="mini-court" aria-hidden="true"><i></i></div><p><strong class="court-rate">R {{ number_format($court->rate_cents / 100, 2) }}</strong> <span class="muted">/ hour</span></p><small class="court-note muted">{{ $court->hardware_output === true ? 'Cloud last reported this relay ON'.($court->hardware_stale ? ' — status is older than two minutes' : '') : $court->control_reason }}</small>
                 @if($adminHardware)
                     <a class="button primary full" href="{{ route('lights.admin.control') }}#court-{{ $court->id }}-arm">Open real {{ $court->name }} controls</a>
                     <small class="muted">Admin commissioning is active. This link cannot create a simulated light session.</small>

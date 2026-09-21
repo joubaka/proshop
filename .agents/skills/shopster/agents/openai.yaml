@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shopster"
+  short_description: "Build and evolve Proshop safely end to end"
+  default_prompt: "Use $shopster to continue building Proshop from the current repository state and verify the change safely."

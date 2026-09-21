@@ -178,5 +178,14 @@
         history.replaceState(null, '', '#login');
         revealLogin();
     }));
+    document.querySelectorAll('[data-password-toggle]').forEach(button => button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.passwordToggle);
+        if (!input) return;
+        const revealing = input.type === 'password';
+        input.type = revealing ? 'text' : 'password';
+        button.textContent = revealing ? 'Hide' : 'Show';
+        button.setAttribute('aria-pressed', String(revealing));
+        input.focus({ preventScroll: true });
+    }));
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/lights/service-worker.js', { scope: '/lights/' }).catch(() => {});
 })();

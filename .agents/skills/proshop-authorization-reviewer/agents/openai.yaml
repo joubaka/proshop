@@ -1,0 +1,4 @@
+interface:
+  display_name: "Proshop Authorization Reviewer"
+  short_description: "Review scope, money, stock, privacy, and control"
+  default_prompt: "Use $proshop-authorization-reviewer to independently review this Proshop diff for authorization and integrity gaps."

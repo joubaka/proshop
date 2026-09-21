@@ -1,0 +1,4 @@
+interface:
+  display_name: "Proshop Caretaker"
+  short_description: "Safe day-to-day Proshop engineering workflow"
+  default_prompt: "Use $proshop-caretaker to review Proshop health and recommend the safest next action."

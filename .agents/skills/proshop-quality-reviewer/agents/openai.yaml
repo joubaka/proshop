@@ -1,0 +1,4 @@
+interface:
+  display_name: "Proshop Quality Reviewer"
+  short_description: "Independently test and review Proshop changes"
+  default_prompt: "Use $proshop-quality-reviewer to independently verify this completed Proshop change and report findings."

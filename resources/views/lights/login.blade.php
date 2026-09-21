@@ -6,7 +6,11 @@
     <section class="panel login-panel" id="login" tabindex="-1" aria-labelledby="login-heading"><h2 id="login-heading">Welcome back</h2><p class="muted">Sign in to your lights account.</p>
         <form action="{{ route('lights.login') }}" method="POST">@csrf
             <label>Email<input type="email" name="email" autocomplete="username" value="{{ old('email') }}" required></label>
-            <label>Password<input type="password" name="password" autocomplete="current-password" required maxlength="72"></label>
+            <label for="login-password">Password</label>
+            <div class="password-field">
+                <input id="login-password" type="password" name="password" autocomplete="current-password" required maxlength="72">
+                <button type="button" class="password-toggle" data-password-toggle="login-password" aria-controls="login-password" aria-pressed="false">Show</button>
+            </div>
             <button class="button primary full">Sign in</button>
         </form>
         <details class="register"><summary>Forgot your password?</summary>

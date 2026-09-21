@@ -1,0 +1,4 @@
+interface:
+  display_name: "Proshop Release Guardian"
+  short_description: "Gate, deploy, and verify Proshop releases"
+  default_prompt: "Use $proshop-release-guardian to assess the current Proshop release and carry it only as far as I explicitly authorize."

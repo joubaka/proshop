@@ -1,0 +1,6 @@
+interface:
+  display_name: "Proshop Internal Coordinator"
+  short_description: "Internal multi-agent coordination for Shopster"
+  default_prompt: "Use $proshop-engineering-lead within Shopster to coordinate bounded specialists and independent verification."
+policy:
+  allow_implicit_invocation: false

@@ -252,6 +252,62 @@ class LightsController extends Controller
         return view('lights.admin', compact('courts', 'active', 'events', 'ledger', 'liveActive', 'members', 'memberCount', 'memberSearch', 'payments', 'healthReport', 'payFast'));
     }
     public function health(\App\Lights\HealthReport $health) { return response()->json($health->get()); }
+    public function memberHistory(Request $request, int $member)
+    {
+        $account = $this->portal->db()->table('lights_users')->where('id', $member)->first(['id', 'name']);
+        abort_unless($account, 404);
+
+        $history = $this->portal->db()->table('lights_ledger')->where('user_id', $member)
+            ->orderByDesc('id')->paginate(20, ['id', 'amount_cents', 'balance_after', 'kind', 'reference', 'created_at']);
+        $requestKeys = $history->getCollection()->map(function ($entry) {
+            return in_array($entry->kind, ['admin_adjustment', 'cash_topup'], true)
+                ? (string) str($entry->reference)->after(':') : null;
+        })->filter()->values();
+        $reasons = collect();
+        if ($requestKeys->isNotEmpty()) {
+            $events = $this->portal->db()->table('lights_events')
+                ->whereIn('kind', ['admin_balance_adjusted', 'cash_topup_recorded'])
+                ->where(function ($query) use ($requestKeys) {
+                    foreach ($requestKeys as $key) {
+                        $query->orWhere('details', 'like', '%'.$key.'%');
+                    }
+                })->get(['kind', 'details']);
+            $reasons = $events->mapWithKeys(function ($event) use ($member) {
+                $details = json_decode($event->details, true);
+                if (!is_array($details) || (int) ($details['member'] ?? 0) !== $member) {
+                    return [];
+                }
+                $key = $details['request_key'] ?? null;
+                $reason = $details['reason'] ?? $details['note'] ?? null;
+                return is_string($key) && is_string($reason) ? [$key => $reason] : [];
+            });
+        }
+
+        return response()->json([
+            'member' => ['id' => (int) $account->id, 'name' => $account->name],
+            'entries' => $history->getCollection()->map(function ($entry) use ($reasons) {
+                $requestKey = (string) str($entry->reference)->after(':');
+                $label = match ($entry->kind) {
+                    'cash_topup' => 'Cash received',
+                    'admin_adjustment' => $entry->amount_cents < 0 ? 'Fee / admin debit' : 'Admin credit',
+                    'usage' => 'Light usage',
+                    'topup' => 'Wallet top-up',
+                    default => str($entry->kind)->replace('_', ' ')->title()->toString(),
+                };
+                return [
+                    'id' => (int) $entry->id,
+                    'label' => $label,
+                    'amount_cents' => (int) $entry->amount_cents,
+                    'balance_after_cents' => (int) $entry->balance_after,
+                    'reason' => $reasons->get($requestKey),
+                    'created_at' => (int) $entry->created_at,
+                ];
+            })->values(),
+            'page' => $history->currentPage(),
+            'last_page' => $history->lastPage(),
+            'total' => $history->total(),
+        ]);
+    }
     public function memberStatus(Request $request, int $member, \App\Lights\SafetySessions $safety)
     {
         $data = $request->validate(['active' => 'required|boolean']);

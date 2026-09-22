@@ -148,6 +148,37 @@ class LightsClientReadinessTest extends RegressionTestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('reason');
     }
 
+    public function test_admin_can_view_only_the_requested_members_paginated_wallet_history_with_reasons(): void
+    {
+        $this->member->forceFill(['balance_cents' => 5000])->save();
+        $other = Member::create(['name' => 'Other Member', 'email' => 'other-history@test.test',
+            'password' => bcrypt('TestPassword!2026')]);
+        $this->actingAs($this->admin, 'lights');
+
+        $debitKey = (string) Str::uuid();
+        $this->postJson(route('lights.admin.members.adjustment', $this->member->id), [
+            'direction' => 'debit', 'amount' => '7.50', 'reason' => 'Late cancellation fee', 'request_key' => $debitKey,
+        ])->assertOk();
+        $this->portal->db()->table('lights_ledger')->insert([
+            'user_id' => $other->id, 'amount_cents' => 9999, 'balance_after' => 9999,
+            'kind' => 'admin_adjustment', 'reference' => 'adjustment:'.Str::uuid(), 'created_at' => 1700001000,
+        ]);
+
+        $this->getJson(route('lights.admin.members.history', $this->member->id))
+            ->assertOk()
+            ->assertJsonPath('member.id', $this->member->id)
+            ->assertJsonPath('entries.0.label', 'Fee / admin debit')
+            ->assertJsonPath('entries.0.amount_cents', -750)
+            ->assertJsonPath('entries.0.balance_after_cents', 4250)
+            ->assertJsonPath('entries.0.reason', 'Late cancellation fee')
+            ->assertJsonMissing(['amount_cents' => 9999]);
+
+        $this->actingAs($this->member, 'lights')
+            ->getJson(route('lights.admin.members.history', $this->member->id))->assertForbidden();
+        $this->actingAs($this->admin, 'lights')
+            ->getJson(route('lights.admin.members.history', 999999))->assertNotFound();
+    }
+
     public function test_admin_members_are_alphabetical_searchable_and_paginated_server_side(): void
     {
         foreach (range(1, 23) as $number) {

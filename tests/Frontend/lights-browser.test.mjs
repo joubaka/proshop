@@ -153,6 +153,10 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             await page.getByText('Audited wallet adjustment recorded.', { exact: true }).waitFor();
             const balanceAfterDebit = Number((await row.locator('[data-member-balance]').textContent()).replace(/[^0-9.]/g, ''));
             assert.equal(balanceAfterDebit, balanceBeforeDebit - 2.5);
+            await row.locator('[data-member-history] summary').click();
+            await row.getByText('Fee / admin debit', { exact: true }).waitFor();
+            await row.getByText(/Browser court fee/).waitFor();
+            assert.match(await row.locator('.member-history-row .debit strong').first().textContent(), /− R 2\.50/);
             assert.deepEqual(errors, []);
         });
         await t.test('phone app manifest and offline shell never cache wallet pages', async () => {

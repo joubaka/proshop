@@ -31,6 +31,7 @@ Route::prefix('lights')->name('lights.')->middleware(LightsAccess::class.':publi
         Route::middleware(LightsAccess::class.':admin')->group(function () {
             Route::get('admin', [LightsController::class, 'admin'])->name('admin');
             Route::get('admin/health', [LightsController::class, 'health'])->name('admin.health');
+            Route::get('admin/members/{member}/history', [LightsController::class, 'memberHistory'])->whereNumber('member')->name('admin.members.history');
             Route::post('admin/members/{member}/status', [LightsController::class, 'memberStatus'])->whereNumber('member')->name('admin.members.status');
             Route::post('admin/members/{member}/adjustment', [LightsController::class, 'memberAdjustment'])->whereNumber('member')->middleware('throttle:10,1')->name('admin.members.adjustment');
             Route::get('admin/hardware-state', [LightsController::class, 'hardwareState'])->name('admin.hardware-state');

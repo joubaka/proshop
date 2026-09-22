@@ -35,6 +35,42 @@
         memberSearch.value = '';
         memberSearchForm?.requestSubmit();
     });
+    const historyMoney = cents => (cents < 0 ? '− R ' : '+ R ') + (Math.abs(cents) / 100).toFixed(2);
+    document.querySelectorAll('[data-member-history]').forEach(history => history.addEventListener('toggle', async () => {
+        if (!history.open || history.dataset.loaded === 'true' || history.dataset.loading === 'true') return;
+        const content = history.querySelector('.member-history-content');
+        history.dataset.loading = 'true';
+        content.textContent = 'Loading transaction history…';
+        try {
+            const response = await fetch(history.dataset.url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+            if (!response.ok) throw new Error(response.status === 404 ? 'Member account not found.' : 'Could not load transaction history.');
+            const data = await response.json();
+            content.replaceChildren();
+            if (!data.entries.length) {
+                const empty = document.createElement('p'); empty.className = 'muted'; empty.textContent = 'No wallet transactions yet.'; content.append(empty);
+            } else {
+                const list = document.createElement('div'); list.className = 'member-history-list'; content.append(list);
+                data.entries.forEach(entry => {
+                    const row = document.createElement('div'); row.className = 'member-history-row';
+                    const description = document.createElement('div');
+                    const label = document.createElement('strong'); label.textContent = entry.label;
+                    const detail = document.createElement('small');
+                    const date = new Date(entry.created_at * 1000).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' });
+                    detail.textContent = date + (entry.reason ? ' · ' + entry.reason : '');
+                    description.append(label, detail);
+                    const values = document.createElement('div'); values.className = entry.amount_cents < 0 ? 'debit' : 'credit';
+                    const amount = document.createElement('strong'); amount.textContent = historyMoney(entry.amount_cents);
+                    const balance = document.createElement('small'); balance.textContent = 'Balance R ' + (entry.balance_after_cents / 100).toFixed(2);
+                    values.append(amount, balance); row.append(description, values); list.append(row);
+                });
+                if (data.last_page > 1) {
+                    const note = document.createElement('p'); note.className = 'muted member-history-note'; note.textContent = 'Showing the latest 20 of ' + data.total + ' transactions.'; content.append(note);
+                }
+            }
+            history.dataset.loaded = 'true';
+        } catch (error) { content.textContent = error.message; }
+        finally { delete history.dataset.loading; }
+    }));
     document.querySelectorAll('[data-admin-action]').forEach(form => form.addEventListener('submit', async event => {
         event.preventDefault();
         const button = form.querySelector('button'); if (button.disabled) return;

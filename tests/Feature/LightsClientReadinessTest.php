@@ -117,6 +117,36 @@ class LightsClientReadinessTest extends RegressionTestCase
             ->assertSee('15 Nov 2023 00:23 SAST');
     }
 
+    public function test_admin_members_are_alphabetical_searchable_and_paginated_server_side(): void
+    {
+        foreach (range(1, 23) as $number) {
+            Member::create([
+                'name' => sprintf('Player %02d', $number),
+                'email' => sprintf('player%02d@test.test', $number),
+                'password' => bcrypt('TestPassword!2026'),
+            ]);
+        }
+
+        $this->actingAs($this->admin, 'lights')->get(route('lights.admin').'#members')
+            ->assertOk()
+            ->assertSee('Showing 1–20 of 25 members')
+            ->assertSeeInOrder(['Admin', 'Member', 'Player 01', 'Player 18'])
+            ->assertDontSee('Player 19');
+
+        $this->get(route('lights.admin', ['members_page' => 2]).'#members')
+            ->assertOk()
+            ->assertSee('Showing 21–25 of 25 members')
+            ->assertSee('Player 19')
+            ->assertSee('Player 23')
+            ->assertDontSee('Player 18');
+
+        $this->get(route('lights.admin', ['member_search' => 'player22']).'#members')
+            ->assertOk()
+            ->assertSee('1 matching account')
+            ->assertSee('Player 22')
+            ->assertDontSee('Player 21');
+    }
+
     public function test_cash_topup_is_admin_only_and_rejects_invalid_amounts(): void
     {
         $payload = ['direction' => 'credit', 'payment_type' => 'cash', 'amount' => '10.00',

@@ -7,6 +7,7 @@
     const pendingActions = new Set();
     const money = cents => 'R ' + (Math.max(0, cents) / 100).toFixed(2);
     const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+    const confirmationProgress = state => ({ reserved: 25, starting: 70, running: 100 }[state] || 10);
     function showNotice(message, error = false) {
         notice.hidden = !message;
         notice.classList.toggle('error', error);
@@ -27,11 +28,22 @@
             if (!panel) continue;
             panel.querySelector('.session-cost').textContent = money(charged);
             const seconds = billing ? Math.max(0, session.deadline_at - now) : null;
-            panel.querySelector('.session-remaining').textContent = seconds === null ? 'Pending' : Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+            const progress = confirmationProgress(session.control_state);
+            panel.querySelector('.session-time-label').textContent = billing ? 'Time remaining' : 'Confirmation';
+            panel.querySelector('.session-remaining').textContent = billing ? Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0') : progress + '%';
+            const progressPanel = panel.querySelector('.session-progress');
+            if (progressPanel) {
+                progressPanel.hidden = billing;
+                progressPanel.querySelector('.session-progress-value').textContent = progress + '%';
+                const progressBar = progressPanel.querySelector('.session-progress-bar');
+                progressBar.value = progress;
+                progressBar.textContent = progress + '%';
+            }
             panel.querySelector('.session-court').textContent = state.courts.find(c => c.id === session.court_id)?.name || 'Court';
             const heading = panel.querySelector('.session-heading');
-            if (heading) heading.innerHTML = session.control_state && session.control_state !== 'running'
-                ? '<span class="live-dot warning"></span>Status needs attention' : '<span class="live-dot"></span>Lights are on';
+            if (heading) heading.innerHTML = ['reserved', 'starting'].includes(session.control_state)
+                ? '<span class="live-dot warning"></span>Switching on' : session.control_state && session.control_state !== 'running'
+                    ? '<span class="live-dot warning"></span>Status needs attention' : '<span class="live-dot"></span>Lights are on';
             panel.querySelector('.stop-session-form').action = '/lights/sessions/' + session.id + '/stop';
             const stopButton = panel.querySelector('.stop-session-form button');
             const stopPending = pendingActions.has('stop:' + session.id) || session.control_state === 'stopping';

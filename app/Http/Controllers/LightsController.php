@@ -205,7 +205,7 @@ class LightsController extends Controller
             'topup_id' => is_string($topup) && preg_match('/\A[0-9a-f-]{36}\z/i', $topup) ? $topup : null,
         ];
     }
-    public function admin(\App\Lights\HealthReport $health, \App\Lights\PayFast\Settings $payFastSettings)
+    public function admin(Request $request, \App\Lights\HealthReport $health, \App\Lights\PayFast\Settings $payFastSettings)
     {
         $this->portal->tick();
         $courts = $this->portal->db()->table('lights_courts')->orderBy('id')->get();
@@ -225,17 +225,31 @@ class LightsController extends Controller
             ->selectRaw('COUNT(*) as movement_count')
             ->selectRaw('MAX(created_at) as last_movement_at')
             ->groupBy('user_id');
-        $members = $this->portal->db()->table('lights_users')
+        $memberSearch = mb_substr(trim((string) $request->query('member_search', '')), 0, 100);
+        if (mb_strlen($memberSearch) < 2) {
+            $memberSearch = '';
+        }
+        $memberCount = $this->portal->db()->table('lights_users')->count();
+        $membersQuery = $this->portal->db()->table('lights_users')
             ->leftJoinSub($memberLedger, 'member_ledger', 'member_ledger.user_id', '=', 'lights_users.id')
-            ->orderByDesc('lights_users.created_at')->limit(100)
-            ->get(['lights_users.*', 'member_ledger.total_credit_cents', 'member_ledger.total_debit_cents',
-                'member_ledger.movement_count', 'member_ledger.last_movement_at']);
+            ->when($memberSearch !== '', function ($query) use ($memberSearch) {
+                $query->where(function ($query) use ($memberSearch) {
+                    $query->where('lights_users.name', 'like', '%'.$memberSearch.'%')
+                        ->orWhere('lights_users.email', 'like', '%'.$memberSearch.'%');
+                });
+            })
+            ->orderBy('lights_users.name')
+            ->orderBy('lights_users.id');
+        $members = $membersQuery->paginate(20, [
+            'lights_users.*', 'member_ledger.total_credit_cents', 'member_ledger.total_debit_cents',
+            'member_ledger.movement_count', 'member_ledger.last_movement_at',
+        ], 'members_page')->withQueryString()->fragment('members');
         $payments = $this->portal->db()->table('lights_topups')->join('lights_users', 'lights_users.id', '=', 'user_id')
             ->where('gateway', 'payfast')->orderByDesc('lights_topups.created_at')->limit(50)
             ->get(['lights_topups.*', 'lights_users.name as member_name', 'lights_users.email as member_email']);
         $healthReport = $health->get();
         $payFast = $payFastSettings->summary();
-        return view('lights.admin', compact('courts', 'active', 'events', 'ledger', 'liveActive', 'members', 'payments', 'healthReport', 'payFast'));
+        return view('lights.admin', compact('courts', 'active', 'events', 'ledger', 'liveActive', 'members', 'memberCount', 'memberSearch', 'payments', 'healthReport', 'payFast'));
     }
     public function health(\App\Lights\HealthReport $health) { return response()->json($health->get()); }
     public function memberStatus(Request $request, int $member, \App\Lights\SafetySessions $safety)

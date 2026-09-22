@@ -124,12 +124,15 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             assert.deepEqual(errors, []);
         });
         await t.test('administrator can record cash received from the member list', async () => {
+            await page.setViewportSize({ width: 390, height: 844 });
             await page.getByRole('tab', { name: /Members/ }).click();
-            assert.equal(await page.locator('[data-member-search]:visible').count(), 0, 'member accounts stay hidden until searched');
-            await page.getByText('Search before adding cash', { exact: true }).waitFor();
+            assert.ok(await page.locator('[data-member]:visible').count() > 0, 'members are listed before searching');
+            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'member list fits the phone viewport');
             await page.locator('#member-search').fill(email);
-            const row = page.locator('[data-member-search]:visible');
+            await page.waitForURL(url => url.searchParams.get('member_search') === email && url.hash === '#members');
+            const row = page.locator('[data-member]:visible');
             assert.equal(await row.count(), 1, 'exact email search identifies one account');
+            await page.screenshot({ path: '.local-acceptance/screenshots/lights-admin-members-mobile.png', fullPage: true });
             const cashForm = row.locator('.cash-topup-form');
             await cashForm.locator('[name=amount]').fill('12.50');
             await cashForm.locator('[name=reason]').fill('Browser cash receipt');

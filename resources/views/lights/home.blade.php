@@ -30,7 +30,8 @@
         @foreach($state['sessions'] as $activeSession)
         <section class="panel active-panel active-session" data-session="{{ $activeSession->id }}" aria-label="Active session">
             <div class="section-title"><h2 class="session-heading"><span class="live-dot"></span>Lights are on</h2><span class="tag session-court"></span></div>
-            <div class="session-metrics"><div><span>Session cost</span><strong class="session-cost">R 0.00</strong></div><div><span>Time remaining</span><strong class="session-remaining">—</strong></div></div>
+            <div class="session-metrics"><div><span>Session cost</span><strong class="session-cost">R 0.00</strong></div><div><span class="session-time-label">Time remaining</span><strong class="session-remaining">—</strong></div></div>
+            <div class="session-progress" role="status" aria-live="polite" hidden><div><span>Switch-on confirmation</span><strong class="session-progress-value">0%</strong></div><progress class="session-progress-bar" max="100" value="0">0%</progress><small>Waiting for the worker and Shelly to confirm that the court lights are on.</small></div>
             <p class="muted">The server keeps counting if you close this page. The displayed balance is an estimate between updates.</p>
             <form class="stop-session-form" method="POST" action="{{ route('lights.stop', $activeSession->id) }}" data-light-action>@csrf<button class="button danger full">Switch off {{ optional($state['courts']->firstWhere('id', $activeSession->court_id))->name ?? 'court' }} &amp; finish</button></form>
         </section>

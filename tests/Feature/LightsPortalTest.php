@@ -77,10 +77,14 @@ class LightsPortalTest extends RegressionTestCase
         $this->assertFileExists(public_path('lights-assets/portal.css'));
 
         $this->get('/lights/login')->assertOk()
-            ->assertSee('/lights-assets/portal.css?v=11', false)
-            ->assertSee('/lights-assets/portal.js?v=10', false);
+            ->assertSee('/lights-assets/portal.css?v=13', false)
+            ->assertSee('/lights-assets/portal.js?v=11', false);
+        $this->credit($this->player);
+        $this->portal->start($this->player->id, 1);
         $this->actingAs($this->player, 'lights')->get('/lights')->assertOk()
             ->assertSee('Install Court Lights')
+            ->assertSee('Switch-on confirmation')
+            ->assertSee('class="session-progress-bar" max="100" value="0"', false)
             ->assertSee('data-home-tab="courts"', false)
             ->assertSee('data-home-panel="activity"', false);
         $this->get('/lights/service-worker.js')->assertOk()

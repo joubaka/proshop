@@ -22,25 +22,19 @@
     activateTab(location.hash.slice(1) || 'overview');
     window.addEventListener('hashchange', () => activateTab(location.hash.slice(1) || 'overview'));
     const memberSearch = document.getElementById('member-search');
-    const filterMembers = () => {
-        const query = memberSearch.value.trim().toLowerCase(); let matches = 0; let shown = 0;
-        document.querySelectorAll('[data-member-search]').forEach(row => {
-            const match = query.length >= 2 && row.dataset.memberSearch.includes(query);
-            if (match) matches++;
-            row.hidden = !match || shown >= 10;
-            if (!row.hidden) shown++;
-        });
-        const start = document.getElementById('member-search-start'); if (start) start.hidden = query.length >= 2;
-        const empty = document.getElementById('member-search-empty'); if (empty) empty.hidden = query.length < 2 || matches !== 0;
-        const summary = document.getElementById('member-result-summary');
-        if (summary) summary.textContent = query.length < 2 ? 'Start typing to find an account' : matches === 0 ? 'No matching accounts' : matches > 10 ? matches + ' matches · showing the first 10' : matches + (matches === 1 ? ' matching account' : ' matching accounts');
+    const memberSearchForm = document.querySelector('[data-member-search-form]');
+    let memberSearchTimer;
+    memberSearch?.addEventListener('input', () => {
+        const query = memberSearch.value.trim();
         const clear = document.getElementById('member-search-clear'); if (clear) clear.hidden = query === '';
-    };
-    memberSearch?.addEventListener('input', filterMembers);
-    document.getElementById('member-search-clear')?.addEventListener('click', () => {
-        memberSearch.value = ''; filterMembers(); memberSearch.focus();
+        clearTimeout(memberSearchTimer);
+        if (query.length === 1) return;
+        memberSearchTimer = setTimeout(() => memberSearchForm?.requestSubmit(), 350);
     });
-    filterMembers();
+    document.getElementById('member-search-clear')?.addEventListener('click', () => {
+        memberSearch.value = '';
+        memberSearchForm?.requestSubmit();
+    });
     document.querySelectorAll('[data-admin-action]').forEach(form => form.addEventListener('submit', async event => {
         event.preventDefault();
         const button = form.querySelector('button'); if (button.disabled) return;

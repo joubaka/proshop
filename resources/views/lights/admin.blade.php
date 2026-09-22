@@ -3,7 +3,7 @@
 @section('content')
 <div class="page-heading"><div><p class="eyebrow">LIGHTS ADMINISTRATION</p><h1>Courts &amp; activity</h1><p class="muted">Monitor the venue, manage pricing and payments, and review account activity.</p></div></div>
 <nav class="admin-tabs" role="tablist" aria-label="Administration sections">
-@foreach(['overview' => 'Overview', 'settings' => 'Settings', 'members' => 'Members', 'activity' => 'Activity'] as $key => $label)<button type="button" role="tab" id="tab-{{ $key }}" aria-controls="panel-{{ $key }}" aria-selected="{{ $key === 'overview' ? 'true' : 'false' }}" @if($key !== 'overview') tabindex="-1" @endif data-admin-tab="{{ $key }}">{{ $label }}@if($key === 'members') <span class="tab-count">{{ $members->count() }}</span>@endif</button>@endforeach
+@foreach(['overview' => 'Overview', 'settings' => 'Settings', 'members' => 'Members', 'activity' => 'Activity'] as $key => $label)<button type="button" role="tab" id="tab-{{ $key }}" aria-controls="panel-{{ $key }}" aria-selected="{{ $key === 'overview' ? 'true' : 'false' }}" @if($key !== 'overview') tabindex="-1" @endif data-admin-tab="{{ $key }}">{{ $label }}@if($key === 'members') <span class="tab-count">{{ $memberCount }}</span>@endif</button>@endforeach
 </nav>
 
 <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" data-admin-panel="overview">
@@ -29,14 +29,13 @@
 <div role="tabpanel" id="panel-members" aria-labelledby="tab-members" data-admin-panel="members" hidden>
 <section class="panel member-cash-panel">
     <div class="member-cash-heading">
-        <div><p class="eyebrow">CASH DESK</p><h2>Find a member and add cash</h2><p class="muted">Search by name or email, confirm the account, then record the cash received.</p></div>
-        <div class="member-search-box"><label for="member-search">Find member</label><div class="member-search-control"><span aria-hidden="true">⌕</span><input type="search" id="member-search" placeholder="Type at least 2 letters of a name or email…" autocomplete="off"><button type="button" id="member-search-clear" aria-label="Clear member search" hidden>Clear</button></div><small id="member-result-summary" aria-live="polite">Start typing to find an account</small></div>
+        <div><p class="eyebrow">CASH DESK</p><h2>Find a member and add cash</h2><p class="muted">Choose a member below or search by name or email, then record the cash received.</p></div>
+        <form class="member-search-box" method="GET" action="{{ route('lights.admin') }}#members" data-member-search-form><label for="member-search">Find member</label><div class="member-search-control"><span aria-hidden="true">⌕</span><input type="search" id="member-search" name="member_search" value="{{ $memberSearch }}" placeholder="Type at least 2 letters of a name or email…" autocomplete="off"><button type="button" id="member-search-clear" aria-label="Clear member search" @if($memberSearch === '') hidden @endif>Clear</button></div><small id="member-result-summary" aria-live="polite">@if($memberSearch !== ''){{ $members->total() }} {{ Illuminate\Support\Str::plural('matching account', $members->total()) }}@else{{ $memberCount }} {{ Illuminate\Support\Str::plural('member', $memberCount) }}@endif</small><button class="button secondary member-search-submit" type="submit">Search</button></form>
     </div>
-    <div class="member-search-start" id="member-search-start"><span aria-hidden="true">⌕</span><strong>Search before adding cash</strong><p>Enter at least two letters from the member's name or email address.</p></div>
-    <div class="quiet-state member-search-empty" id="member-search-empty" hidden><strong>No member found</strong><span>Check the spelling or try the member's email address.</span></div>
+    @if($members->total() === 0)<div class="quiet-state member-search-empty"><strong>{{ $memberSearch !== '' ? 'No member found' : 'No client accounts' }}</strong><span>{{ $memberSearch !== '' ? 'Check the spelling or try the member\'s email address.' : 'Registered members will appear here.' }}</span></div>@endif
     <div class="member-list">
     @forelse($members as $member)
-        <article class="admin-member" data-member="{{ $member->id }}" data-member-search="{{ Illuminate\Support\Str::lower($member->name.' '.$member->email) }}" hidden>
+        <article class="admin-member" data-member="{{ $member->id }}">
             <header class="member-card-header"><div class="member-avatar" aria-hidden="true">{{ Illuminate\Support\Str::upper(Illuminate\Support\Str::substr($member->name, 0, 1)) }}</div><div class="member-identity"><strong>{{ $member->name }}{{ $member->is_admin ? ' · Admin' : '' }}</strong><span>{{ $member->email }}</span><small>{{ $member->email_verified_at ? 'Verified' : 'Unverified' }} · <span data-member-status>{{ $member->active ? 'Enabled' : 'Disabled' }}</span></small></div><div class="member-wallet"><small>Wallet balance</small><strong data-member-balance>R {{ number_format($member->balance_cents / 100, 2) }}</strong></div></header>
             <div class="member-account-summary" aria-label="Account summary for {{ $member->name }}">
                 <div><small>Total credits</small><strong class="credit">+ R {{ number_format(($member->total_credit_cents ?? 0) / 100, 2) }}</strong></div>
@@ -47,8 +46,21 @@
             <form class="cash-topup-form" method="POST" action="{{ route('lights.admin.members.adjustment', $member->id) }}" data-admin-action>@csrf<input type="hidden" name="direction" value="credit"><input type="hidden" name="payment_type" value="cash"><input type="hidden" name="request_key" value="{{ (string) Illuminate\Support\Str::uuid() }}"><label>Cash received (R)<input name="amount" inputmode="decimal" value="10.00" required aria-label="Cash amount for {{ $member->name }}"></label><label>Receipt reference or note<input name="reason" required minlength="5" maxlength="200" placeholder="e.g. Receipt 1042"></label><button class="button primary">Add cash to wallet · {{ Illuminate\Support\Str::before($member->name, ' ') ?: $member->name }}</button></form>
             <details class="member-more"><summary>Account tools</summary><div class="member-tools"><form method="POST" action="{{ route('lights.admin.members.status', $member->id) }}" data-admin-action>@csrf<input type="hidden" name="active" value="{{ $member->active ? 0 : 1 }}"><button class="button secondary" @disabled($member->is_admin && $member->id === Auth::guard('lights')->id())>{{ $member->active ? 'Disable account' : 'Enable account' }}</button></form><form class="correction-form" method="POST" action="{{ route('lights.admin.members.adjustment', $member->id) }}" data-admin-action>@csrf<input type="hidden" name="request_key" value="{{ (string) Illuminate\Support\Str::uuid() }}"><label>Correction<select name="direction"><option value="credit">Credit</option><option value="debit">Debit</option></select></label><label>Amount (R)<input name="amount" inputmode="decimal" value="10.00" required></label><label>Audit reason<input name="reason" required minlength="5" maxlength="200"></label><button class="button secondary">Record correction</button></form></div></details>
         </article>
-    @empty<p class="muted">No client accounts.</p>@endforelse
+    @empty
+    @endforelse
     </div>
+    @if($members->hasPages())
+    <nav class="member-pagination" aria-label="Member pages">
+        <p>Showing {{ $members->firstItem() }}–{{ $members->lastItem() }} of {{ $members->total() }} {{ Illuminate\Support\Str::plural('member', $members->total()) }}</p>
+        <div>
+            @if($members->onFirstPage())<span aria-disabled="true">Previous</span>@else<a href="{{ $members->previousPageUrl() }}" rel="prev">Previous</a>@endif
+            @foreach($members->getUrlRange(1, $members->lastPage()) as $page => $url)
+                @if($page === $members->currentPage())<span aria-current="page">{{ $page }}</span>@else<a href="{{ $url }}">{{ $page }}</a>@endif
+            @endforeach
+            @if($members->hasMorePages())<a href="{{ $members->nextPageUrl() }}" rel="next">Next</a>@else<span aria-disabled="true">Next</span>@endif
+        </div>
+    </nav>
+    @elseif($members->total() > 0)<p class="member-page-summary">Showing {{ $members->firstItem() }}–{{ $members->lastItem() }} of {{ $members->total() }} {{ Illuminate\Support\Str::plural('member', $members->total()) }}</p>@endif
 </section>
 </div>
 

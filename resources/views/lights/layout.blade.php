@@ -7,7 +7,7 @@
     <meta name="application-name" content="Court Lights"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>@yield('title', 'Court lights') · Lights</title>
     <link rel="manifest" href="/lights-assets/manifest.webmanifest"><link rel="icon" href="/lights-assets/icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/lights-assets/portal.css?v=11"><link rel="stylesheet" href="/lights-assets/live-status.css?v=2"><script defer src="/lights-assets/portal.js?v=10"></script>
+    <link rel="stylesheet" href="/lights-assets/portal.css?v=13"><link rel="stylesheet" href="/lights-assets/live-status.css?v=2"><script defer src="/lights-assets/portal.js?v=11"></script>
 </head>
 <body>
 <header class="topbar"><a class="brand" href="{{ route('lights.home') }}"><span class="brand-icon">↯</span> COURT<span class="brand-light">LIGHTS</span></a>
@@ -40,6 +40,6 @@
 <footer class="footer"><span>Separate lights wallet · ZAR</span><span>Keep playing. Pay only for your light time.</span></footer>
 @if(request()->routeIs('lights.admin', 'lights.admin.control'))<script defer src="/lights-assets/hardware-status.js?v=2"></script>@endif
 @if(request()->routeIs('lights.admin.control'))<script defer src="/lights-assets/control.js?v=4"></script>@endif
-@if(request()->routeIs('lights.admin'))<script defer src="/lights-assets/admin.js?v=4"></script>@endif
+@if(request()->routeIs('lights.admin'))<script defer src="/lights-assets/admin.js?v=5"></script>@endif
 </body>
 </html>

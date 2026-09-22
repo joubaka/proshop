@@ -173,6 +173,13 @@ class LightsClientReadinessTest extends RegressionTestCase
             ->assertJsonPath('entries.0.reason', 'Late cancellation fee')
             ->assertJsonMissing(['amount_cents' => 9999]);
 
+        $this->get(route('lights.admin.members.history', $this->member->id))
+            ->assertOk()
+            ->assertSee('Transaction history')
+            ->assertSee('Late cancellation fee')
+            ->assertSee('Fee / admin debit')
+            ->assertSee('− R 7.50');
+
         $this->actingAs($this->member, 'lights')
             ->getJson(route('lights.admin.members.history', $this->member->id))->assertForbidden();
         $this->actingAs($this->admin, 'lights')

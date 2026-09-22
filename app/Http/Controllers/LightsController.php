@@ -254,7 +254,8 @@ class LightsController extends Controller
     public function health(\App\Lights\HealthReport $health) { return response()->json($health->get()); }
     public function memberHistory(Request $request, int $member)
     {
-        $account = $this->portal->db()->table('lights_users')->where('id', $member)->first(['id', 'name']);
+        $account = $this->portal->db()->table('lights_users')->where('id', $member)
+            ->first(['id', 'name', 'email', 'balance_cents']);
         abort_unless($account, 404);
 
         $history = $this->portal->db()->table('lights_ledger')->where('user_id', $member)
@@ -283,26 +284,33 @@ class LightsController extends Controller
             });
         }
 
+        $entries = $history->getCollection()->map(function ($entry) use ($reasons) {
+            $requestKey = (string) str($entry->reference)->after(':');
+            $label = match ($entry->kind) {
+                'cash_topup' => 'Cash received',
+                'admin_adjustment' => $entry->amount_cents < 0 ? 'Fee / admin debit' : 'Admin credit',
+                'usage' => 'Light usage',
+                'topup' => 'Wallet top-up',
+                default => str($entry->kind)->replace('_', ' ')->title()->toString(),
+            };
+            return (object) [
+                'id' => (int) $entry->id,
+                'label' => $label,
+                'amount_cents' => (int) $entry->amount_cents,
+                'balance_after_cents' => (int) $entry->balance_after,
+                'reason' => $reasons->get($requestKey),
+                'created_at' => (int) $entry->created_at,
+            ];
+        })->values();
+        $history->setCollection($entries);
+
+        if (!$request->expectsJson()) {
+            return view('lights.member-history', compact('account', 'history'));
+        }
+
         return response()->json([
             'member' => ['id' => (int) $account->id, 'name' => $account->name],
-            'entries' => $history->getCollection()->map(function ($entry) use ($reasons) {
-                $requestKey = (string) str($entry->reference)->after(':');
-                $label = match ($entry->kind) {
-                    'cash_topup' => 'Cash received',
-                    'admin_adjustment' => $entry->amount_cents < 0 ? 'Fee / admin debit' : 'Admin credit',
-                    'usage' => 'Light usage',
-                    'topup' => 'Wallet top-up',
-                    default => str($entry->kind)->replace('_', ' ')->title()->toString(),
-                };
-                return [
-                    'id' => (int) $entry->id,
-                    'label' => $label,
-                    'amount_cents' => (int) $entry->amount_cents,
-                    'balance_after_cents' => (int) $entry->balance_after,
-                    'reason' => $reasons->get($requestKey),
-                    'created_at' => (int) $entry->created_at,
-                ];
-            })->values(),
+            'entries' => $entries,
             'page' => $history->currentPage(),
             'last_page' => $history->lastPage(),
             'total' => $history->total(),

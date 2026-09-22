@@ -114,7 +114,7 @@ class ShellySetupTest extends RegressionTestCase
         $this->get('/lights/admin')->assertOk()
             ->assertSee('Current light status')->assertSee('Court 3')->assertSee('Court 4')
             ->assertSee('ON')->assertSee('No automatic cutoff timer reported')
-            ->assertSee('No active demo sessions')
+            ->assertSee('No active sessions')
             ->assertDontSee('All courts are off.');
         $this->getJson('/lights/admin/hardware-state')->assertOk()
             ->assertJsonPath('online', true)->assertJsonPath('channels.1.output', true);

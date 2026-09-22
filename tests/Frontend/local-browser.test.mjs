@@ -163,6 +163,11 @@ test('isolated local frontend acceptance', { timeout: 120000 }, async t => {
         await t.test('purchase calendar switches date/time panels and legacy modal dismisses', async () => {
             await page.goto(base+'/purchases/create');
             await page.locator('#receiving_barcode').waitFor({ state: 'visible' });
+            if (!await page.locator('#location_id').inputValue()) {
+                const location = await page.locator('#location_id option:not([value=""])').first().getAttribute('value');
+                assert.ok(location);
+                await page.locator('#location_id').selectOption(location);
+            }
             const stockItem = await page.evaluate(async () => (await (await fetch('/purchases/get_products?term=Test%20Tennis%20Balls&only_variations=true',{headers:{'X-Requested-With':'XMLHttpRequest'}})).json())[0]);
             assert.ok(stockItem.sub_sku);
             await page.locator('#receiving_barcode').fill(stockItem.sub_sku);

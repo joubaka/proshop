@@ -117,6 +117,37 @@ class LightsClientReadinessTest extends RegressionTestCase
             ->assertSee('15 Nov 2023 00:23 SAST');
     }
 
+    public function test_admin_can_debit_and_credit_a_member_with_a_required_audit_reason(): void
+    {
+        $this->member->forceFill(['balance_cents' => 5000])->save();
+        $this->actingAs($this->admin, 'lights');
+
+        $debitKey = (string) Str::uuid();
+        $this->postJson(route('lights.admin.members.adjustment', $this->member->id), [
+            'direction' => 'debit', 'amount' => '12.50', 'reason' => 'Court booking fee', 'request_key' => $debitKey,
+        ])->assertOk()->assertJson(['balance_cents' => 3750]);
+
+        $creditKey = (string) Str::uuid();
+        $this->postJson(route('lights.admin.members.adjustment', $this->member->id), [
+            'direction' => 'credit', 'amount' => '5.00', 'reason' => 'Booking fee reversal', 'request_key' => $creditKey,
+        ])->assertOk()->assertJson(['balance_cents' => 4250]);
+
+        $this->assertDatabaseHas('lights_ledger', [
+            'user_id' => $this->member->id, 'amount_cents' => -1250,
+            'kind' => 'admin_adjustment', 'reference' => 'adjustment:'.$debitKey,
+        ], 'lights');
+        $this->assertDatabaseHas('lights_ledger', [
+            'user_id' => $this->member->id, 'amount_cents' => 500,
+            'kind' => 'admin_adjustment', 'reference' => 'adjustment:'.$creditKey,
+        ], 'lights');
+        $this->assertSame(1, $this->portal->db()->table('lights_events')
+            ->where('kind', 'admin_balance_adjusted')->where('details', 'like', '%Court booking fee%')->count());
+
+        $this->postJson(route('lights.admin.members.adjustment', $this->member->id), [
+            'direction' => 'debit', 'amount' => '1.00', 'reason' => '', 'request_key' => (string) Str::uuid(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('reason');
+    }
+
     public function test_admin_members_are_alphabetical_searchable_and_paginated_server_side(): void
     {
         foreach (range(1, 23) as $number) {

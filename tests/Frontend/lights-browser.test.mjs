@@ -142,6 +142,17 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             assert.equal(response.status(), 200);
             await page.getByText('Cash received and wallet credited.', { exact: true }).waitFor();
             assert.match(await row.locator('[data-member-balance]').textContent(), /^R \d+\.\d{2}$/);
+            const balanceBeforeDebit = Number((await row.locator('[data-member-balance]').textContent()).replace(/[^0-9.]/g, ''));
+            const adjustmentForm = row.locator('.correction-form');
+            await adjustmentForm.locator('[name=direction]').selectOption('debit');
+            await adjustmentForm.locator('[name=amount]').fill('2.50');
+            await adjustmentForm.locator('[name=reason]').fill('Browser court fee');
+            const adjustmentResponse = page.waitForResponse(response => response.url().includes('/adjustment') && response.request().method() === 'POST');
+            await adjustmentForm.getByRole('button', { name: 'Record adjustment' }).click();
+            assert.equal((await adjustmentResponse).status(), 200);
+            await page.getByText('Audited wallet adjustment recorded.', { exact: true }).waitFor();
+            const balanceAfterDebit = Number((await row.locator('[data-member-balance]').textContent()).replace(/[^0-9.]/g, ''));
+            assert.equal(balanceAfterDebit, balanceBeforeDebit - 2.5);
             assert.deepEqual(errors, []);
         });
         await t.test('phone app manifest and offline shell never cache wallet pages', async () => {

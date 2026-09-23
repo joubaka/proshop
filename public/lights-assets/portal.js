@@ -130,10 +130,31 @@
     if (state) { render(); setInterval(render, 1000); setInterval(refresh, 5000); window.addEventListener('online', refresh); }
     let installPrompt;
     const installButton = document.getElementById('install-app');
-    const installHelp = document.getElementById('install-help');
-    const installHelpCopy = document.getElementById('install-help-copy');
+    const installWizard = document.getElementById('install-wizard');
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isIosChrome = isIos && /crios/i.test(navigator.userAgent);
+    let installReturnFocus = null;
+    function openInstallWizard() {
+        if (!installWizard) return;
+        installReturnFocus = document.activeElement;
+        installWizard.querySelector('[data-install-platform]').textContent = isIos ? 'IPHONE OR IPAD' : 'YOUR DEVICE';
+        installWizard.querySelector('[data-install-browser]').textContent = isIosChrome ? 'Chrome' : isIos ? 'Safari' : 'your browser';
+        installWizard.querySelector('[data-install-share-location]').textContent = isIosChrome
+            ? 'Tap the Share button to the right of Chrome’s address bar.'
+            : isIos ? 'Tap the Share button in Safari’s toolbar.' : 'Open the browser menu or Share menu.';
+        installWizard.hidden = false;
+        document.body.classList.add('install-wizard-open');
+        installButton?.setAttribute('aria-expanded', 'true');
+        installWizard.querySelector('[data-install-close]')?.focus();
+    }
+    function closeInstallWizard() {
+        if (!installWizard || installWizard.hidden) return;
+        installWizard.hidden = true;
+        document.body.classList.remove('install-wizard-open');
+        installButton?.setAttribute('aria-expanded', 'false');
+        installReturnFocus?.focus();
+    }
     if (installButton && !isStandalone && isIos) installButton.hidden = false;
     window.addEventListener('beforeinstallprompt', event => {
         event.preventDefault(); installPrompt = event;
@@ -142,7 +163,7 @@
     window.addEventListener('appinstalled', () => {
         installPrompt = null;
         if (installButton) installButton.hidden = true;
-        if (installHelp) installHelp.hidden = true;
+        closeInstallWizard();
     });
     installButton?.addEventListener('click', async () => {
         if (installPrompt) {
@@ -152,11 +173,12 @@
             if (choice.outcome === 'accepted') installButton.hidden = true;
             return;
         }
-        if (installHelpCopy) installHelpCopy.textContent = isIos
-            ? 'On iPhone or iPad, tap Share, then choose “Add to Home Screen”.'
-            : 'Open your browser menu and choose “Install app” or “Add to Home Screen”.';
-        if (installHelp) { installHelp.hidden = false; installHelp.focus(); }
-        installButton.setAttribute('aria-expanded', 'true');
+        openInstallWizard();
+    });
+    installWizard?.querySelectorAll('[data-install-close]').forEach(button => button.addEventListener('click', closeInstallWizard));
+    installWizard?.addEventListener('click', event => { if (event.target === installWizard) closeInstallWizard(); });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && installWizard && !installWizard.hidden) closeInstallWizard();
     });
     const homeTabs = [...document.querySelectorAll('[data-home-tab]')];
     const homePanels = [...document.querySelectorAll('[data-home-panel]')];

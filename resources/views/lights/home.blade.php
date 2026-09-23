@@ -18,8 +18,23 @@
         return ($hours ? $hours.'h ' : '').($minutes ? $minutes.'m ' : '').$remaining.'s';
     };
 @endphp
-<div class="page-heading home-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h1>Let’s play, {{ explode(' ', Auth::guard('lights')->user()->name)[0] }}.</h1><p class="muted">Choose a court. Switch on. Make the most of your time.</p></div><button class="button install-button" id="install-app" type="button" aria-controls="install-help" aria-expanded="false" hidden><span aria-hidden="true">↧</span> Install Court Lights</button></div>
-<div class="notice install-help" id="install-help" role="status" tabindex="-1" hidden><strong>Add Court Lights to your Home Screen</strong><span id="install-help-copy">Use your browser menu and choose “Install app” or “Add to Home Screen”.</span></div>
+<div class="page-heading home-heading"><div><p class="eyebrow">READY WHEN YOU ARE</p><h1>Let’s play, {{ explode(' ', Auth::guard('lights')->user()->name)[0] }}.</h1><p class="muted">Choose a court. Switch on. Make the most of your time.</p></div><button class="button install-button" id="install-app" type="button" aria-haspopup="dialog" aria-controls="install-wizard" aria-expanded="false" hidden><span aria-hidden="true">↧</span> Install Court Lights</button></div>
+<div class="install-overlay" id="install-wizard" role="dialog" aria-modal="true" aria-labelledby="install-wizard-title" aria-describedby="install-wizard-intro" hidden>
+    <div class="install-dialog" role="document">
+        <button class="install-close" type="button" data-install-close aria-label="Close installation instructions">×</button>
+        <div class="install-mark" aria-hidden="true">↯</div>
+        <p class="eyebrow">INSTALL ON <span data-install-platform>YOUR PHONE</span></p>
+        <h2 id="install-wizard-title">Add Court Lights to your Home Screen</h2>
+        <p id="install-wizard-intro" class="muted">Apple requires this short Home Screen step. Once added, Court Lights opens and works like an app.</p>
+        <ol class="install-steps">
+            <li><span>1</span><div><strong>Tap Share in <span data-install-browser>your browser</span></strong><small data-install-share-location>Look for the square with an upward arrow in the browser toolbar.</small></div></li>
+            <li><span>2</span><div><strong>Choose “Add to Home Screen”</strong><small>Scroll down in the Share menu if you do not see it immediately.</small></div></li>
+            <li><span>3</span><div><strong>Tap “Add”</strong><small>Keep “Open as Web App” enabled if your iPhone shows that option.</small></div></li>
+            <li><span>4</span><div><strong>Open Court Lights from its new icon</strong><small>The install button will then disappear automatically.</small></div></li>
+        </ol>
+        <button class="button primary full" type="button" data-install-close>Got it</button>
+    </div>
+</div>
 @if(config('lights.require_verified_email') && !Auth::guard('lights')->user()->email_verified_at)
 <div class="notice warning" id="verification-notice"><strong>Verify your email to continue.</strong> Payments and light controls stay locked until verification.
     <form method="POST" action="{{ route('lights.verification.send') }}" class="inline-form">@csrf<button class="text-button">Send a new verification link</button></form>

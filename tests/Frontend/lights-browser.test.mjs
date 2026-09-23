@@ -54,6 +54,38 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
             assert.equal(await page.locator('.court-start:enabled').count(), 0);
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         });
+        await t.test('iPhone Chrome receives a clear manual installation wizard', async () => {
+            const iphone = await browser.newContext({
+                viewport: { width: 390, height: 844 },
+                serviceWorkers: 'block',
+                storageState: await context.storageState(),
+                userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/140.0.0.0 Mobile/15E148 Safari/604.1',
+            });
+            const iphonePage = await iphone.newPage();
+            try {
+                await iphonePage.goto(base + '/lights/');
+                const install = iphonePage.getByRole('button', { name: 'Install Court Lights' });
+                await install.waitFor({ state: 'visible' });
+                await install.click();
+                const wizard = iphonePage.getByRole('dialog', { name: 'Add Court Lights to your Home Screen' });
+                await wizard.waitFor({ state: 'visible' });
+                await wizard.getByText('Tap Share in Chrome', { exact: true }).waitFor();
+                await wizard.getByText('Add to Home Screen', { exact: false }).waitFor();
+                assert.equal(await install.getAttribute('aria-expanded'), 'true');
+                for (const width of [320, 375, 430]) {
+                    await iphonePage.setViewportSize({ width, height: 844 });
+                    assert.equal(await iphonePage.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `install wizard fits ${width}px`);
+                }
+                await iphonePage.setViewportSize({ width: 390, height: 844 });
+                await mkdir('.local-acceptance/screenshots', { recursive: true });
+                await iphonePage.screenshot({ path: '.local-acceptance/screenshots/lights-install-iphone-chrome.png', fullPage: true });
+                await iphonePage.keyboard.press('Escape');
+                await wizard.waitFor({ state: 'hidden' });
+                assert.equal(await install.getAttribute('aria-expanded'), 'false');
+            } finally {
+                await iphone.close();
+            }
+        });
         await t.test('simulate a PayFast topup without a real provider and reject replay', async () => {
             await page.getByRole('tab', { name: 'Top up' }).click();
             await page.locator('#topup-amount').fill('10.00');

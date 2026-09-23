@@ -52,7 +52,8 @@ synchronizes static assets, restarts queues, checks the scheduler, and restores
 the site. A failure after maintenance mode automatically attempts to bring the
 existing site back online. Completion is reported with the deployed commit.
 The synchronized folders include the dedicated `public/lights-assets` CSS, JavaScript,
-manifest, icons, and service-worker assets. Public folders that already resolve
+manifest, icons, and service-worker assets, plus the native shop's
+`public/shop-assets` styles. Public folders that already resolve
 to the same symlink target are detected and skipped safely.
 The deploy also removes the exact legacy static `public_html/lights` bundle after
 validating every contained filename. That old directory collides with Laravel's

@@ -438,6 +438,7 @@ class TransactionPaymentController extends Controller
 
             $due_payment_type = request()->input('type');
             $query = Contact::where('contacts.id', $contact_id)
+                            ->where('contacts.business_id', $business_id)
                             ->leftjoin('transactions AS t', 'contacts.id', '=', 't.contact_id');
             if ($due_payment_type == 'purchase') {
                 $query->select(

@@ -37,6 +37,7 @@ return [
 
     'guards' => [
         'lights' => ['driver' => 'session', 'provider' => 'lights_users'],
+        'shop_customer' => ['driver' => 'session', 'provider' => 'shop_customers'],
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
@@ -72,6 +73,7 @@ return [
 
     'providers' => [
         'lights_users' => ['driver' => 'eloquent', 'model' => App\Lights\Member::class],
+        'shop_customers' => ['driver' => 'eloquent', 'model' => App\Shop\Customer::class],
         'users' => [
             'driver' => 'eloquent',
             'model' => App\User::class,
@@ -104,6 +106,12 @@ return [
     */
 
     'passwords' => [
+        'shop_customers' => [
+            'provider' => 'shop_customers',
+            'table' => 'shop_customer_password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
         'users' => [
             'provider' => 'users',
             'table' => 'password_resets',

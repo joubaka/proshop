@@ -18,4 +18,5 @@ class Order extends Model
     public function reservations() { return $this->hasMany(StockReservation::class, 'shop_order_id'); }
     public function events() { return $this->hasMany(OrderEvent::class, 'shop_order_id'); }
     public function payments() { return $this->hasMany(Payment::class, 'shop_order_id'); }
+    public function customer() { return $this->belongsTo(Customer::class, 'shop_customer_id'); }
 }

@@ -63,6 +63,8 @@ class OrderPlacementService
             $order = Order::create([
                 'uuid' => (string) Str::uuid(), 'order_number' => $this->orderNumber(),
                 'shop_channel_id' => $channel->id, 'shop_cart_id' => $cart->id, 'currency' => $channel->currency,
+                'shop_customer_id' => $customer['shop_customer_id'] ?? null,
+                'contact_id' => $this->verifiedContactId($customer['shop_customer_id'] ?? null, $channel->business_id),
                 'customer_name' => trim($customer['name']), 'customer_email' => Str::lower(trim($customer['email'])),
                 'customer_mobile' => trim($customer['mobile']), 'billing_address' => $customer['billing_address'],
                 'delivery_address' => $customer['delivery_address'] ?? null, 'fulfilment_method' => $delivery->method,
@@ -103,6 +105,13 @@ class OrderPlacementService
             'delivery_address' => [$delivery->method === 'collection' ? 'nullable' : 'required', 'array'],
         ]);
         if ($validator->fails()) { throw new ValidationException($validator); }
+    }
+
+    private function verifiedContactId(?int $customerId, int $businessId): ?int
+    {
+        if (!$customerId) { return null; }
+        return CustomerContactLink::query()->where('shop_customer_id', $customerId)
+            ->where('business_id', $businessId)->where('status', 'verified')->value('contact_id');
     }
 
     private function orderNumber(): string

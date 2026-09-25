@@ -11,6 +11,7 @@ use App\Shop\Order;
 use App\Shop\OrderPlacementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Auth;
 
 class CheckoutController extends Controller
 {
@@ -22,7 +23,8 @@ class CheckoutController extends Controller
         $items = $cart->items()->with(['shopVariation.shopProduct.product', 'shopVariation.variation'])->get();
         abort_if($items->isEmpty(), 404);
         $subtotalCents = $items->sum(fn ($item) => (int) round((float) $item->shopVariation->variation->sell_price_inc_tax * 100) * $item->quantity);
-        return response()->view('shop.checkout.create', compact('channel', 'cart', 'items', 'subtotalCents'))
+        $customer = config('shop.customer_accounts_enabled') ? Auth::guard('shop_customer')->user() : null;
+        return response()->view('shop.checkout.create', compact('channel', 'cart', 'items', 'subtotalCents', 'customer'))
             ->header('Cache-Control', 'no-store, private');
     }
 
@@ -41,6 +43,7 @@ class CheckoutController extends Controller
         $address = collect($data)->only(['address_line_1', 'address_line_2', 'city', 'province', 'postal_code'])->all();
         $order = $orders->place($cart, [
             'name' => $data['name'], 'email' => $data['email'], 'mobile' => $data['mobile'], 'billing_address' => $address,
+            'shop_customer_id' => config('shop.customer_accounts_enabled') ? Auth::guard('shop_customer')->id() : null,
         ], DeliveryQuote::collection());
         $url = URL::temporarySignedRoute('shop.orders.show', now()->addDays(7), ['uuid' => $order->uuid]);
         return redirect($url)->withoutCookie(CartService::COOKIE);

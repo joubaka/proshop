@@ -9,6 +9,8 @@ The storefront and checkout are disabled by default. Configure a catalogue chann
 ```dotenv
 SHOP_ENABLED=false
 SHOP_CHECKOUT_ENABLED=false
+SHOP_CUSTOMER_ACCOUNTS_ENABLED=false
+SHOP_ACCOUNT_PAYMENTS_ENABLED=false
 SHOP_CHANNEL=main
 SHOP_CART_LIFETIME_MINUTES=10080
 SHOP_RESERVATION_MINUTES=20
@@ -20,12 +22,13 @@ SHOP_PAYFAST_MERCHANT_KEY=
 SHOP_PAYFAST_PASSPHRASE=
 ```
 
-Apply only the three reviewed shop migrations for the first pilot:
+Apply the three commerce migrations and, when enabling customer accounts, the customer-account migration:
 
 ```powershell
 php artisan migrate --path=database/migrations/2026_09_17_000100_create_shop_catalog_tables.php
 php artisan migrate --path=database/migrations/2026_09_17_000200_create_shop_commerce_tables.php
 php artisan migrate --path=database/migrations/2026_09_17_000300_create_shop_payments_table.php
+php artisan migrate --path=database/migrations/2026_09_25_000100_create_shop_customer_accounts.php
 ```
 
 Do not enable checkout until the public application URL is HTTPS, the PayFast notification URL is reachable, and sandbox credentials have been verified. PayFast notifications—not browser returns—finalize payment.
@@ -48,6 +51,14 @@ Checkout creates a server-priced order and a short-lived stock reservation. The 
 
 Only a verified notification marks the order paid. Finalization creates or reuses the POS customer, creates the POS sale and payment records, records the online-order mapping and deducts location stock once. A late valid payment that can no longer be fulfilled is retained for staff review rather than silently losing the payment or overselling.
 
+## Customer accounts and in-shop balances
+
+Customer accounts use the dedicated `shop_customer` guard and never authenticate as POS staff or Lights members. Registration may create a pending match to a POS contact with the same normalized email, but that match exposes no invoices or balance until staff with `customer.update` verifies it in **Online orders → Customer account links**. Email equality is a review hint, not proof of ownership.
+
+A verified customer sees only final sales belonging to the linked contact and business. The displayed outstanding amount is recalculated from canonical POS transactions and payments. Online account payment is invoice-specific and disabled independently with `SHOP_ACCOUNT_PAYMENTS_ENABLED=false`.
+
+Account payments create a durable pending attempt before redirecting to PayFast. Browser return or cancellation never credits the POS ledger. A verified PayFast notification rechecks the exact invoice balance under lock, records one `transaction_payments` row and safely accepts callback replay. Amount mismatches and changed balances remain blocked for staff reconciliation. Lights identities, wallet balances, top-ups and sessions remain separate and are not combined with shop debt.
+
 ## Fulfilment and delivery boundary
 
 The first pilot supports collection. Staff use **Online orders** to move a paid order from `not ready` to `ready for collection` and then `collected`; transitions are ordered, idempotent and audited. Unpaid orders can be cancelled and release reserved stock. Paid cancellation intentionally requires a future refund workflow.
@@ -68,7 +79,7 @@ The browser pilot proves the full local sequence: public catalogue, product avai
 
 ## First external sandbox checklist
 
-- Back up the database and verify only the three shop migrations are pending.
+- Back up the database and verify only the reviewed shop migrations are pending.
 - Use one low-risk product with known stock, safety stock of at least one and maximum online quantity of one.
 - Keep the catalogue channel and global flags off while configuring it.
 - Configure PayFast sandbox credentials outside source control and rebuild the configuration cache.

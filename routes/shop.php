@@ -6,6 +6,10 @@ use App\Http\Controllers\Shop\CheckoutController;
 use App\Http\Controllers\Shop\PayFastController;
 use App\Http\Controllers\Shop\AdminOrderController;
 use App\Http\Controllers\Shop\AdminCatalogController;
+use App\Http\Controllers\Shop\CustomerAuthController;
+use App\Http\Controllers\Shop\CustomerDashboardController;
+use App\Http\Controllers\Shop\CustomerAccountPaymentController;
+use App\Http\Controllers\Shop\CustomerLinkAdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('shop')->name('shop.')->group(function () {
@@ -22,6 +26,32 @@ Route::prefix('shop')->name('shop.')->group(function () {
     Route::get('/payfast/return/{payment}', [PayFastController::class, 'returned'])->middleware('signed')->name('payfast.return');
     Route::get('/payfast/cancel/{payment}', [PayFastController::class, 'cancelled'])->middleware('signed')->name('payfast.cancel');
     Route::post('/payfast/notify', [PayFastController::class, 'notify'])->name('payfast.notify');
+
+    Route::prefix('account')->name('account.')->group(function () {
+        Route::middleware('shop.customer:guest')->group(function () {
+            Route::get('/login', [CustomerAuthController::class, 'loginForm'])->name('login');
+            Route::post('/login', [CustomerAuthController::class, 'login'])->middleware('throttle:10,1')->name('login.store');
+            Route::get('/register', [CustomerAuthController::class, 'registerForm'])->name('register');
+            Route::post('/register', [CustomerAuthController::class, 'register'])->middleware('throttle:5,1')->name('register.store');
+            Route::get('/forgot-password', [CustomerAuthController::class, 'forgotForm'])->name('password.request');
+            Route::post('/forgot-password', [CustomerAuthController::class, 'forgot'])->middleware('throttle:3,1')->name('password.email');
+            Route::get('/reset-password/{token}', [CustomerAuthController::class, 'resetForm'])->name('password.reset');
+            Route::post('/reset-password', [CustomerAuthController::class, 'reset'])->middleware('throttle:5,1')->name('password.update');
+        });
+        Route::post('/payfast/notify', [CustomerAccountPaymentController::class, 'notify'])->name('payfast.notify');
+        Route::middleware('shop.customer:customer')->group(function () {
+            Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('logout');
+            Route::get('/verify-email', [CustomerAuthController::class, 'verificationNotice'])->name('verification.notice');
+            Route::get('/verify-email/{id}/{hash}', [CustomerAuthController::class, 'verify'])->middleware('signed')->name('verify');
+            Route::post('/verification-notification', [CustomerAuthController::class, 'resend'])->middleware('throttle:3,1')->name('verification.send');
+        });
+        Route::middleware('shop.customer:verified')->group(function () {
+            Route::get('/', [CustomerDashboardController::class, 'index'])->name('dashboard');
+            Route::post('/invoices/{transaction}/pay', [CustomerAccountPaymentController::class, 'start'])->name('invoices.pay');
+            Route::get('/payfast/return/{payment}', [CustomerAccountPaymentController::class, 'returned'])->middleware('signed')->name('payfast.return');
+            Route::get('/payfast/cancel/{payment}', [CustomerAccountPaymentController::class, 'cancelled'])->middleware('signed')->name('payfast.cancel');
+        });
+    });
 });
 
 Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 'AdminSidebarMenu', 'CheckUserLogin'])
@@ -38,4 +68,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
         Route::get('/catalog/{channel}/products', [AdminCatalogController::class, 'products'])->name('catalog.products');
         Route::get('/catalog/{channel}/products/{product}', [AdminCatalogController::class, 'edit'])->name('catalog.products.edit');
         Route::put('/catalog/{channel}/products/{product}', [AdminCatalogController::class, 'update'])->name('catalog.products.update');
+        Route::get('/customer-links', [CustomerLinkAdminController::class, 'index'])->name('customer-links.index');
+        Route::post('/customer-links/{link}/verify', [CustomerLinkAdminController::class, 'verify'])->name('customer-links.verify');
+        Route::post('/customer-links/{link}/revoke', [CustomerLinkAdminController::class, 'revoke'])->name('customer-links.revoke');
     });

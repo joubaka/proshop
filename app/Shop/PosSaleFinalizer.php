@@ -123,6 +123,10 @@ class PosSaleFinalizer implements PaidOrderFinalizer
 
     private function contact(Order $order, int $businessId, int $ownerId): Contact
     {
+        if ($order->contact_id) {
+            return Contact::query()->where('business_id', $businessId)->whereIn('type', ['customer', 'both'])
+                ->findOrFail($order->contact_id);
+        }
         $email = strtolower(trim($order->customer_email));
         $contact = Contact::query()->where('business_id', $businessId)
             ->whereRaw('LOWER(email) = ?', [$email])->whereIn('type', ['customer', 'both'])->first();

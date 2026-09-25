@@ -9,6 +9,8 @@ return [
     // The public storefront stays unavailable until a reviewed channel is configured and enabled.
     'enabled' => (bool) env('SHOP_ENABLED', false),
     'checkout_enabled' => (bool) env('SHOP_CHECKOUT_ENABLED', false),
+    'customer_accounts_enabled' => (bool) env('SHOP_CUSTOMER_ACCOUNTS_ENABLED', false),
+    'account_payments_enabled' => (bool) env('SHOP_ACCOUNT_PAYMENTS_ENABLED', false),
     'channel' => env('SHOP_CHANNEL', 'main'),
     'products_per_page' => (int) env('SHOP_PRODUCTS_PER_PAGE', 24),
     'cart_lifetime_minutes' => (int) env('SHOP_CART_LIFETIME_MINUTES', 10080),

@@ -4,6 +4,8 @@ namespace App\Shop\PayFast;
 
 use App\Shop\Order;
 use App\Shop\Payment;
+use App\Shop\AccountPaymentAttempt;
+use App\Shop\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 
@@ -27,6 +29,25 @@ class Gateway
         ];
         $data['signature'] = $this->signature($data);
 
+        return ['url' => (string) config('shop.payfast.process_url'), 'fields' => $data];
+    }
+
+    public function accountCheckout(AccountPaymentAttempt $payment, Customer $customer): array
+    {
+        $this->configured();
+        $data = [
+            'merchant_id' => (string) config('shop.payfast.merchant_id'),
+            'merchant_key' => (string) config('shop.payfast.merchant_key'),
+            'return_url' => URL::temporarySignedRoute('shop.account.payfast.return', now()->addDay(), ['payment' => $payment->id]),
+            'cancel_url' => URL::temporarySignedRoute('shop.account.payfast.cancel', now()->addDay(), ['payment' => $payment->id]),
+            'notify_url' => route('shop.account.payfast.notify'),
+            'name_first' => $customer->name,
+            'email_address' => $customer->email,
+            'm_payment_id' => $payment->merchant_payment_id,
+            'amount' => number_format($payment->expected_amount_cents / 100, 2, '.', ''),
+            'item_name' => 'ProShop invoice payment',
+        ];
+        $data['signature'] = $this->signature($data);
         return ['url' => (string) config('shop.payfast.process_url'), 'fields' => $data];
     }
 

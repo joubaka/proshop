@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule([\App\Console\ScheduleRegistrar::class, 'register'])
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->validateCsrfTokens(except: ['lights/payfast/notify', 'shop/payfast/notify']);
+        $middleware->validateCsrfTokens(except: ['lights/payfast/notify', 'shop/payfast/notify', 'shop/account/payfast/notify']);
         $middleware->prepend(\App\Http\Middleware\ShellySetupPrivacy::class);
         $middleware->prependToPriorityList(
             \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
@@ -37,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'AdminSidebarMenu' => \App\Http\Middleware\AdminSidebarMenu::class,
             'superadmin'       => \App\Http\Middleware\Superadmin::class,
             'CheckUserLogin'   => \App\Http\Middleware\CheckUserLogin::class,
+            'shop.customer'    => \App\Http\Middleware\ShopCustomerAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

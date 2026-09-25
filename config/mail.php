@@ -16,7 +16,22 @@ return [
     |
     */
 
-    'driver' => env('MAIL_DRIVER', 'smtp'),
+    'driver' => filter_var(env('MAIL_OUTBOUND_ENABLED', false), FILTER_VALIDATE_BOOLEAN)
+        ? env('MAIL_DRIVER', 'smtp')
+        : 'array',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Outbound Mail Safety Gate
+    |--------------------------------------------------------------------------
+    |
+    | Email delivery is deliberately disabled until it is explicitly enabled
+    | for a commissioned environment. While disabled, messages are captured by
+    | the in-memory array transport and never contact an external mail server.
+    |
+    */
+
+    'outbound_enabled' => filter_var(env('MAIL_OUTBOUND_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
 
     /*
     |--------------------------------------------------------------------------

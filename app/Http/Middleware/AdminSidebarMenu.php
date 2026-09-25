@@ -248,7 +248,7 @@ class AdminSidebarMenu
                                 $sub->url(
                                     route('shop.admin.orders.index'),
                                     'Online orders',
-                                    ['icon' => 'fa fas fa-shopping-bag', 'active' => request()->segment(1) == 'shop-admin']
+                                    ['icon' => 'fa fas fa-shopping-bag', 'active' => request()->segment(1) == 'shop-admin' && request()->segment(2) == 'orders']
                                 );
                                 $sub->url(
                                     route('shop.admin.catalog.index'),

@@ -21,7 +21,7 @@
 
               <ol>
                 <li>
-                  <b>Step-by-Step document</b> - <a href="https://ultimatefosters.com/docs/ultimatepos/getting-started/installing-ultimatepos/" target="_blank">Documentation</a>
+                  <b>Step-by-step documentation</b> is available in the repository's <code>docs</code> directory.
                 </li>
                 <li>
                   <b>Application Name</b> - Something short & Meaningful.

@@ -34,7 +34,7 @@
                     @if(file_exists(public_path('uploads/logo.png')))
                         <img src="/uploads/logo.png" class="img-rounded" alt="Logo" width="150">
                     @else
-                       {{ config('app.name', 'ultimatePOS') }}
+                       {{ config('app.name', 'SportStack') }}
                     @endif 
                     </a>
                     <br/>

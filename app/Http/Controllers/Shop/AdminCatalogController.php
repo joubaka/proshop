@@ -70,12 +70,23 @@ class AdminCatalogController extends Controller
     public function products(Request $request, Channel $channel)
     {
         $this->authorizeChannel($request, $channel);
+        $data = $request->validate([
+            'search' => ['nullable', 'string', 'max:191'],
+        ]);
+        $search = trim($data['search'] ?? '');
+
         $products = Product::query()->where('business_id', $channel->business_id)->where('is_inactive', false)
             ->where('not_for_selling', false)->where('type', '!=', 'combo')->forLocation($channel->location_id)
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('sku', 'like', '%'.$search.'%');
+                });
+            })
             ->with(['variations.product_variation', 'variations.variation_location_details' => fn ($query) => $query->where('location_id', $channel->location_id)])
-            ->orderBy('name')->paginate(30);
+            ->orderBy('name')->paginate(30)->withQueryString();
         $configured = ShopProduct::query()->where('shop_channel_id', $channel->id)->get()->keyBy('product_id');
-        return view('shop.admin-products', compact('channel', 'products', 'configured'));
+        return view('shop.admin-products', compact('channel', 'products', 'configured', 'search'));
     }
 
     public function edit(Request $request, Channel $channel, Product $product)

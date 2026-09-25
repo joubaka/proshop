@@ -7,6 +7,8 @@ use App\Shop\CatalogAdminService;
 use App\Shop\ShopProduct;
 use App\Shop\ShopVariation;
 use App\Product;
+use App\Http\Controllers\Shop\AdminCatalogController;
+use Illuminate\Http\Request;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -90,6 +92,26 @@ class ShopCatalogTest extends RegressionTestCase
             'published' => true, 'safety_stock' => 1, 'maximum_order_quantity' => 2,
         ]);
         $this->get('/shop')->assertOk()->assertSee('Published racket')->assertSee('Tournament racket');
+    }
+
+    public function test_catalogue_admin_can_search_eligible_products_by_name_or_sku(): void
+    {
+        $channel = $this->channel();
+        $this->publish($channel, 100, 'Competition racket', 'competition-racket');
+        $this->publish($channel, 101, 'Training balls', 'training-balls');
+        $this->signInWithPermissions(['sell.view', 'access_all_locations']);
+
+        $byName = Request::create('/shop-admin/catalog/1/products', 'GET', ['search' => 'racket']);
+        $byName->setLaravelSession($this->app['session']->driver());
+        $nameResults = app(AdminCatalogController::class)->products($byName, $channel)->getData()['products'];
+
+        $this->assertSame(['Competition racket'], $nameResults->pluck('name')->all());
+
+        $bySku = Request::create('/shop-admin/catalog/1/products', 'GET', ['search' => 'SKU-101']);
+        $bySku->setLaravelSession($this->app['session']->driver());
+        $skuResults = app(AdminCatalogController::class)->products($bySku, $channel)->getData()['products'];
+
+        $this->assertSame(['Training balls'], $skuResults->pluck('name')->all());
     }
 
     public function test_catalogue_admin_rejects_foreign_variation_atomically(): void

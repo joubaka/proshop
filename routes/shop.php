@@ -33,6 +33,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
         Route::post('/orders/{uuid}/cancel', [AdminOrderController::class, 'cancel'])->name('orders.cancel');
         Route::get('/catalog', [AdminCatalogController::class, 'index'])->name('catalog.index');
         Route::post('/catalog/channels', [AdminCatalogController::class, 'storeChannel'])->name('catalog.channels.store');
+        Route::get('/catalog/channels/{channel}/edit', [AdminCatalogController::class, 'editChannel'])->name('catalog.channels.edit');
+        Route::patch('/catalog/channels/{channel}', [AdminCatalogController::class, 'updateChannel'])->name('catalog.channels.update');
         Route::get('/catalog/{channel}/products', [AdminCatalogController::class, 'products'])->name('catalog.products');
         Route::get('/catalog/{channel}/products/{product}', [AdminCatalogController::class, 'edit'])->name('catalog.products.edit');
         Route::put('/catalog/{channel}/products/{product}', [AdminCatalogController::class, 'update'])->name('catalog.products.update');

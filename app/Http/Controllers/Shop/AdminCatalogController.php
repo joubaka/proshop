@@ -39,6 +39,34 @@ class AdminCatalogController extends Controller
         return redirect()->route('shop.admin.catalog.index')->with('status', ['success' => 1, 'msg' => 'Shop channel created.']);
     }
 
+    public function editChannel(Request $request, Channel $channel)
+    {
+        $this->authorizeChannel($request, $channel);
+        $location = BusinessLocation::query()
+            ->where('business_id', $channel->business_id)
+            ->findOrFail($channel->location_id);
+
+        return view('shop.admin-channel-edit', compact('channel', 'location'));
+    }
+
+    public function updateChannel(Request $request, Channel $channel)
+    {
+        $this->authorizeUpdate();
+        $this->authorizeChannel($request, $channel);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:191'],
+            'enabled' => ['nullable', 'boolean'],
+        ]);
+
+        $channel->update([
+            'name' => $data['name'],
+            'enabled' => $request->boolean('enabled'),
+        ]);
+
+        return redirect()->route('shop.admin.catalog.index')
+            ->with('status', ['success' => 1, 'msg' => 'Shop channel updated.']);
+    }
+
     public function products(Request $request, Channel $channel)
     {
         $this->authorizeChannel($request, $channel);

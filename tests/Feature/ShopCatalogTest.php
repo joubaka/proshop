@@ -113,6 +113,44 @@ class ShopCatalogTest extends RegressionTestCase
         $this->assertNull(ShopProduct::where('product_id', 100)->value('published_at'));
     }
 
+    public function test_authorized_staff_can_edit_channel_name_and_enabled_status_without_changing_ownership(): void
+    {
+        $channel = $this->channel();
+        $this->signInWithPermissions(['sell.view', 'sell.update', 'access_all_locations']);
+
+        $this->patch(route('shop.admin.catalog.channels.update', $channel), [
+            'name' => 'HSC Pro Shop',
+        ])->assertRedirect(route('shop.admin.catalog.index'));
+
+        $channel->refresh();
+        $this->assertSame('HSC Pro Shop', $channel->name);
+        $this->assertFalse($channel->enabled);
+        $this->assertSame('main', $channel->slug);
+        $this->assertSame(1, (int) $channel->business_id);
+        $this->assertSame(10, (int) $channel->location_id);
+    }
+
+    public function test_channel_edit_rejects_cross_business_tampering(): void
+    {
+        DB::table('business_locations')->insert([
+            'id' => 20, 'business_id' => 2, 'name' => 'Other business location',
+        ]);
+        $channel = Channel::create([
+            'business_id' => 2, 'location_id' => 20, 'slug' => 'other',
+            'name' => 'Other shop', 'currency' => 'ZAR', 'enabled' => true,
+        ]);
+        $this->signInWithPermissions(['sell.view', 'sell.update', 'access_all_locations']);
+
+        $this->get(route('shop.admin.catalog.channels.edit', $channel))->assertNotFound();
+        $this->patch(route('shop.admin.catalog.channels.update', $channel), [
+            'name' => 'Tampered name', 'enabled' => '0',
+        ])->assertNotFound();
+
+        $this->assertDatabaseHas('shop_channels', [
+            'id' => $channel->id, 'name' => 'Other shop', 'enabled' => true,
+        ]);
+    }
+
     private function channel(): Channel
     {
         DB::table('business_locations')->insert([

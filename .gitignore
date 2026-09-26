@@ -38,6 +38,7 @@ yarn-error.log
 /public/uploads/media
 /public/uploads/invoice_logos
 /public/uploads/UltimatePOS
+/public/uploads/sportstack/
 /public/uploads/temp
 /public/js/
 !/public/js/*.js

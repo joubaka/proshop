@@ -10,6 +10,7 @@ use App\Http\Controllers\Shop\CustomerAuthController;
 use App\Http\Controllers\Shop\CustomerDashboardController;
 use App\Http\Controllers\Shop\CustomerAccountPaymentController;
 use App\Http\Controllers\Shop\CustomerLinkAdminController;
+use App\Http\Controllers\Shop\PaymentReviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('shop')->name('shop.')->group(function () {
@@ -47,6 +48,7 @@ Route::prefix('shop')->name('shop.')->group(function () {
         });
         Route::middleware('shop.customer:verified')->group(function () {
             Route::get('/', [CustomerDashboardController::class, 'index'])->name('dashboard');
+            Route::get('/orders/{uuid}', [CustomerDashboardController::class, 'showOrder'])->name('orders.show');
             Route::post('/invoices/{transaction}/pay', [CustomerAccountPaymentController::class, 'start'])->name('invoices.pay');
             Route::get('/payfast/return/{payment}', [CustomerAccountPaymentController::class, 'returned'])->middleware('signed')->name('payfast.return');
             Route::get('/payfast/cancel/{payment}', [CustomerAccountPaymentController::class, 'cancelled'])->middleware('signed')->name('payfast.cancel');
@@ -71,4 +73,6 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
         Route::get('/customer-links', [CustomerLinkAdminController::class, 'index'])->name('customer-links.index');
         Route::post('/customer-links/{link}/verify', [CustomerLinkAdminController::class, 'verify'])->name('customer-links.verify');
         Route::post('/customer-links/{link}/revoke', [CustomerLinkAdminController::class, 'revoke'])->name('customer-links.revoke');
+        Route::get('/payment-reviews', [PaymentReviewController::class, 'index'])->name('payment-reviews.index');
+        Route::post('/payment-reviews/orders/{payment}/retry', [PaymentReviewController::class, 'retryOrder'])->name('payment-reviews.orders.retry');
     });

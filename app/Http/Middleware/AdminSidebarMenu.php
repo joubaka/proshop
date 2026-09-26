@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Utils\ModuleUtil;
+use App\Shop\ShopStaffAccess;
 use Closure;
 use Menu;
 
@@ -28,6 +29,12 @@ class AdminSidebarMenu
             $pos_settings = !empty(session('business.pos_settings')) ? json_decode(session('business.pos_settings'), true) : [];
 
             $is_admin = auth()->user()->hasRole('Admin#' . session('business.id')) ? true : false;
+            $shop_business_id = (int) session('business.id');
+            $can_view_shop_orders = ShopStaffAccess::allows(auth()->user(), $shop_business_id, 'shop.orders.view')
+                || ShopStaffAccess::allows(auth()->user(), $shop_business_id, 'shop.orders.fulfil');
+            $can_view_shop_catalog = ShopStaffAccess::allows(auth()->user(), $shop_business_id, 'shop.catalog.view')
+                || ShopStaffAccess::allows(auth()->user(), $shop_business_id, 'shop.catalog.manage');
+            $can_review_shop_payments = ShopStaffAccess::allows(auth()->user(), $shop_business_id, 'shop.payments.review');
             //Home
             $menu->url(action('App\Http\Controllers\HomeController@index'), __('home.home'), ['icon' => 'fa fas fa-tachometer-alt', 'active' => request()->segment(1) == 'home'])->order(5);
 
@@ -231,10 +238,10 @@ class AdminSidebarMenu
                 )->order(25);
             }
             //Sell dropdown
-            if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'sell.create', 'direct_sell.access', 'view_own_sell_only', 'view_commission_agent_sell', 'access_shipping', 'access_own_shipping', 'access_commission_agent_shipping', 'access_sell_return', 'direct_sell.view', 'direct_sell.update', 'access_own_sell_return']) ) {
+            if ($is_admin || $can_view_shop_orders || $can_view_shop_catalog || $can_review_shop_payments || auth()->user()->hasAnyPermission(['sell.view', 'sell.create', 'direct_sell.access', 'view_own_sell_only', 'view_commission_agent_sell', 'access_shipping', 'access_own_shipping', 'access_commission_agent_shipping', 'access_sell_return', 'direct_sell.view', 'direct_sell.update', 'access_own_sell_return']) ) {
                 $menu->dropdown(
                     __('sale.sale'),
-                    function ($sub) use ($enabled_modules, $is_admin, $pos_settings) {
+                    function ($sub) use ($enabled_modules, $is_admin, $pos_settings, $can_view_shop_orders, $can_view_shop_catalog, $can_review_shop_payments) {
                         if (!empty($pos_settings['enable_sales_order']) && ($is_admin ||auth()->user()->hasAnyPermission(['so.view_own', 'so.view_all', 'so.create'])) ) {
                             $sub->url(
                                 action('App\Http\Controllers\SalesOrderController@index'),
@@ -243,17 +250,26 @@ class AdminSidebarMenu
                             );
                         }
 
-                        if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'sell.create', 'direct_sell.access', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell', 'access_shipping', 'access_own_shipping', 'access_commission_agent_shipping']) ) {
-                            if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'sell.create'])) {
+                        if ($is_admin || $can_view_shop_orders || $can_view_shop_catalog || $can_review_shop_payments || auth()->user()->hasAnyPermission(['sell.view', 'sell.create', 'direct_sell.access', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell', 'access_shipping', 'access_own_shipping', 'access_commission_agent_shipping']) ) {
+                            if ($can_view_shop_orders) {
                                 $sub->url(
                                     route('shop.admin.orders.index'),
                                     'Online orders',
                                     ['icon' => 'fa fas fa-shopping-bag', 'active' => request()->segment(1) == 'shop-admin' && request()->segment(2) == 'orders']
                                 );
+                            }
+                            if ($can_view_shop_catalog) {
                                 $sub->url(
                                     route('shop.admin.catalog.index'),
                                     'Online catalogue',
                                     ['icon' => 'fa fas fa-store', 'active' => request()->segment(1) == 'shop-admin' && request()->segment(2) == 'catalog']
+                                );
+                            }
+                            if ($can_review_shop_payments) {
+                                $sub->url(
+                                    route('shop.admin.payment-reviews.index'),
+                                    'Payment reviews',
+                                    ['icon' => 'fa fas fa-exclamation-triangle', 'active' => request()->segment(1) == 'shop-admin' && request()->segment(2) == 'payment-reviews']
                                 );
                             }
                             $sub->url(

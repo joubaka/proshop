@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Shop\CartService;
+use App\Mail\ShopOrderReserved;
 use App\Shop\Channel;
 use App\Shop\DeliveryQuote;
 use App\Shop\Exceptions\InsufficientStock;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -39,6 +41,7 @@ class ShopOrderPlacementTest extends RegressionTestCase
         (require database_path('migrations/2026_09_17_000100_create_shop_catalog_tables.php'))->up();
         (require database_path('migrations/2026_09_17_000200_create_shop_commerce_tables.php'))->up();
         (require database_path('migrations/2026_09_17_000300_create_shop_payments_table.php'))->up();
+        (require database_path('migrations/2026_09_25_000300_create_shop_provider_payment_references.php'))->up();
         config([
             'app.url' => 'https://shop.example.test', 'shop.enabled' => true, 'shop.checkout_enabled' => true,
             'shop.channel' => 'main', 'shop.reservation_minutes' => 20,
@@ -172,6 +175,7 @@ class ShopOrderPlacementTest extends RegressionTestCase
         ])->assertRedirect()->assertCookieExpired(CartService::COOKIE);
 
         $signedUrl = $response->headers->get('Location');
+        Mail::assertSent(ShopOrderReserved::class, fn (ShopOrderReserved $mail) => $mail->orderUrl === $signedUrl);
         $this->get($signedUrl)->assertOk()->assertSee('ORDER RESERVED')->assertSee('R 499.90');
         $order = \App\Shop\Order::firstOrFail();
         $this->get(route('shop.orders.show', $order->uuid))->assertForbidden();
@@ -256,6 +260,24 @@ class ShopOrderPlacementTest extends RegressionTestCase
         $this->assertSame('active', $order->reservations()->first()->status);
     }
 
+    public function test_authorized_review_can_retry_an_exact_verified_payment_without_recontacting_payfast(): void
+    {
+        $order = $this->placedOrder(100, 1);
+        app(PaymentService::class)->checkout($order);
+        $payment = Payment::firstOrFail();
+        $order->update(['reservation_expires_at' => now()->subMinute()]);
+        $order->reservations()->update(['expires_at' => now()->subMinute(), 'status' => 'released', 'released_at' => now()]);
+        $this->post('/shop/payfast/notify', $this->paymentPayload($payment, 'PF-REVIEW', '100.00'))->assertOk();
+
+        app(PaymentService::class)->retryFinalization($payment->fresh(), 71);
+
+        $this->assertSame(1, $this->paymentFinalizer->calls);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertSame('confirmed', $order->reservations()->first()->status);
+        $this->assertSame(71, $order->events()->where('event_type', 'payment_reconciled')->value('actor_id'));
+    }
+
     public function test_notification_signature_preserves_payfast_raw_encoding(): void
     {
         $order = $this->placedOrder(100, 1);
@@ -296,6 +318,11 @@ class ShopOrderPlacementTest extends RegressionTestCase
             $table->string('state')->nullable(); $table->string('zip_code')->nullable();
             $table->softDeletes(); $table->timestamps();
         });
+        DB::table('contacts')->insert([
+            'id' => 99, 'business_id' => 1, 'type' => 'customer', 'name' => 'Existing email owner',
+            'email' => 'jamie@example.test', 'mobile' => '0800000000', 'created_by' => 9,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
 
         $order = $this->placedOrder(115, 2, 15);
         app(PaymentService::class)->checkout($order);
@@ -325,6 +352,8 @@ class ShopOrderPlacementTest extends RegressionTestCase
         $this->assertDatabaseHas('contacts', ['business_id' => 1, 'email' => 'jamie@example.test', 'created_by' => 9]);
         $this->assertSame(555, $order->fresh()->transaction_id);
         $this->assertNotNull($order->fresh()->contact_id);
+        $this->assertNotSame(99, (int) $order->fresh()->contact_id);
+        $this->assertSame(2, DB::table('contacts')->where('email', 'jamie@example.test')->count());
     }
 
     public function test_expiry_job_releases_unpaid_reservations_and_payment_attempts_once(): void

@@ -6,7 +6,10 @@ use App\Shop\AccountPaymentAttempt;
 use App\Shop\AccountPaymentService;
 use App\Shop\Customer;
 use App\Shop\CustomerContactLink;
+use App\Http\Controllers\Shop\CustomerAccountPaymentController;
 use App\Shop\PayFast\Gateway;
+use App\Shop\PayFast\InvalidNotification;
+use App\Shop\ProviderPaymentClaim;
 use App\Transaction;
 use App\Utils\TransactionUtil;
 use Illuminate\Database\Schema\Blueprint;
@@ -62,6 +65,7 @@ class ShopCustomerAccountTest extends RegressionTestCase
             $table->id(); $table->string('provider_reference')->nullable();
         });
         (require database_path('migrations/2026_09_25_000100_create_shop_customer_accounts.php'))->up();
+        (require database_path('migrations/2026_09_25_000300_create_shop_provider_payment_references.php'))->up();
         DB::table('business_locations')->insert(['id' => 1, 'business_id' => 1, 'name' => 'Main']);
         DB::table('shop_channels')->insert(['id' => 1, 'business_id' => 1, 'location_id' => 1, 'slug' => 'main', 'name' => 'ProShop', 'enabled' => 1, 'created_at' => now(), 'updated_at' => now()]);
         config(['shop.enabled' => true, 'shop.channel' => 'main', 'shop.customer_accounts_enabled' => true,
@@ -101,7 +105,7 @@ class ShopCustomerAccountTest extends RegressionTestCase
         $gateway = Mockery::mock(Gateway::class);
         $gateway->shouldNotReceive('accountCheckout');
         $util = Mockery::mock(TransactionUtil::class);
-        $service = new AccountPaymentService($gateway, $util);
+        $service = new AccountPaymentService($gateway, $util, app(ProviderPaymentClaim::class));
         try {
             $service->checkout($customer, $invoice);
             $this->fail('Pending links must not expose or pay invoices.');
@@ -137,7 +141,7 @@ class ShopCustomerAccountTest extends RegressionTestCase
         $util->shouldReceive('generateReferenceNumber')->once()->andReturn('PAY-1');
         $util->shouldReceive('updatePaymentStatus')->once()->andReturn('paid');
         $util->shouldReceive('activityLog')->once();
-        $service = new AccountPaymentService($gateway, $util);
+        $service = new AccountPaymentService($gateway, $util, app(ProviderPaymentClaim::class));
         $gateway->shouldReceive('accountCheckout')->once()->andReturn(['url' => 'https://example.test', 'fields' => []]);
         $service->checkout($customer, $invoice);
         $attempt = AccountPaymentAttempt::firstOrFail();
@@ -166,7 +170,7 @@ class ShopCustomerAccountTest extends RegressionTestCase
         $util = Mockery::mock(TransactionUtil::class);
         $util->shouldReceive('getTotalPaid')->once()->andReturn(0);
         $gateway->shouldReceive('accountCheckout')->once()->andReturn(['url' => 'https://example.test', 'fields' => []]);
-        $service = new AccountPaymentService($gateway, $util);
+        $service = new AccountPaymentService($gateway, $util, app(ProviderPaymentClaim::class));
         $service->checkout($customer, $invoice);
         $attempt = AccountPaymentAttempt::firstOrFail();
         $gateway->shouldReceive('verify')->once()->andReturn([
@@ -176,6 +180,57 @@ class ShopCustomerAccountTest extends RegressionTestCase
         $this->assertSame('amount_mismatch', $service->receive(Request::create('/', 'POST')));
         $this->assertDatabaseCount('transaction_payments', 0);
         $this->assertDatabaseHas('shop_account_payment_attempts', ['status' => 'review_required', 'failure_reason' => 'amount_mismatch']);
+    }
+
+    public function test_customer_cancellation_releases_the_invoice_for_a_safe_new_attempt(): void
+    {
+        [$customer, $invoice] = $this->linkedInvoice('verified');
+        $gateway = Mockery::mock(Gateway::class);
+        $util = Mockery::mock(TransactionUtil::class);
+        $util->shouldReceive('getTotalPaid')->twice()->with($invoice->id)->andReturn(0);
+        $gateway->shouldReceive('accountCheckout')->twice()->andReturn(['url' => 'https://example.test', 'fields' => []]);
+        $service = new AccountPaymentService($gateway, $util, app(ProviderPaymentClaim::class));
+        $service->checkout($customer, $invoice);
+        $first = AccountPaymentAttempt::firstOrFail();
+        auth('shop_customer')->login($customer);
+
+        app(CustomerAccountPaymentController::class)->cancelled($first->id);
+
+        $this->assertDatabaseHas('shop_account_payment_attempts', [
+            'id' => $first->id, 'status' => 'customer_cancelled', 'active_transaction_id' => null,
+        ]);
+        $service->checkout($customer, $invoice);
+        $this->assertDatabaseCount('shop_account_payment_attempts', 2);
+        $this->assertSame(1, AccountPaymentAttempt::whereNotNull('active_transaction_id')->count());
+    }
+
+    public function test_customer_cancellation_cannot_overwrite_a_completed_callback(): void
+    {
+        [$customer, $invoice] = $this->linkedInvoice('verified');
+        $gateway = Mockery::mock(Gateway::class);
+        $gateway->shouldReceive('accountCheckout')->once()->andReturn(['url' => 'https://example.test', 'fields' => []]);
+        $util = Mockery::mock(TransactionUtil::class);
+        $util->shouldReceive('getTotalPaid')->once()->with($invoice->id)->andReturn(0);
+        $service = new AccountPaymentService($gateway, $util, app(ProviderPaymentClaim::class));
+        $service->checkout($customer, $invoice);
+        $attempt = AccountPaymentAttempt::firstOrFail();
+        $attempt->update(['status' => 'completed', 'active_transaction_id' => null, 'completed_at' => now()]);
+        auth('shop_customer')->login($customer);
+
+        app(CustomerAccountPaymentController::class)->cancelled($attempt->id);
+
+        $this->assertSame('completed', $attempt->fresh()->status);
+        $this->assertNull($attempt->fresh()->failure_reason);
+    }
+
+    public function test_one_payfast_reference_cannot_be_claimed_by_two_payment_workflows(): void
+    {
+        $claims = app(ProviderPaymentClaim::class);
+        $claims->claim('payfast', 'PF-SHARED-1', 'order_payment', 10);
+        $claims->claim('payfast', 'PF-SHARED-1', 'order_payment', 10);
+
+        $this->expectException(InvalidNotification::class);
+        $claims->claim('payfast', 'PF-SHARED-1', 'account_payment', 'attempt-20');
     }
 
     private function linkedInvoice(string $status): array

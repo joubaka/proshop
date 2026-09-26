@@ -11,6 +11,8 @@ class Payment extends Model
     protected $casts = [
         'signature_verified' => 'boolean',
         'server_verified' => 'boolean',
+        'expected_amount_cents' => 'integer',
+        'reported_amount_cents' => 'integer',
         'received_at' => 'datetime',
         'finalized_at' => 'datetime',
     ];

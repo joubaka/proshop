@@ -128,11 +128,6 @@ class PosSaleFinalizer implements PaidOrderFinalizer
                 ->findOrFail($order->contact_id);
         }
         $email = strtolower(trim($order->customer_email));
-        $contact = Contact::query()->where('business_id', $businessId)
-            ->whereRaw('LOWER(email) = ?', [$email])->whereIn('type', ['customer', 'both'])->first();
-        if ($contact) {
-            return $contact;
-        }
         $address = $order->billing_address ?: [];
         return Contact::create([
             'business_id' => $businessId, 'type' => 'customer', 'name' => $order->customer_name,

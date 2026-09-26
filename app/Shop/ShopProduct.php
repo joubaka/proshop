@@ -32,6 +32,18 @@ class ShopProduct extends Model
         return $this->hasMany(ProductImage::class, 'shop_product_id');
     }
 
+    public function getDisplayImageUrlAttribute(): string
+    {
+        $images = $this->relationLoaded('images') ? $this->images : $this->images()->get();
+        $primary = $images->sortBy([
+            ['is_primary', 'desc'],
+            ['sort_order', 'asc'],
+            ['id', 'asc'],
+        ])->first();
+
+        return $primary?->url ?? $this->product->image_url;
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query->whereNotNull('published_at')

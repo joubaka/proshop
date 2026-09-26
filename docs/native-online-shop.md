@@ -22,13 +22,15 @@ SHOP_PAYFAST_MERCHANT_KEY=
 SHOP_PAYFAST_PASSPHRASE=
 ```
 
-Apply the three commerce migrations and, when enabling customer accounts, the customer-account migration:
+Apply the commerce, customer-account, staff-permission and shared provider-reference migrations:
 
 ```powershell
 php artisan migrate --path=database/migrations/2026_09_17_000100_create_shop_catalog_tables.php
 php artisan migrate --path=database/migrations/2026_09_17_000200_create_shop_commerce_tables.php
 php artisan migrate --path=database/migrations/2026_09_17_000300_create_shop_payments_table.php
 php artisan migrate --path=database/migrations/2026_09_25_000100_create_shop_customer_accounts.php
+php artisan migrate --path=database/migrations/2026_09_25_000200_add_online_shop_staff_permissions.php
+php artisan migrate --path=database/migrations/2026_09_25_000300_create_shop_provider_payment_references.php
 ```
 
 Do not enable checkout until the public application URL is HTTPS, the PayFast notification URL is reachable, and sandbox credentials have been verified. PayFast notifications—not browser returns—finalize payment.
@@ -43,13 +45,25 @@ Do not enable checkout until the public application URL is HTTPS, the PayFast no
 6. Review the customer-facing name, description, price and exact online availability.
 7. Enable the channel, then set `SHOP_ENABLED=true` only when the catalogue review is complete.
 
+Online-shop staff permissions are intentionally separate from general POS sale permissions:
+
+- `shop.orders.view` reads the collection queue.
+- `shop.orders.fulfil` marks paid orders ready/collected and cancels unpaid orders.
+- `shop.catalog.view` reads channel and publication settings.
+- `shop.catalog.manage` creates/enables channels and publishes products, variations and online images.
+- `shop.payments.review` reads quarantined payment evidence and may retry POS finalization only for an exact, independently verified payment.
+
+Business administrators retain all five capabilities. Existing sales roles are migrated only to the order permissions that correspond to their prior view/update access; catalogue publication and payment reconciliation require deliberate assignment.
+
 Online availability is physical location stock minus active reservations and configured safety stock. Checkout rechecks the price, publication, maximum quantity and available stock inside the order transaction. A reservation never deducts physical POS stock. Expired unpaid orders release their reservations through the scheduled expiry job.
 
 ## Payment and POS finalization
 
 Checkout creates a server-priced order and a short-lived stock reservation. The customer then explicitly continues to PayFast. The notification handler verifies the source range, signature, merchant, `COMPLETE` status, server-calculated amount and PayFast server confirmation. Processing is locked and idempotent.
 
-Only a verified notification marks the order paid. Finalization creates or reuses the POS customer, creates the POS sale and payment records, records the online-order mapping and deducts location stock once. A late valid payment that can no longer be fulfilled is retained for staff review rather than silently losing the payment or overselling.
+Only a verified notification marks the order paid. Finalization reuses a POS customer only through a staff-verified customer-account link; otherwise it creates a separate customer record. It then creates the POS sale and payment records, records the online-order mapping and deducts location stock once. A late valid payment that can no longer be fulfilled is retained for staff review rather than silently losing the payment or overselling.
+
+Guest checkout email is not treated as proof that an existing POS contact owns the order. Only a staff-verified customer-account link may attach an online sale to an existing POS contact. Staff review screens show quarantined order and invoice-payment evidence; retry is limited to exact verified order payments and still rechecks current POS stock.
 
 ## Customer accounts and in-shop balances
 
@@ -57,7 +71,9 @@ Customer accounts use the dedicated `shop_customer` guard and never authenticate
 
 A verified customer sees only final sales belonging to the linked contact and business. The displayed outstanding amount is recalculated from canonical POS transactions and payments. Online account payment is invoice-specific and disabled independently with `SHOP_ACCOUNT_PAYMENTS_ENABLED=false`.
 
-Account payments create a durable pending attempt before redirecting to PayFast. Browser return or cancellation never credits the POS ledger. A verified PayFast notification rechecks the exact invoice balance under lock, records one `transaction_payments` row and safely accepts callback replay. Amount mismatches and changed balances remain blocked for staff reconciliation. Lights identities, wallet balances, top-ups and sessions remain separate and are not combined with shop debt.
+Account payments create a durable pending attempt before redirecting to PayFast. Browser return or cancellation never credits the POS ledger. A verified PayFast notification rechecks the exact invoice balance under lock, records one `transaction_payments` row and safely accepts callback replay. One shared provider-reference registry prevents a PayFast reference from being claimed across both order and invoice-payment workflows. Amount mismatches and changed balances remain blocked for staff reconciliation. Lights identities, wallet balances, top-ups and sessions remain separate and are not combined with shop debt.
+
+Cancelling the browser checkout releases the invoice for another attempt while retaining the cancelled attempt for a possible late verified callback. Invoice locking and balance rechecks prevent two callbacks from crediting the same outstanding balance.
 
 ## Fulfilment and delivery boundary
 

@@ -571,6 +571,17 @@
                   </label>
                 </div>
               </div>
+              @foreach([
+                'shop.orders.view' => 'View online orders',
+                'shop.orders.fulfil' => 'Fulfil and cancel online orders',
+                'shop.catalog.view' => 'View online catalogue setup',
+                'shop.catalog.manage' => 'Manage and publish online catalogue',
+                'shop.payments.review' => 'Review online payment exceptions',
+              ] as $permission => $label)
+                <div class="col-md-12"><div class="checkbox"><label>
+                  {!! Form::checkbox('permissions[]', $permission, false, ['class' => 'input-icheck']); !!} {{ $label }}
+                </label></div></div>
+              @endforeach
               <div class="col-md-12">
                 <div class="checkbox">
                   <label>

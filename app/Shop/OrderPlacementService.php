@@ -111,7 +111,8 @@ class OrderPlacementService
     {
         if (!$customerId) { return null; }
         return CustomerContactLink::query()->where('shop_customer_id', $customerId)
-            ->where('business_id', $businessId)->where('status', 'verified')->value('contact_id');
+            ->where('business_id', $businessId)->where('status', 'verified')
+            ->orderByDesc('verified_at')->orderByDesc('id')->value('contact_id');
     }
 
     private function orderNumber(): string

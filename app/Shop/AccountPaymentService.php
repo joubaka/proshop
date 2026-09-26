@@ -13,7 +13,11 @@ use Illuminate\Support\Str;
 
 class AccountPaymentService
 {
-    public function __construct(private Gateway $gateway, private TransactionUtil $transactions) {}
+    public function __construct(
+        private Gateway $gateway,
+        private TransactionUtil $transactions,
+        private ProviderPaymentClaim $providerClaims,
+    ) {}
 
     public function checkout(Customer $customer, Transaction $authorized): array
     {
@@ -48,6 +52,7 @@ class AccountPaymentService
             if (!$attempt) { throw new InvalidNotification('Account payment reference is unknown.'); }
             if ($attempt->status === 'completed') { return 'already_paid'; }
             if (!in_array($attempt->status, ['provider_pending', 'customer_cancelled'], true)) { return 'requires_attention'; }
+            $this->providerClaims->claim('payfast', $verified['provider_reference'], 'account_payment', $attempt->id);
             if (Payment::query()->where('provider_reference', $verified['provider_reference'])->exists()
                 || AccountPaymentAttempt::query()->where('provider_reference', $verified['provider_reference'])
                     ->whereKeyNot($attempt->id)->exists()) {

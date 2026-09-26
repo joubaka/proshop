@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Online orders')
 @section('content')
-<section class="content-header"><h1>Online orders</h1><p>Payment and collection queue for the native ProShop storefront.</p>@can('customer.update')<a class="btn btn-default" href="{{ route('shop.admin.customer-links.index') }}">Customer account links</a>@endcan</section>
+<section class="content-header"><h1>Online orders</h1><p>Payment and collection queue for the native ProShop storefront.</p>@can('customer.update')<a class="btn btn-default" href="{{ route('shop.admin.customer-links.index') }}">Customer account links</a>@endcan @if($canReview)<a class="btn btn-warning" href="{{ route('shop.admin.payment-reviews.index') }}">Payment reviews</a>@endif</section>
 <section class="content">
 <div class="box box-primary"><div class="box-body table-responsive">
 <table class="table table-bordered table-striped"><thead><tr><th>Order</th><th>Customer</th><th>Placed</th><th>Total</th><th>Payment</th><th>Fulfilment</th><th></th></tr></thead><tbody>

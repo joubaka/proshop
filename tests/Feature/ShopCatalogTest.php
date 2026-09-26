@@ -10,8 +10,10 @@ use App\Product;
 use App\Http\Controllers\Shop\AdminCatalogController;
 use Illuminate\Http\Request;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Tests\Support\RegressionTestCase;
 use Illuminate\Validation\ValidationException;
 
@@ -94,21 +96,65 @@ class ShopCatalogTest extends RegressionTestCase
         $this->get('/shop')->assertOk()->assertSee('Published racket')->assertSee('Tournament racket');
     }
 
+    public function test_repeated_online_product_saves_update_one_publication_instead_of_creating_a_duplicate(): void
+    {
+        $channel = $this->channel();
+        $this->publish($channel, 100, 'Published racket', 'published-racket');
+        $product = Product::findOrFail(100);
+        $settings = [
+            'slug' => 'published-racket', 'published' => true,
+            'variations' => [2100 => ['published' => true, 'safety_stock' => 0]],
+        ];
+
+        app(CatalogAdminService::class)->saveProduct($channel, $product, $settings);
+        app(CatalogAdminService::class)->saveProduct($channel, $product, $settings);
+
+        $this->assertSame(1, ShopProduct::where('shop_channel_id', $channel->id)->where('product_id', $product->id)->count());
+    }
+
+    public function test_catalogue_admin_can_replace_the_online_display_picture(): void
+    {
+        Storage::fake('public');
+        $channel = $this->channel();
+        $this->publish($channel, 100, 'Published racket', 'published-racket');
+        $shopProduct = ShopProduct::where('product_id', 100)->firstOrFail();
+
+        $first = app(CatalogAdminService::class)->replacePrimaryImage(
+            $shopProduct,
+            UploadedFile::fake()->image('first-racket.jpg', 800, 600)->size(300),
+        );
+        Storage::disk('public')->assertExists($first->path);
+
+        $replacement = app(CatalogAdminService::class)->replacePrimaryImage(
+            $shopProduct->fresh(),
+            UploadedFile::fake()->image('replacement-racket.png', 800, 600)->size(300),
+        );
+
+        Storage::disk('public')->assertMissing($first->path);
+        Storage::disk('public')->assertExists($replacement->path);
+        $this->assertSame(1, $shopProduct->images()->count());
+        $this->assertTrue($replacement->is_primary);
+        $this->get('/shop')->assertOk()->assertSee($replacement->url, false);
+        $this->get('/shop/products/published-racket')->assertOk()->assertSee($replacement->url, false);
+    }
+
     public function test_catalogue_admin_can_search_eligible_products_by_name_or_sku(): void
     {
         $channel = $this->channel();
         $this->publish($channel, 100, 'Competition racket', 'competition-racket');
         $this->publish($channel, 101, 'Training balls', 'training-balls');
-        $this->signInWithPermissions(['sell.view', 'access_all_locations']);
+        $this->signInWithPermissions(['shop.catalog.view', 'access_all_locations']);
 
         $byName = Request::create('/shop-admin/catalog/1/products', 'GET', ['search' => 'racket']);
         $byName->setLaravelSession($this->app['session']->driver());
+        $byName->setUserResolver(fn () => auth()->user());
         $nameResults = app(AdminCatalogController::class)->products($byName, $channel)->getData()['products'];
 
         $this->assertSame(['Competition racket'], $nameResults->pluck('name')->all());
 
         $bySku = Request::create('/shop-admin/catalog/1/products', 'GET', ['search' => 'SKU-101']);
         $bySku->setLaravelSession($this->app['session']->driver());
+        $bySku->setUserResolver(fn () => auth()->user());
         $skuResults = app(AdminCatalogController::class)->products($bySku, $channel)->getData()['products'];
 
         $this->assertSame(['Training balls'], $skuResults->pluck('name')->all());
@@ -138,7 +184,7 @@ class ShopCatalogTest extends RegressionTestCase
     public function test_authorized_staff_can_edit_channel_name_and_enabled_status_without_changing_ownership(): void
     {
         $channel = $this->channel();
-        $this->signInWithPermissions(['sell.view', 'sell.update', 'access_all_locations']);
+        $this->signInWithPermissions(['shop.catalog.view', 'shop.catalog.manage', 'access_all_locations']);
 
         $this->patch(route('shop.admin.catalog.channels.update', $channel), [
             'name' => 'HSC Pro Shop',
@@ -152,6 +198,19 @@ class ShopCatalogTest extends RegressionTestCase
         $this->assertSame(10, (int) $channel->location_id);
     }
 
+    public function test_general_pos_sale_permissions_do_not_grant_catalogue_publication_access(): void
+    {
+        $channel = $this->channel();
+        $this->signInWithPermissions(['sell.view', 'sell.create', 'sell.update', 'access_all_locations']);
+
+        $this->patch(route('shop.admin.catalog.channels.update', $channel), [
+            'name' => 'Unauthorized change', 'enabled' => '1',
+        ])->assertForbidden();
+
+        $this->assertSame('Cape Sports ProShop', $channel->fresh()->name);
+        $this->assertTrue($channel->fresh()->enabled);
+    }
+
     public function test_channel_edit_rejects_cross_business_tampering(): void
     {
         DB::table('business_locations')->insert([
@@ -161,7 +220,7 @@ class ShopCatalogTest extends RegressionTestCase
             'business_id' => 2, 'location_id' => 20, 'slug' => 'other',
             'name' => 'Other shop', 'currency' => 'ZAR', 'enabled' => true,
         ]);
-        $this->signInWithPermissions(['sell.view', 'sell.update', 'access_all_locations']);
+        $this->signInWithPermissions(['shop.catalog.view', 'shop.catalog.manage', 'access_all_locations']);
 
         $this->get(route('shop.admin.catalog.channels.edit', $channel))->assertNotFound();
         $this->patch(route('shop.admin.catalog.channels.update', $channel), [

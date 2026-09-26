@@ -9,7 +9,7 @@
     @php($firstVariation = $shopProduct->variations->first()?->variation)
     <article class="product-card">
         <a href="{{ route('shop.products.show', $shopProduct->slug) }}">
-            <img src="{{ $shopProduct->product->image_url }}" alt="{{ $shopProduct->product->name }}">
+            <img src="{{ $shopProduct->display_image_url }}" alt="{{ $shopProduct->product->name }}">
             <div><p class="product-meta">{{ $shopProduct->product->brand?->name ?? 'ProShop' }}</p><h2>{{ $shopProduct->product->name }}</h2><p>{{ $shopProduct->short_description }}</p>@if($firstVariation)<strong>R {{ number_format($firstVariation->sell_price_inc_tax, 2) }}</strong>@endif</div>
         </a>
     </article>

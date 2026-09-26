@@ -44,6 +44,12 @@ class PermissionsTableSeeder extends Seeder
             ['name' => 'sell.update'],
             ['name' => 'sell.delete'],
 
+            ['name' => 'shop.orders.view'],
+            ['name' => 'shop.orders.fulfil'],
+            ['name' => 'shop.catalog.view'],
+            ['name' => 'shop.catalog.manage'],
+            ['name' => 'shop.payments.review'],
+
             ['name' => 'purchase_n_sell_report.view'],
             ['name' => 'contacts_report.view'],
             ['name' => 'stock_report.view'],
@@ -89,6 +95,6 @@ class PermissionsTableSeeder extends Seeder
             $d['created_at'] = $time_stamp;
             $insert_data[] = $d;
         }
-        Permission::insert($insert_data);
+        Permission::insertOrIgnore($insert_data);
     }
 }

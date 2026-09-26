@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Shop;
 use App\Http\Controllers\Controller;
 use App\Shop\Order;
 use App\Shop\OrderOperationsService;
+use App\Shop\ShopStaffAccess;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -12,36 +13,40 @@ class AdminOrderController extends Controller
 {
     public function index(Request $request)
     {
-        $this->authorizeView();
+        $this->authorizeView($request);
         $businessId = (int) $request->session()->get('user.business_id');
         $locations = auth()->user()->permitted_locations();
         $orders = Order::query()->whereHas('channel', fn ($query) => $query->where('business_id', $businessId))
             ->when($locations !== 'all', fn ($query) => $query->whereHas('channel', fn ($channel) => $channel->whereIn('location_id', $locations)))
             ->with(['channel', 'items'])->latest()->paginate(30);
-        return view('shop.admin-orders', compact('orders'));
+        $canReview = ShopStaffAccess::allows($request->user(), $businessId, 'shop.payments.review');
+        return view('shop.admin-orders', compact('orders', 'canReview'));
     }
 
     public function show(Request $request, string $uuid)
     {
         $order = $this->order($request, $uuid)->load(['channel', 'items', 'payments', 'events']);
-        return view('shop.admin-order', compact('order'));
+        $businessId = (int) $request->session()->get('user.business_id');
+        $canFulfil = ShopStaffAccess::allows($request->user(), $businessId, 'shop.orders.fulfil');
+        $canReview = ShopStaffAccess::allows($request->user(), $businessId, 'shop.payments.review');
+        return view('shop.admin-order', compact('order', 'canFulfil', 'canReview'));
     }
 
     public function ready(Request $request, string $uuid, OrderOperationsService $operations)
     {
-        $this->authorizeUpdate();
+        $this->authorizeUpdate($request);
         return $this->run(fn () => $operations->markReady($this->order($request, $uuid), auth()->id()), $uuid);
     }
 
     public function collected(Request $request, string $uuid, OrderOperationsService $operations)
     {
-        $this->authorizeUpdate();
+        $this->authorizeUpdate($request);
         return $this->run(fn () => $operations->markCollected($this->order($request, $uuid), auth()->id()), $uuid);
     }
 
     public function cancel(Request $request, string $uuid, OrderOperationsService $operations)
     {
-        $this->authorizeUpdate();
+        $this->authorizeUpdate($request);
         $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']]);
         return $this->run(fn () => $operations->cancelUnpaid($this->order($request, $uuid), auth()->id(), $data['reason']), $uuid);
     }
@@ -59,7 +64,7 @@ class AdminOrderController extends Controller
 
     private function order(Request $request, string $uuid): Order
     {
-        $this->authorizeView();
+        $this->authorizeView($request);
         $businessId = (int) $request->session()->get('user.business_id');
         $order = Order::query()->where('uuid', $uuid)
             ->whereHas('channel', fn ($query) => $query->where('business_id', $businessId))->firstOrFail();
@@ -68,13 +73,16 @@ class AdminOrderController extends Controller
         return $order;
     }
 
-    private function authorizeView(): void
+    private function authorizeView(Request $request): void
     {
-        abort_unless(auth()->user()?->can('sell.view') || auth()->user()?->can('sell.create'), 403);
+        $businessId = (int) $request->session()->get('user.business_id');
+        abort_unless(ShopStaffAccess::allows($request->user(), $businessId, 'shop.orders.view')
+            || ShopStaffAccess::allows($request->user(), $businessId, 'shop.orders.fulfil'), 403);
     }
 
-    private function authorizeUpdate(): void
+    private function authorizeUpdate(Request $request): void
     {
-        abort_unless(auth()->user()?->can('sell.update') || auth()->user()?->can('sell.create'), 403);
+        $businessId = (int) $request->session()->get('user.business_id');
+        abort_unless(ShopStaffAccess::allows($request->user(), $businessId, 'shop.orders.fulfil'), 403);
     }
 }

@@ -12,7 +12,11 @@ use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
-    public function __construct(private Gateway $gateway, private PaidOrderFinalizer $finalizer) {}
+    public function __construct(
+        private Gateway $gateway,
+        private PaidOrderFinalizer $finalizer,
+        private ProviderPaymentClaim $providerClaims,
+    ) {}
 
     public function checkout(Order $order): array
     {
@@ -56,6 +60,7 @@ class PaymentService
             if ($payment->status === 'paid' && $order->payment_status === 'paid') {
                 return 'already_paid';
             }
+            $this->providerClaims->claim('payfast', $verified['provider_reference'], 'order_payment', $payment->id);
             $duplicateReference = Payment::query()->where('provider_reference', $verified['provider_reference'])
                 ->whereKeyNot($payment->id)->exists();
             if ($duplicateReference) {
@@ -96,6 +101,41 @@ class PaymentService
             ]);
 
             return 'paid';
+        }, 3);
+    }
+
+    public function retryFinalization(Payment $payment, int $actorId): Order
+    {
+        return DB::transaction(function () use ($payment, $actorId) {
+            $reference = Payment::query()->whereKey($payment->id)->firstOrFail(['id', 'shop_order_id']);
+            $order = Order::query()->whereKey($reference->shop_order_id)->lockForUpdate()->firstOrFail();
+            $payment = Payment::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();
+            if ($payment->status === 'paid' && $order->payment_status === 'paid') {
+                return $order;
+            }
+            if ($payment->status !== 'requires_attention' || !$payment->signature_verified || !$payment->server_verified
+                || (int) $payment->reported_amount_cents !== (int) $payment->expected_amount_cents
+                || (int) $payment->expected_amount_cents !== (int) $order->total_cents) {
+                throw ValidationException::withMessages(['payment' => 'Only an exact, independently verified payment can be retried.']);
+            }
+
+            try {
+                $this->finalizer->finalize($order->load(['items', 'reservations', 'channel']), $payment);
+            } catch (StockUnavailableAfterPayment $e) {
+                throw ValidationException::withMessages(['payment' => $e->getMessage()]);
+            }
+
+            $payment->update(['status' => 'paid', 'failure_reason' => null, 'finalized_at' => now()]);
+            $order->update(['payment_status' => 'paid', 'order_status' => 'confirmed', 'paid_at' => now()]);
+            $order->reservations()->where('status', '!=', 'confirmed')->update([
+                'status' => 'confirmed', 'confirmed_at' => now(), 'released_at' => null,
+            ]);
+            $order->events()->create([
+                'event_type' => 'payment_reconciled', 'actor_type' => 'user', 'actor_id' => $actorId,
+                'metadata' => ['payment_id' => $payment->id, 'provider_reference' => $payment->provider_reference],
+            ]);
+
+            return $order->fresh();
         }, 3);
     }
 

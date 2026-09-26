@@ -3,7 +3,10 @@
 namespace App\Shop;
 
 use App\Product;
+use App\Support\SafeUpload;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Illuminate\Validation\ValidationException;
 
 class CatalogAdminService
@@ -51,5 +54,44 @@ class CatalogAdminService
             }
             return $shopProduct->fresh(['variations']);
         }, 3);
+    }
+
+    public function replacePrimaryImage(ShopProduct $shopProduct, UploadedFile $image): ProductImage
+    {
+        $filename = SafeUpload::filename($image, true);
+        $directory = 'shop/products/'.$shopProduct->channel->business_id.'/'.$shopProduct->id;
+        $disk = Storage::disk('public');
+        $path = $disk->putFileAs($directory, $image, $filename);
+
+        if ($path === false) {
+            throw ValidationException::withMessages(['online_image' => 'The online product image could not be saved.']);
+        }
+
+        try {
+            $oldImages = DB::transaction(function () use ($shopProduct, $path) {
+                $shopProduct = ShopProduct::query()->lockForUpdate()->findOrFail($shopProduct->id);
+                $oldImages = $shopProduct->images()->where('is_primary', true)->get();
+                $shopProduct->images()->where('is_primary', true)->update(['is_primary' => false]);
+                $shopProduct->images()->create([
+                    'disk' => 'public',
+                    'path' => $path,
+                    'alt_text' => $shopProduct->product->name,
+                    'sort_order' => 0,
+                    'is_primary' => true,
+                ]);
+                $shopProduct->images()->whereKey($oldImages->pluck('id'))->delete();
+
+                return $oldImages;
+            }, 3);
+        } catch (\Throwable $e) {
+            $disk->delete($path);
+            throw $e;
+        }
+
+        foreach ($oldImages as $oldImage) {
+            Storage::disk($oldImage->disk)->delete($oldImage->path);
+        }
+
+        return $shopProduct->images()->where('is_primary', true)->firstOrFail();
     }
 }

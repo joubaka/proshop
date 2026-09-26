@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Shop;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ShopOrderReserved;
 use App\Shop\CartService;
 use App\Shop\CatalogService;
 use App\Shop\Channel;
@@ -12,6 +13,7 @@ use App\Shop\OrderPlacementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class CheckoutController extends Controller
 {
@@ -46,6 +48,11 @@ class CheckoutController extends Controller
             'shop_customer_id' => config('shop.customer_accounts_enabled') ? Auth::guard('shop_customer')->id() : null,
         ], DeliveryQuote::collection());
         $url = URL::temporarySignedRoute('shop.orders.show', now()->addDays(7), ['uuid' => $order->uuid]);
+        try {
+            Mail::to($order->customer_email)->send(new ShopOrderReserved($order, $url));
+        } catch (\Throwable $e) {
+            report($e);
+        }
         return redirect($url)->withoutCookie(CartService::COOKIE);
     }
 

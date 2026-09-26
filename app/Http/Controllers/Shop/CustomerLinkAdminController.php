@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Shop;
 
 use App\Http\Controllers\Controller;
 use App\Shop\CustomerContactLink;
+use App\Shop\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CustomerLinkAdminController extends Controller
 {
@@ -20,11 +22,18 @@ class CustomerLinkAdminController extends Controller
     public function verify(Request $request, CustomerContactLink $link)
     {
         $this->authorizeLink($request, $link);
-        abort_unless($link->status === 'pending', 409, 'Only pending links can be verified.');
-        $link->update([
-            'status' => 'verified', 'verified_by' => $request->user()->id,
-            'verified_at' => now(), 'revoked_by' => null, 'revoked_at' => null,
-        ]);
+        DB::transaction(function () use ($request, $link) {
+            Customer::query()->whereKey($link->shop_customer_id)->lockForUpdate()->firstOrFail();
+            $link = CustomerContactLink::query()->whereKey($link->id)->lockForUpdate()->firstOrFail();
+            abort_unless($link->status === 'pending', 409, 'Only pending links can be verified.');
+            abort_if(CustomerContactLink::query()->where('shop_customer_id', $link->shop_customer_id)
+                ->where('business_id', $link->business_id)->where('status', 'verified')
+                ->whereKeyNot($link->id)->exists(), 409, 'This customer already has a verified contact for this business.');
+            $link->update([
+                'status' => 'verified', 'verified_by' => $request->user()->id,
+                'verified_at' => now(), 'revoked_by' => null, 'revoked_at' => null,
+            ]);
+        }, 3);
         return back()->with('status', 'Customer account link verified.');
     }
 

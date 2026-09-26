@@ -58,6 +58,7 @@ class ApplicationAccessRegressionTest extends RegressionTestCase
             'App\\Http\\Controllers\\Shop\\CartController',
             'App\\Http\\Controllers\\Shop\\CheckoutController',
             'App\\Http\\Controllers\\Shop\\PayFastController',
+            'App\\Http\\Controllers\\Shop\\CustomerAuthController',
         ];
         $publicActions = [
             'BusinessController@getRegister', 'BusinessController@postRegister',
@@ -69,6 +70,7 @@ class ApplicationAccessRegressionTest extends RegressionTestCase
             'LightsController@payfastNotify', 'LightsController@terms', 'LightsController@privacy',
             'LightsController@forgotPassword', 'LightsController@resetPasswordForm',
             'LightsController@resetPassword', 'LightsController@verifyEmail',
+            'Shop\\CustomerAccountPaymentController@notify',
         ];
         $checked = 0;
         foreach (Route::getRoutes() as $route) {
@@ -82,6 +84,7 @@ class ApplicationAccessRegressionTest extends RegressionTestCase
             $middleware = $route->middleware();
             $protected = in_array('auth', $middleware, true)
                 || in_array('EcomApi', $middleware, true)
+                || collect($middleware)->contains(fn ($name) => str_starts_with($name, 'shop.customer:'))
                 || in_array(\App\Http\Middleware\LightsAccess::class.':member', $middleware, true)
                 || in_array(\App\Http\Middleware\EnsureInstallerAccess::class, $middleware, true);
             if ($controller === \App\Http\Controllers\LightsController::class) {

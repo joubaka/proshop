@@ -11,6 +11,7 @@ use App\Shop\PayFast\VerificationUnavailable;
 use App\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CustomerAccountPaymentController extends Controller
 {
@@ -38,10 +39,17 @@ class CustomerAccountPaymentController extends Controller
     }
     public function cancelled(string $payment)
     {
-        $attempt = AccountPaymentAttempt::query()->where('shop_customer_id', Auth::guard('shop_customer')->id())->findOrFail($payment);
-        if ($attempt->status === 'provider_pending') {
-            $attempt->update(['status' => 'customer_cancelled', 'failure_reason' => 'browser_cancelled']);
-        }
+        DB::transaction(function () use ($payment) {
+            $attempt = AccountPaymentAttempt::query()
+                ->where('shop_customer_id', Auth::guard('shop_customer')->id())
+                ->lockForUpdate()->findOrFail($payment);
+            if ($attempt->status === 'provider_pending') {
+                $attempt->update([
+                    'status' => 'customer_cancelled', 'failure_reason' => 'browser_cancelled',
+                    'active_transaction_id' => null,
+                ]);
+            }
+        }, 3);
         return redirect()->route('shop.account.dashboard')->with('status', 'Payment was cancelled and no account payment was recorded.');
     }
 }

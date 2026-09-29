@@ -341,6 +341,70 @@ class LightsClientReadinessTest extends RegressionTestCase
         $this->assertSame(0, $this->portal->db()->table('lights_control_sessions')->count());
     }
 
+    public function test_admin_can_switch_an_off_court_on_for_the_exact_confirmed_member(): void
+    {
+        $this->app['env'] = 'production';
+        config(['lights.mode' => 'live', 'lights.control.live_enabled' => true, 'lights.control.customer_enabled' => true]);
+        $this->member->forceFill(['email_verified_at' => time(), 'balance_cents' => 1800])->save();
+        $this->portal->db()->table('lights_worker')->insert(['id' => 1, 'seen_at' => $this->portal->now()]);
+        $this->portal->db()->table('lights_hardware_status')->insert([
+            'channel' => 0, 'online' => true, 'output' => false, 'watts' => 0, 'volts' => 230,
+            'has_errors' => false, 'checked_at' => $this->portal->now(),
+        ]);
+        $this->actingAs($this->admin, 'lights');
+        $this->get(route('lights.admin', ['member_search' => 'member@test.test']).'#members')
+            ->assertOk()->assertSee('Start a court for this member')->assertSee('Start for Member');
+        $key = (string) Str::uuid();
+
+        $response = $this->withSession(['_token' => 'admin-start-csrf'])->postJson(
+            route('lights.admin.members.start-court', $this->member->id),
+            ['_token' => 'admin-start-csrf', 'court_id' => 1, 'request_key' => $key, 'confirm_member' => '1']
+        );
+
+        $response->assertOk()->assertJsonPath('message', 'Switch-on was queued for Member. Billing starts after Shelly confirms the timer.');
+        $session = $this->portal->db()->table('lights_control_sessions')->where('request_key', $key)->first();
+        $this->assertSame($this->member->id, (int) $session->user_id);
+        $this->assertNull($session->adopted_at);
+        $this->assertNull($session->started_at);
+        $this->assertSame(1800, $this->member->fresh()->balance_cents);
+        $this->assertSame($this->admin->id, (int) $this->portal->db()->table('lights_events')
+            ->where('kind', 'control_customer_reserved')->value('actor_id'));
+    }
+
+    public function test_admin_can_assign_an_already_on_court_to_a_member_without_retroactive_billing(): void
+    {
+        $this->app['env'] = 'production';
+        config(['lights.mode' => 'live', 'lights.control.live_enabled' => true, 'lights.control.customer_enabled' => true]);
+        $this->member->forceFill(['email_verified_at' => time(), 'balance_cents' => 1800])->save();
+        $this->portal->db()->table('lights_worker')->insert(['id' => 1, 'seen_at' => $this->portal->now()]);
+        $this->portal->db()->table('lights_hardware_status')->insert([
+            'channel' => 0, 'online' => true, 'output' => true, 'watts' => 500, 'volts' => 230,
+            'has_errors' => false, 'checked_at' => $this->portal->now(),
+        ]);
+        $this->actingAs($this->admin, 'lights');
+        $key = (string) Str::uuid();
+
+        $response = $this->withSession(['_token' => 'admin-adopt-csrf'])->postJson(
+            route('lights.admin.members.start-court', $this->member->id),
+            ['_token' => 'admin-adopt-csrf', 'court_id' => 1, 'request_key' => $key, 'confirm_member' => '1']
+        );
+
+        $response->assertOk()->assertJsonPath('message', 'The existing lights were safely taken over for Member. Billing starts after timer confirmation.');
+        $session = $this->portal->db()->table('lights_control_sessions')->where('request_key', $key)->first();
+        $this->assertNotNull($session->adopted_at);
+        $this->assertNull($session->started_at);
+        $this->assertSame(0, (int) $session->charged_cents);
+        $this->assertSame(1800, $this->member->fresh()->balance_cents);
+    }
+
+    public function test_member_cannot_start_a_court_for_another_member(): void
+    {
+        $this->actingAs($this->member, 'lights')->postJson(
+            route('lights.admin.members.start-court', $this->admin->id),
+            ['court_id' => 1, 'request_key' => (string) Str::uuid(), 'confirm_member' => '1']
+        )->assertForbidden();
+    }
+
     public function test_customer_can_reserve_both_physical_courts_with_one_wallet(): void
     {
         $this->app['env'] = 'acceptance';

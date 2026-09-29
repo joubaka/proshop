@@ -363,6 +363,25 @@ class LightsController extends Controller
             ? response()->json(['message' => 'Audited wallet adjustment recorded.', 'balance_cents' => $balance])
             : back()->with('status', 'Audited wallet adjustment recorded.');
     }
+    public function memberStartCourt(Request $request, int $member, \App\Lights\SafetySessions $safety)
+    {
+        $data = $request->validate([
+            'court_id' => 'required|integer|min:1',
+            'request_key' => 'required|uuid',
+            'confirm_member' => 'accepted',
+        ]);
+        $result = $safety->startForMember(
+            $this->member()->id,
+            $member,
+            (int) $data['court_id'],
+            $data['request_key']
+        );
+        $message = $result['adopted']
+            ? 'The existing lights were safely taken over for '.$result['member'].'. Billing starts after timer confirmation.'
+            : 'Switch-on was queued for '.$result['member'].'. Billing starts after Shelly confirms the timer.';
+        return $request->expectsJson() ? response()->json(['message' => $message, 'session_id' => $result['session_id']])
+            : redirect(route('lights.admin').'#members')->with('status', $message);
+    }
     public function hardwareState(\App\Lights\Shelly\HardwareStatus $hardwareStatus, \App\Lights\ManualSwitches $switches)
     {
         $report = $hardwareStatus->latest() ?? ['online' => false, 'checked_at' => null, 'channels' => []];

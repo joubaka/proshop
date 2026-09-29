@@ -79,23 +79,50 @@ class SafetySessions
     {
         return $this->startCustomerSession($user, $courtId, $key, $quotedRate, true);
     }
-    private function startCustomerSession(int $user, int $courtId, string $key, int $quotedRate, bool $adopt): string
+    public function startForMember(int $actor, int $user, int $courtId, string $key): array
+    {
+        $this->admin($actor);
+        $court = $this->db()->table('lights_courts')->where('active', true)->find($courtId);
+        abort_unless($court, 404);
+        $member = $this->db()->table('lights_users')->where('active', true)->find($user);
+        abort_unless($member, 404);
+        if (config('lights.require_verified_email') && !$member->email_verified_at) {
+            $this->fail('Verify this member’s email before starting a court for them.');
+        }
+        $observed = $this->freshHardwareState((int) $court->channel);
+        $adopt = (bool) $observed->output;
+        $session = $this->startCustomerSession($user, $courtId, $key, (int) $court->rate_cents, $adopt, $actor);
+        return ['session_id' => $session, 'adopted' => $adopt, 'member' => $member->name];
+    }
+    private function freshHardwareState(int $channel): object
+    {
+        $observed = $this->db()->table('lights_hardware_status')->where('channel', $channel)->first();
+        if (!$observed || !(bool) $observed->online || (bool) $observed->has_errors || $observed->output === null
+            || (int) $observed->checked_at < $this->now() - 120 || (int) $observed->checked_at > $this->now() + 5) {
+            $this->fail('This court must have a fresh, online and fault-free status before it can be started for a member.');
+        }
+        return $observed;
+    }
+    private function startCustomerSession(int $user, int $courtId, string $key, int $quotedRate, bool $adopt, ?int $actor = null): string
     {
         $acceptance = app()->environment('acceptance');
         abort_unless(config('lights.control.live_enabled') && config('lights.control.customer_enabled')
             && ($acceptance || (config('lights.mode') === 'live' && app()->environment(['production', 'staging']))),
             503, 'Customer light control is not enabled.');
         abort_unless(Str::isUuid($key) && $this->db()->getSchemaBuilder()->hasColumn('lights_control_sessions', 'court_id'), 503);
-        return $this->lock(function () use ($user, $courtId, $key, $quotedRate, $acceptance, $adopt) {
+        return $this->lock(function () use ($user, $courtId, $key, $quotedRate, $acceptance, $adopt, $actor) {
+            if ($actor !== null) { $this->admin($actor); }
             $member = $this->db()->table('lights_users')->where('active', true)->find($user);
             abort_unless($member, 403);
+            if ($actor !== null && config('lights.require_verified_email') && !$member->email_verified_at) {
+                $this->fail('Verify this member’s email before starting a court for them.');
+            }
             $court = $this->db()->table('lights_courts')->where('active', true)->find($courtId);
             abort_unless($court, 404);
             if ((int) $court->rate_cents !== $quotedRate) { $this->fail('The court rate changed. Refresh before switching on.'); }
             if ($adopt) {
-                $observed = $this->db()->table('lights_hardware_status')->where('channel', $court->channel)->first();
-                if (!$observed || !(bool) $observed->online || (bool) $observed->has_errors || !(bool) $observed->output
-                    || (int) $observed->checked_at < $this->now() - 120 || (int) $observed->checked_at > $this->now() + 5) {
+                $observed = $this->freshHardwareState((int) $court->channel);
+                if (!(bool) $observed->output) {
                     $this->fail('This court must have a fresh, online and fault-free ON status before it can be taken over.');
                 }
             }
@@ -143,7 +170,7 @@ class SafetySessions
                 'budget_cents' => $member->balance_cents, 'duration_seconds' => $seconds, 'created_at' => $this->now(),
                 'adopted_at' => $adopt ? $this->now() : null]);
             $session = $this->db()->table('lights_control_sessions')->find($id);
-            $this->event($adopt ? 'customer_adoption_reserved' : 'customer_reserved', $session, $user);
+            $this->event($adopt ? 'customer_adoption_reserved' : 'customer_reserved', $session, $actor ?? $user);
             return $id;
         });
     }

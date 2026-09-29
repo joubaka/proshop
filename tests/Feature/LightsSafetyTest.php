@@ -167,6 +167,34 @@ class LightsSafetyTest extends RegressionTestCase
         $this->assertSame('completed', $this->controlSession($id)->state);
     }
 
+    public function test_physical_off_confirmation_releases_after_command_margin_not_original_timer(): void
+    {
+        $id = $this->start();
+        $driver = $this->driver();
+        $this->safety->tick($driver);
+        $this->travel(12)->seconds();
+        $this->safety->stop($this->admin->id, $id);
+        $driver->failOff = true;
+        $this->safety->tick($driver);
+        $session = $this->controlSession($id);
+        $this->assertSame('review', $session->state);
+        $this->assertGreaterThan(now()->timestamp + 30, $session->deadline_at);
+
+        $this->travel(29)->seconds();
+        try {
+            $this->safety->review($this->admin->id, $id, 'confirmed_off');
+            $this->fail('The in-flight-command safety margin was bypassed.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertStringContainsString('1 more seconds', $exception->errors()['lights'][0]);
+        }
+
+        $this->travel(1)->second();
+        $this->safety->review($this->admin->id, $id, 'confirmed_off');
+        $released = $this->controlSession($id);
+        $this->assertSame('completed', $released->state);
+        $this->assertNull($released->active_channel);
+    }
+
     public function test_admin_can_confirm_physical_off_and_release_a_reviewed_session(): void
     {
         $id = $this->start();

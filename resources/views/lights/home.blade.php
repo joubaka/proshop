@@ -74,10 +74,15 @@
                     <a class="button primary full" href="{{ route('lights.admin.control') }}#court-{{ $court->id }}-arm">Open real {{ $court->name }} controls</a>
                     <small class="muted">Admin commissioning is active. This link cannot create a simulated light session.</small>
                 @else
-                    <form method="POST" action="{{ route('lights.start', $court->id) }}" data-light-action>@csrf<input type="hidden" name="request_key" value="{{ (string) Illuminate\Support\Str::uuid() }}"><input type="hidden" name="quoted_rate_cents" value="{{ $court->rate_cents }}"><button class="button primary full court-start" @disabled(!$state['email_verified'] || !$court->active || $court->in_use || !$court->control_ready || $state['balance_cents'] < 1)>{{ $court->hardware_output === true ? 'Lights already on' : 'Switch on' }}</button></form>
+                    @if($court->adoptable)
+                        <form method="POST" action="{{ route('lights.adopt', $court->id) }}" data-light-action data-action-kind="adopt">@csrf<input type="hidden" name="request_key" value="{{ (string) Illuminate\Support\Str::uuid() }}"><input type="hidden" name="quoted_rate_cents" value="{{ $court->rate_cents }}"><button class="button primary full court-start" @disabled(!$state['email_verified'] || !$court->active || !$court->control_ready || $state['balance_cents'] < 1)>Take over {{ $court->name }}</button></form>
+                        <small class="muted">Billing starts only after a fresh Shelly timer is confirmed.</small>
+                    @else
+                        <form method="POST" action="{{ route('lights.start', $court->id) }}" data-light-action data-action-kind="start">@csrf<input type="hidden" name="request_key" value="{{ (string) Illuminate\Support\Str::uuid() }}"><input type="hidden" name="quoted_rate_cents" value="{{ $court->rate_cents }}"><button class="button primary full court-start" @disabled(!$state['email_verified'] || !$court->active || $court->in_use || !$court->control_ready || $state['balance_cents'] < 1)>Switch on</button></form>
+                    @endif
                 @endif
                 @if($court->hardware_output === true && Auth::guard('lights')->user()->is_admin)<a class="button secondary full" href="{{ route('lights.admin.control') }}">Open admin OFF control</a>@endif
-                @if(!$court->control_ready && $court->hardware_output !== true && Auth::guard('lights')->user()->is_admin)<a class="button secondary full" href="{{ route('lights.admin.control') }}#court-{{ $court->id }}-arm">Arm {{ $court->name }} for ON</a>@endif
+                @if(app()->environment('acceptance') && !$court->control_ready && $court->hardware_output !== true && Auth::guard('lights')->user()->is_admin)<a class="button secondary full" href="{{ route('lights.admin.control') }}#court-{{ $court->id }}-arm">Arm {{ $court->name }} for ON</a>@endif
             </article>
         @empty<div class="panel"><p>No courts configured yet. An administrator can add them.</p></div>@endforelse
         </div>

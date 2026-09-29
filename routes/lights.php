@@ -21,6 +21,7 @@ Route::prefix('lights')->name('lights.')->middleware(LightsAccess::class.':publi
         Route::post('logout', [LightsController::class, 'logout'])->name('logout');
         Route::get('state', [LightsController::class, 'state'])->name('state');
         Route::post('courts/{court}/start', [LightsController::class, 'start'])->whereNumber('court')->name('start');
+        Route::post('courts/{court}/adopt', [LightsController::class, 'adopt'])->whereNumber('court')->name('adopt');
         Route::post('sessions/{session}/stop', [LightsController::class, 'stop'])->whereUuid('session')->name('stop');
         Route::post('topups', [LightsController::class, 'topup'])->name('topup');
         Route::post('verification/send', [LightsController::class, 'sendVerification'])->middleware('throttle:3,1')->name('verification.send');

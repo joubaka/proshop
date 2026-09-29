@@ -8,5 +8,6 @@ class RehearsalRelay implements RelayDriver
     {
         return ['output' => true, 'timer_started_at' => now()->getTimestamp(), 'timer_duration' => (int) $session->duration_seconds];
     }
+    public function adopt(object $session): array { return $this->on($session); }
     public function off(object $session): void {}
 }

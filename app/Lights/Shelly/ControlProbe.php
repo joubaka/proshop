@@ -12,6 +12,11 @@ class ControlProbe extends Probe implements RelayDriver
         $this->id = $session->id; $this->action = 'on';
         return $this->run()['receipt'];
     }
+    public function adopt(object $session): array
+    {
+        $this->id = $session->id; $this->action = 'adopt';
+        return $this->run()['receipt'];
+    }
     public function off(object $session): void
     {
         $this->id = $session->id; $this->action = 'off';

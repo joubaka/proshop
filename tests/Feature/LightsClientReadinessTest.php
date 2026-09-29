@@ -290,6 +290,57 @@ class LightsClientReadinessTest extends RegressionTestCase
         $this->assertSame('cloud_customer', $this->portal->db()->table('lights_control_sessions')->find($session)->driver);
     }
 
+    public function test_member_can_adopt_a_fresh_unowned_on_court_and_billing_waits_for_timer_confirmation(): void
+    {
+        $this->app['env'] = 'production';
+        config([
+            'lights.mode' => 'live',
+            'lights.control.live_enabled' => true,
+            'lights.control.customer_enabled' => true,
+        ]);
+        $this->member->forceFill(['email_verified_at' => time(), 'balance_cents' => 1000])->save();
+        $this->portal->db()->table('lights_worker')->insert(['id' => 1, 'seen_at' => $this->portal->now()]);
+        $this->portal->db()->table('lights_hardware_status')->insert([
+            'channel' => 0, 'online' => true, 'output' => true, 'watts' => 500, 'volts' => 230,
+            'has_errors' => false, 'checked_at' => $this->portal->now(),
+        ]);
+        $this->actingAs($this->member, 'lights');
+
+        $page = $this->get(route('lights.home'));
+        $page->assertOk()->assertSee('Take over Court 3')->assertDontSee('Arm Court 3 for ON');
+        $key = (string) Str::uuid();
+        $response = $this->withSession(['_token' => 'lights-adopt-csrf'])->postJson(route('lights.adopt', 1), [
+            '_token' => 'lights-adopt-csrf', 'request_key' => $key, 'quoted_rate_cents' => 6000,
+        ]);
+
+        $response->assertOk();
+        $session = $this->portal->db()->table('lights_control_sessions')->where('request_key', $key)->first();
+        $this->assertNotNull($session->adopted_at);
+        $this->assertNull($session->started_at);
+        $this->assertSame(0, (int) $session->charged_cents);
+        $this->assertSame(1000, $this->member->fresh()->balance_cents);
+        $this->assertSame(1, $this->portal->db()->table('lights_events')->where('kind', 'control_customer_adoption_reserved')->count());
+    }
+
+    public function test_member_cannot_adopt_a_stale_court(): void
+    {
+        $this->app['env'] = 'production';
+        config(['lights.mode' => 'live', 'lights.control.live_enabled' => true, 'lights.control.customer_enabled' => true]);
+        $this->member->forceFill(['email_verified_at' => time(), 'balance_cents' => 1000])->save();
+        $this->portal->db()->table('lights_worker')->insert(['id' => 1, 'seen_at' => $this->portal->now()]);
+        $this->portal->db()->table('lights_hardware_status')->insert([
+            'channel' => 0, 'online' => true, 'output' => true, 'watts' => 500, 'volts' => 230,
+            'has_errors' => false, 'checked_at' => $this->portal->now() - 121,
+        ]);
+        $this->actingAs($this->member, 'lights');
+
+        $this->withSession(['_token' => 'lights-adopt-csrf'])->postJson(route('lights.adopt', 1), [
+            '_token' => 'lights-adopt-csrf', 'request_key' => (string) Str::uuid(), 'quoted_rate_cents' => 6000,
+        ])
+            ->assertUnprocessable()->assertJsonValidationErrors('lights');
+        $this->assertSame(0, $this->portal->db()->table('lights_control_sessions')->count());
+    }
+
     public function test_customer_can_reserve_both_physical_courts_with_one_wallet(): void
     {
         $this->app['env'] = 'acceptance';

@@ -6,10 +6,10 @@ $lock = null;
 try {
     $app = require __DIR__.'/bootstrap.php';
     $action = $argv[1] ?? ''; $id = $argv[2] ?? '';
-    if (!in_array($action, ['on', 'off'], true) || !Illuminate\Support\Str::isUuid($id)) { throw new RuntimeException(); }
+    if (!in_array($action, ['on', 'adopt', 'off'], true) || !Illuminate\Support\Str::isUuid($id)) { throw new RuntimeException(); }
     $db = app(App\Lights\Portal::class)->db();
     $s = $db->table('lights_control_sessions')->where('id', $id)->whereIn('driver', ['cloud', 'cloud_customer'])->whereNotNull('active_user_id')->first();
-    if (!$s || $s->state !== ($action === 'on' ? 'starting' : 'stopping') || $s->command_at < time() - 20) { throw new RuntimeException(); }
+    if (!$s || $s->state !== ($action === 'off' ? 'stopping' : 'starting') || $s->command_at < time() - 20) { throw new RuntimeException(); }
     $directory = base_path('.local-acceptance/private/shelly');
     if ($action === 'on') {
         if (config('lights.control.local_approval_required')) {
@@ -24,6 +24,7 @@ try {
     $settings = new App\Lights\Shelly\PrivateSettings($directory);
     $control = new App\Lights\Shelly\CloudControl($settings->secret());
     if ($action === 'on') { echo json_encode(['receipt' => $control->on((int) $s->channel, (int) $s->duration_seconds)]); }
+    elseif ($action === 'adopt') { echo json_encode(['receipt' => $control->adopt((int) $s->channel, (int) $s->duration_seconds)]); }
     else { $control->off((int) $s->channel); echo json_encode(['off_acknowledged' => true]); }
 } catch (App\Lights\Shelly\CommandNotSent) {
     echo json_encode(['error' => 'Preflight rejected. No switching command sent.', 'not_sent' => true]);

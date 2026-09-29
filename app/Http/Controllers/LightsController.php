@@ -127,6 +127,13 @@ class LightsController extends Controller
         }
         return $request->expectsJson() ? response()->json(['session_id' => $id]) : redirect()->route('lights.home');
     }
+    public function adopt(Request $request, int $court, \App\Lights\SafetySessions $safety)
+    {
+        $this->requireVerified();
+        $data = $request->validate(['request_key' => 'required|uuid', 'quoted_rate_cents' => 'required|integer|min:1|max:100000']);
+        $id = $safety->adoptCustomer($this->member()->id, $court, $data['request_key'], (int) $data['quoted_rate_cents']);
+        return $request->expectsJson() ? response()->json(['session_id' => $id]) : redirect()->route('lights.home');
+    }
     public function stop(Request $request, string $session, \App\Lights\SafetySessions $safety)
     {
         $isHardwareSession = $safety->available() && $this->portal->db()->table('lights_control_sessions')

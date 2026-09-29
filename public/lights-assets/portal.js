@@ -70,8 +70,10 @@
                 : court.control_reason;
             const start = card.querySelector('.court-start');
             if (!start) continue;
-            start.textContent = startPending ? 'Switching on…' : court.is_on ? 'Lights already on' : 'Switch on';
-            start.disabled = startPending || !state.email_verified || !connected || age > 15 || !court.active || court.in_use || !court.control_ready || estimate < 1;
+            const adopting = start.closest('form')?.dataset.actionKind === 'adopt';
+            start.textContent = startPending ? (adopting ? 'Taking over…' : 'Switching on…') : adopting ? 'Take over ' + court.name : 'Switch on';
+            start.disabled = startPending || !state.email_verified || !connected || age > 15 || !court.active
+                || (adopting ? !court.adoptable : court.in_use) || !court.control_ready || estimate < 1;
         }
         document.getElementById('worker-status').textContent = state.worker_seen_at && now - state.worker_seen_at < 15
             ? 'Local accounting and safety worker is running.' : state.customer_control
@@ -94,14 +96,15 @@
     document.querySelectorAll('[data-light-action]').forEach(form => form.addEventListener('submit', async event => {
         event.preventDefault();
         const button = form.querySelector('button');
-        const starting = form.action.includes('/start');
+        const starting = !!form.closest('[data-court]');
+        const adopting = form.dataset.actionKind === 'adopt';
         const beforeIds = new Set((state.sessions || (state.session ? [state.session] : [])).map(session => session.id));
         const stoppingId = starting ? null : form.closest('[data-session]')?.dataset.session;
         const courtId = starting ? form.closest('[data-court]')?.dataset.court : null;
         const actionKey = starting ? 'start:' + courtId : 'stop:' + stoppingId;
         if (pendingActions.has(actionKey)) return;
         pendingActions.add(actionKey);
-        button.disabled = true; button.dataset.label = button.textContent; button.textContent = starting ? 'Switching on…' : 'Switching off…'; render();
+        button.disabled = true; button.dataset.label = button.textContent; button.textContent = starting ? (adopting ? 'Taking over…' : 'Switching on…') : 'Switching off…'; render();
         let accepted = false;
         try {
             const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
@@ -109,7 +112,7 @@
             if (!response.ok) throw new Error(Object.values(data.errors || {}).flat().join(' ') || data.message || 'Request failed.');
             form.querySelector('[name=request_key]')?.setAttribute('value', crypto.randomUUID());
             accepted = true;
-            showNotice(starting ? 'Switch-on accepted. Confirming the court status…' : 'Switch-off accepted. Confirming the court status…');
+            showNotice(starting ? (adopting ? 'Takeover accepted. Installing a safe cutoff…' : 'Switch-on accepted. Confirming the court status…') : 'Switch-off accepted. Confirming the court status…');
             for (let attempt = 0; attempt < 8; attempt++) {
                 await refresh();
                 const activeIds = new Set((state.sessions || (state.session ? [state.session] : [])).map(session => session.id));

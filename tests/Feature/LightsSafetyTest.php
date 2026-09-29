@@ -62,6 +62,7 @@ class LightsSafetyTest extends RegressionTestCase
                 if ($this->failOn) { throw new \RuntimeException('sensitive-provider-detail'); }
                 return ['output' => true, 'timer_started_at' => now()->getTimestamp(), 'timer_duration' => $this->badTimer ? 999 : $s->duration_seconds];
             }
+            public function adopt(object $s): array { return $this->on($s); }
             public function off(object $s): void { $this->offs++; if ($this->failOff) { throw new \RuntimeException('sensitive-provider-detail'); } }
         };
     }
@@ -398,5 +399,21 @@ class LightsSafetyTest extends RegressionTestCase
         });
         try { $client->on(0, 60); $this->fail('Unknown output accepted'); }
         catch (CommandNotSent) { $this->assertSame(['/get'], $calls); }
+    }
+    public function test_cloud_adoption_requires_existing_on_and_replaces_the_timer_once(): void
+    {
+        $calls = []; $output = true;
+        $client = new CloudControl('synthetic-test-key', function ($endpoint, $body) use (&$calls, &$output) {
+            $calls[] = [$endpoint, $body];
+            if ($endpoint === '/set/switch') { $output = $body['on']; return [200, '']; }
+            return [200, json_encode([['id' => PrivateSettings::DEVICE, 'code' => 'SPSW-202PE12UL', 'gen' => 'G2', 'online' => 1,
+                'status' => ['switch:0' => ['output' => $output, 'timer_duration' => 120, 'timer_started_at' => now()->timestamp]]]])];
+        });
+
+        $receipt = $client->adopt(0, 120);
+
+        $this->assertTrue($receipt['output']);
+        $this->assertSame(['id' => PrivateSettings::DEVICE, 'channel' => 0, 'on' => true, 'toggle_after' => 120], $calls[1][1]);
+        $this->assertCount(3, $calls);
     }
 }

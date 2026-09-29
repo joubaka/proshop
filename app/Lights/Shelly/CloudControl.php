@@ -10,11 +10,21 @@ class CloudControl
     public function __construct(#[\SensitiveParameter] private string $secret, private ?Closure $transport = null) {}
     public function on(int $channel, int $seconds): array
     {
+        return $this->timedOn($channel, $seconds, false);
+    }
+    public function adopt(int $channel, int $seconds): array
+    {
+        return $this->timedOn($channel, $seconds, true);
+    }
+    private function timedOn(int $channel, int $seconds, bool $alreadyOn): array
+    {
         $this->validate($channel, $seconds);
         try { $before = $this->status(); }
         catch (\Throwable) { throw new CommandNotSent('Preflight status is unavailable.'); }
-        if (!$before['online'] || $before['channels'][$channel]['output'] !== false || $before['channels'][$channel]['has_errors']) {
-            throw new CommandNotSent('Pilot preflight requires an online, fault-free channel reported OFF.');
+        if (!$before['online'] || $before['channels'][$channel]['output'] !== $alreadyOn || $before['channels'][$channel]['has_errors']) {
+            throw new CommandNotSent($alreadyOn
+                ? 'Adoption preflight requires an online, fault-free channel reported ON.'
+                : 'Pilot preflight requires an online, fault-free channel reported OFF.');
         }
         $this->post('/set/switch', ['id' => PrivateSettings::DEVICE, 'channel' => $channel, 'on' => true, 'toggle_after' => $seconds]);
         // Cloud status can briefly lag a successful set request. Poll status only; never replay ON.

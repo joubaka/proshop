@@ -269,6 +269,7 @@ class Portal
                 $court->hardware_checked_at = $observed ? (int) $observed->checked_at : null;
                 $court->hardware_stale = !$observed || (int) $observed->checked_at < $now - 120;
                 $court->hardware_online = (bool) ($observed && $observed->online && !$court->hardware_stale && !$observed->has_errors);
+                $court->adoptable = (bool) ($customerControl && !$hardware && $court->hardware_online && $court->hardware_output === true);
                 $court->in_use = (bool) ($active || $hardware || $court->hardware_output === true);
                 $court->control_state = $hardware?->state;
                 $court->pending_action = $hardware && in_array($hardware->state, ['reserved', 'starting', 'stopping'], true)

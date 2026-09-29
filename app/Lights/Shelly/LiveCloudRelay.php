@@ -22,6 +22,11 @@ class LiveCloudRelay implements RelayDriver
         return $this->control()->on((int) $session->channel, (int) $session->duration_seconds);
     }
 
+    public function adopt(object $session): array
+    {
+        return $this->control()->adopt((int) $session->channel, (int) $session->duration_seconds);
+    }
+
     public function off(object $session): void
     {
         $this->control()->off((int) $session->channel);

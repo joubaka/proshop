@@ -73,21 +73,39 @@ class SafetySessions
     }
     public function startCustomer(int $user, int $courtId, string $key, int $quotedRate): string
     {
+        return $this->startCustomerSession($user, $courtId, $key, $quotedRate, false);
+    }
+    public function adoptCustomer(int $user, int $courtId, string $key, int $quotedRate): string
+    {
+        return $this->startCustomerSession($user, $courtId, $key, $quotedRate, true);
+    }
+    private function startCustomerSession(int $user, int $courtId, string $key, int $quotedRate, bool $adopt): string
+    {
         $acceptance = app()->environment('acceptance');
         abort_unless(config('lights.control.live_enabled') && config('lights.control.customer_enabled')
             && ($acceptance || (config('lights.mode') === 'live' && app()->environment(['production', 'staging']))),
             503, 'Customer light control is not enabled.');
         abort_unless(Str::isUuid($key) && $this->db()->getSchemaBuilder()->hasColumn('lights_control_sessions', 'court_id'), 503);
-        return $this->lock(function () use ($user, $courtId, $key, $quotedRate, $acceptance) {
+        return $this->lock(function () use ($user, $courtId, $key, $quotedRate, $acceptance, $adopt) {
             $member = $this->db()->table('lights_users')->where('active', true)->find($user);
             abort_unless($member, 403);
             $court = $this->db()->table('lights_courts')->where('active', true)->find($courtId);
             abort_unless($court, 404);
             if ((int) $court->rate_cents !== $quotedRate) { $this->fail('The court rate changed. Refresh before switching on.'); }
+            if ($adopt) {
+                $observed = $this->db()->table('lights_hardware_status')->where('channel', $court->channel)->first();
+                if (!$observed || !(bool) $observed->online || (bool) $observed->has_errors || !(bool) $observed->output
+                    || (int) $observed->checked_at < $this->now() - 120 || (int) $observed->checked_at > $this->now() + 5) {
+                    $this->fail('This court must have a fresh, online and fault-free ON status before it can be taken over.');
+                }
+            }
             $driver = $acceptance ? 'cloud_customer' : 'customer_cloud';
             $old = $this->db()->table('lights_control_sessions')->where('user_id', $user)->where('request_key', $key)->first();
             if ($old) {
-                if ((int) $old->court_id !== $courtId || $old->driver !== $driver) { $this->fail('That request belongs to another court.'); }
+                if ((int) $old->court_id !== $courtId || $old->driver !== $driver
+                    || ($old->adopted_at !== null) !== $adopt) {
+                    $this->fail('That request belongs to another court or action.');
+                }
                 return $old->id;
             }
             if ($acceptance && config('lights.control.local_approval_required')
@@ -122,9 +140,10 @@ class SafetySessions
             $this->db()->table('lights_control_sessions')->insert(['id' => $id, 'user_id' => $user, 'court_id' => $courtId,
                 'active_user_id' => $user, 'channel' => $court->channel, 'active_channel' => $court->channel,
                 'request_key' => $key, 'driver' => $driver, 'state' => 'reserved', 'rate_cents' => $court->rate_cents,
-                'budget_cents' => $member->balance_cents, 'duration_seconds' => $seconds, 'created_at' => $this->now()]);
+                'budget_cents' => $member->balance_cents, 'duration_seconds' => $seconds, 'created_at' => $this->now(),
+                'adopted_at' => $adopt ? $this->now() : null]);
             $session = $this->db()->table('lights_control_sessions')->find($id);
-            $this->event('customer_reserved', $session, $user);
+            $this->event($adopt ? 'customer_adoption_reserved' : 'customer_reserved', $session, $user);
             return $id;
         });
     }
@@ -215,7 +234,9 @@ class SafetySessions
                 default => new RehearsalRelay,
             };
             try {
-                $receipt = $s->state === 'starting' ? $driver->on($s) : null;
+                $receipt = $s->state === 'starting'
+                    ? ($s->adopted_at !== null ? $driver->adopt($s) : $driver->on($s))
+                    : null;
                 if ($s->state === 'stopping') { $driver->off($s); }
                 $status = app(\App\Lights\Shelly\HardwareStatus::class);
                 if ($s->state === 'starting' && is_array($receipt)) {

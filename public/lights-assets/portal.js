@@ -106,6 +106,7 @@
         pendingActions.add(actionKey);
         button.disabled = true; button.dataset.label = button.textContent; button.textContent = starting ? (adopting ? 'Taking over…' : 'Switching on…') : 'Switching off…'; render();
         let accepted = false;
+        let terminalFailure = false;
         try {
             const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
             const data = await response.json();
@@ -113,10 +114,17 @@
             form.querySelector('[name=request_key]')?.setAttribute('value', crypto.randomUUID());
             accepted = true;
             showNotice(starting ? (adopting ? 'Takeover accepted. Installing a safe cutoff…' : 'Switch-on accepted. Confirming the court status…') : 'Switch-off accepted. Confirming the court status…');
-            for (let attempt = 0; attempt < 8; attempt++) {
+            for (let attempt = 0; attempt < 12; attempt++) {
                 await refresh();
-                const activeIds = new Set((state.sessions || (state.session ? [state.session] : [])).map(session => session.id));
-                if ((starting && [...activeIds].some(id => !beforeIds.has(id))) || (!starting && !activeIds.has(stoppingId))) break;
+                const activeSessions = state.sessions || (state.session ? [state.session] : []);
+                const activeIds = new Set(activeSessions.map(session => session.id));
+                if (starting && state.last_start_failure?.id === data.session_id) {
+                    terminalFailure = true;
+                    showNotice(state.last_start_failure.note || 'Shelly rejected the switch-on. No charge was made.', true);
+                    break;
+                }
+                if ((starting && activeSessions.some(session => !beforeIds.has(session.id) && session.control_state === 'running'))
+                    || (!starting && !activeIds.has(stoppingId))) break;
                 await pause(750);
             }
         } catch (error) {
@@ -127,7 +135,7 @@
             pendingActions.delete(actionKey);
             button.textContent = button.dataset.label || button.textContent;
             render();
-            if (accepted && pendingActions.size === 0) location.reload();
+            if (accepted && !terminalFailure && pendingActions.size === 0) location.reload();
         }
     }));
     if (state) { render(); setInterval(render, 1000); setInterval(refresh, 5000); window.addEventListener('online', refresh); }

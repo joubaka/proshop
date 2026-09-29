@@ -294,12 +294,14 @@ class SafetySessions
                         $this->event('off_acknowledged', $s);
                     }
                 });
-            } catch (\App\Lights\Shelly\CommandNotSent) {
-                $this->lock(function () use ($s) {
+            } catch (\App\Lights\Shelly\CommandNotSent $error) {
+                $this->lock(function () use ($s, $error) {
                     // A definite preflight rejection must not trigger OFF on an already-used court.
                     $current = $this->db()->table('lights_control_sessions')->find($s->id);
                     if ($s->state === 'starting' && $current->state === 'starting') {
-                        $this->db()->table('lights_control_sessions')->where('id', $s->id)->update(['note' => 'Preflight rejected. No ON or OFF command sent; no charge.']);
+                        $reason = trim($error->getMessage());
+                        $this->db()->table('lights_control_sessions')->where('id', $s->id)->update(['note' =>
+                            ($reason !== '' ? $reason.' ' : '').'No ON or OFF command was sent and no charge was made.']);
                         $this->complete($s); $this->event('not_sent', $s);
                     }
                 });
@@ -340,6 +342,40 @@ class SafetySessions
                 }
                 $this->charge($s); $this->complete($s); $this->event('operator_confirmed_off', $s, $actor);
             } else { abort(422); }
+        });
+    }
+    public function reconcileConfirmedOff(array $report): int
+    {
+        if (!$this->available() || !($report['online'] ?? false)) { return 0; }
+        $checkedAt = (int) ($report['checked_at'] ?? 0);
+        if ($checkedAt < 1) { return 0; }
+
+        $offChannels = collect($report['channels'] ?? [])->filter(fn ($channel) =>
+            in_array($channel['channel'] ?? null, [0, 1], true)
+            && ($channel['output'] ?? null) === false
+            && !($channel['has_errors'] ?? false)
+        )->pluck('channel')->all();
+        if (!$offChannels) { return 0; }
+
+        return $this->lock(function () use ($offChannels, $checkedAt) {
+            $resolved = 0;
+            $sessions = $this->db()->table('lights_control_sessions')
+                ->where('state', 'review')->whereNotNull('active_user_id')
+                ->whereIn('active_channel', $offChannels)->get();
+            foreach ($sessions as $session) {
+                $releaseAfter = max((int) $session->command_at, (int) $session->stopped_at) + 30;
+                if ($checkedAt < $releaseAfter) { continue; }
+                $this->charge($session);
+                $updated = $this->db()->table('lights_control_sessions')->where('id', $session->id)
+                    ->where('state', 'review')->whereNotNull('active_user_id')->update([
+                        'state' => 'completed', 'active_user_id' => null, 'active_channel' => null,
+                        'stopped_at' => $checkedAt, 'note' => 'Released automatically after a later healthy Shelly status confirmed the court was off.',
+                    ]);
+                if (!$updated) { continue; }
+                $this->event('status_confirmed_off_released', $session);
+                $resolved++;
+            }
+            return $resolved;
         });
     }
     public function rows() { return $this->db()->table('lights_control_sessions')->orderByDesc('created_at')->limit(30)->get(); }

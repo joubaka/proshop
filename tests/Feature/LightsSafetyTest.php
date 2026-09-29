@@ -154,6 +154,12 @@ class LightsSafetyTest extends RegressionTestCase
         $this->assertSame('completed', $this->controlSession($id)->state);
         $this->assertSame(0, $driver->offs);
         $this->assertSame(0, $this->controlSession($id)->charged_cents);
+        $this->assertStringContainsString('No ON or OFF command was sent and no charge was made.', $this->controlSession($id)->note);
+        config(['lights.control.customer_enabled' => true]);
+        $this->portal->db()->table('lights_control_sessions')->where('id', $id)->update(['driver' => 'cloud_customer']);
+        $failure = $this->portal->snapshot($this->admin->id)['last_start_failure'];
+        $this->assertSame($id, $failure->id);
+        $this->assertStringContainsString('no charge was made', $failure->note);
     }
     public function test_failed_off_freezes_billing_and_requires_review(): void
     {
@@ -402,6 +408,35 @@ class LightsSafetyTest extends RegressionTestCase
             ->where('action', 'on')->value('state'));
         $this->assertSame(1, $this->portal->db()->table('lights_events')
             ->where('kind', 'manual_shelly_off_resolved')->count());
+    }
+    public function test_fresh_healthy_off_status_automatically_releases_reviewed_session_after_safety_window(): void
+    {
+        $id = $this->start();
+        $driver = $this->driver();
+        $this->safety->tick($driver);
+        $this->travel(12)->seconds();
+        $this->safety->stop($this->admin->id, $id);
+        $driver->failOff = true;
+        $this->safety->tick($driver);
+        $this->assertSame('review', $this->controlSession($id)->state);
+
+        $report = fn (bool $output) => ['online' => true, 'checked_at' => now()->timestamp, 'channels' => [
+            ['channel' => 0, 'output' => $output, 'has_errors' => false],
+        ]];
+        $this->travel(29)->seconds();
+        $this->assertSame(0, $this->safety->reconcileConfirmedOff($report(false)));
+        $this->travel(1)->second();
+        $this->assertSame(0, $this->safety->reconcileConfirmedOff($report(true)));
+        $this->assertSame(1, $this->safety->reconcileConfirmedOff($report(false)));
+
+        $session = $this->controlSession($id);
+        $this->assertSame('completed', $session->state);
+        $this->assertNull($session->active_user_id);
+        $this->assertNull($session->active_channel);
+        $this->assertSame(20, (int) $session->charged_cents);
+        $this->assertSame(1, $this->portal->db()->table('lights_events')
+            ->where('kind', 'control_status_confirmed_off_released')->count());
+        $this->assertSame(0, $this->safety->reconcileConfirmedOff($report(false)));
     }
     public function test_cloud_commands_use_exact_channel_timer_and_never_toggle_or_retry(): void
     {

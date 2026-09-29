@@ -4,6 +4,7 @@ namespace App\Lights\Shelly;
 
 use App\Lights\ManualSwitches;
 use App\Lights\Portal;
+use App\Lights\SafetySessions;
 
 class StatusSynchronizer
 {
@@ -11,6 +12,7 @@ class StatusSynchronizer
         private Portal $portal,
         private HardwareStatus $status,
         private ManualSwitches $manual,
+        private SafetySessions $sessions,
     ) {}
 
     public function refreshIfDue(): void
@@ -44,6 +46,7 @@ class StatusSynchronizer
             } else { return; }
             $this->status->record($report);
             $this->manual->reconcileConfirmedOff($report);
+            $this->sessions->reconcileConfirmedOff($report);
         } catch (\Throwable) {
             // Preserve the last known status. Staleness is visible in the portal and monitoring.
         }

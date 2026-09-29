@@ -297,12 +297,19 @@ class Portal
                     'billing_started' => $customer->started_at !== null, 'uncertain' => (bool) $customer->uncertain,
                 ]);
             }
+            $lastStartFailure = $customerControl && $this->db()->getSchemaBuilder()->hasColumn('lights_control_sessions', 'court_id')
+                ? $this->db()->table('lights_control_sessions')->where('user_id', $user)
+                    ->whereIn('driver', ['customer_cloud', 'cloud_customer'])->where('state', 'completed')
+                    ->whereNull('started_at')->whereNotNull('note')->where('created_at', '>=', $now - 120)
+                    ->orderByDesc('created_at')->first(['id', 'court_id', 'note', 'created_at'])
+                : null;
             $member = $this->db()->table('lights_users')->find($user);
             abort_unless($member, 404);
             return ['server_time' => $now, 'balance_cents' => (int) $member->balance_cents,
                 'email_verified' => !$this->db()->getSchemaBuilder()->hasColumn('lights_users', 'email_verified_at') || (bool) $member->email_verified_at,
                 'customer_control' => $customerControl,
                 'session' => $sessions->first(), 'sessions' => $sessions->values(), 'courts' => $courts,
+                'last_start_failure' => $lastStartFailure,
                 'worker_seen_at' => $workerSeenAt];
         });
     }

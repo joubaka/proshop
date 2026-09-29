@@ -120,10 +120,26 @@ class LightsController extends Controller
             throw ValidationException::withMessages(['lights' => 'Court control is not yet available. No session was started.']);
         }
         $data = $request->validate(['request_key' => 'required|uuid', 'quoted_rate_cents' => 'required|integer|min:1|max:100000']);
-        if (config('lights.control.customer_enabled')) {
-            $id = $safety->startCustomer($this->member()->id, $court, $data['request_key'], (int) $data['quoted_rate_cents']);
-        } else {
-            $id = $this->portal->start($this->member()->id, $court, $data['request_key'], (int) $data['quoted_rate_cents']);
+        try {
+            if (config('lights.control.customer_enabled')) {
+                $id = $safety->startCustomer($this->member()->id, $court, $data['request_key'], (int) $data['quoted_rate_cents']);
+            } else {
+                $id = $this->portal->start($this->member()->id, $court, $data['request_key'], (int) $data['quoted_rate_cents']);
+            }
+        } catch (ValidationException $error) {
+            throw $error;
+        } catch (\Throwable $error) {
+            try {
+                \Illuminate\Support\Facades\Log::channel('lights')->error('Court switch-on request failed.', [
+                    'member_id' => $this->member()->id,
+                    'court_id' => $court,
+                    'exception' => $error::class,
+                    'message' => $error->getMessage(),
+                ]);
+            } catch (\Throwable) {
+                // Logging must never replace the original control failure.
+            }
+            throw $error;
         }
         return $request->expectsJson() ? response()->json(['session_id' => $id]) : redirect()->route('lights.home');
     }

@@ -109,7 +109,10 @@ class SafetySessions
         abort_unless(config('lights.control.live_enabled') && config('lights.control.customer_enabled')
             && ($acceptance || (config('lights.mode') === 'live' && app()->environment(['production', 'staging']))),
             503, 'Customer light control is not enabled.');
-        abort_unless(Str::isUuid($key) && $this->db()->getSchemaBuilder()->hasColumn('lights_control_sessions', 'court_id'), 503);
+        abort_unless(Str::isUuid($key)
+            && $this->db()->getSchemaBuilder()->hasColumn('lights_control_sessions', 'court_id')
+            && $this->db()->getSchemaBuilder()->hasColumn('lights_control_sessions', 'adopted_at'),
+            503, 'Court control is awaiting a database update. No command was sent.');
         return $this->lock(function () use ($user, $courtId, $key, $quotedRate, $acceptance, $adopt, $actor) {
             if ($actor !== null) { $this->admin($actor); }
             $member = $this->db()->table('lights_users')->where('active', true)->find($user);
@@ -295,6 +298,7 @@ class SafetySessions
                     }
                 });
             } catch (\App\Lights\Shelly\CommandNotSent $error) {
+                $this->logControlFailure('Relay command was not sent.', $s, $error);
                 $this->lock(function () use ($s, $error) {
                     // A definite preflight rejection must not trigger OFF on an already-used court.
                     $current = $this->db()->table('lights_control_sessions')->find($s->id);
@@ -305,7 +309,8 @@ class SafetySessions
                         $this->complete($s); $this->event('not_sent', $s);
                     }
                 });
-            } catch (\Throwable) {
+            } catch (\Throwable $error) {
+                $this->logControlFailure('Relay command outcome is uncertain.', $s, $error);
                 $this->lock(function () use ($s) {
                     $current = $this->db()->table('lights_control_sessions')->find($s->id);
                     if ($current->state !== $s->state) { return; }
@@ -315,6 +320,21 @@ class SafetySessions
                     $this->event('uncertain', $s);
                 });
             }
+        }
+    }
+    private function logControlFailure(string $message, object $session, \Throwable $error): void
+    {
+        try {
+            \Illuminate\Support\Facades\Log::channel('lights')->error($message, [
+                'session_id' => $session->id,
+                'court_id' => $session->court_id ?? null,
+                'channel' => (int) $session->channel,
+                'state' => $session->state,
+                'exception' => $error::class,
+                'message' => $error->getMessage(),
+            ]);
+        } catch (\Throwable) {
+            // Safety processing must continue even if the log destination is unavailable.
         }
     }
     private function complete(object $s): void

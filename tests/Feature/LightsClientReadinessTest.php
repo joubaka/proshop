@@ -31,6 +31,16 @@ class LightsClientReadinessTest extends RegressionTestCase
         $this->portal->saveCourt($this->admin->id, null, ['name' => 'Court 3', 'rate_cents' => 6000, 'device_label' => 'demo', 'channel' => 0, 'active' => true]);
     }
 
+    public function test_every_lights_migration_is_in_the_controlled_deployment_allowlist(): void
+    {
+        $deployment = file_get_contents(base_path('deploy.config'));
+
+        foreach (glob(database_path('migrations/lights/*.php')) as $migration) {
+            $relative = 'database/migrations/lights/'.basename($migration);
+            $this->assertStringContainsString($relative, $deployment, $relative.' is missing from LIGHTS_MIGRATION_PATHS.');
+        }
+    }
+
     public function test_registration_requires_terms_and_simulation_verifies_immediately(): void
     {
         $payload = ['name' => 'New Player', 'email' => 'new@test.test', 'password' => 'A123', 'password_confirmation' => 'A123'];

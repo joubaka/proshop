@@ -53,6 +53,13 @@ return [
             'days' => 14,
         ],
 
+        'lights' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/lights.log'),
+            'level' => env('LIGHTS_LOG_LEVEL', 'info'),
+            'days' => 30,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

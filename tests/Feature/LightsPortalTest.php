@@ -84,7 +84,9 @@ class LightsPortalTest extends RegressionTestCase
         $this->actingAs($this->player, 'lights')->get('/lights')->assertOk()
             ->assertSee('Install Court Lights')
             ->assertSee('Switch-on confirmation')
-            ->assertSee('class="session-progress-bar" max="100" value="0"', false)
+            ->assertSee('class="confirmation-ring" style="--progress:0%"', false)
+            ->assertSee('class="court-switch-progress"', false)
+            ->assertSee('class="session-progress-bar visually-hidden" max="100" value="0"', false)
             ->assertSee('data-home-tab="courts"', false)
             ->assertSee('data-home-panel="activity"', false);
         $this->get('/lights/service-worker.js')->assertOk()

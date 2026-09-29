@@ -102,6 +102,10 @@ test('separate local lights portal', { timeout: 120000 }, async t => {
         await t.test('switch both courts on within seconds and show live mobile countdowns', async () => {
             const firstResponse = page.waitForResponse(r => r.url().endsWith('/lights/courts/1/start'));
             await page.locator('[data-court="1"] .court-start').click();
+            const firstProgress = page.locator('[data-court="1"] .court-switch-progress');
+            await firstProgress.waitFor({ state: 'visible' });
+            assert.match(await firstProgress.textContent(), /(?:10|25|70)%/, 'switch-on shows real confirmation progress');
+            assert.match(await firstProgress.getAttribute('aria-label'), /Switch-on confirmation \d+%/);
             await page.locator('[data-court="2"] .court-start').waitFor({ state: 'visible' });
             assert.equal(await page.locator('[data-court="2"] .court-start').isEnabled(), true, 'Court 4 stays enabled while Court 3 is pending');
             const secondResponse = page.waitForResponse(r => r.url().endsWith('/lights/courts/2/start'));

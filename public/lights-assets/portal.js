@@ -8,6 +8,20 @@
     const money = cents => 'R ' + (Math.max(0, cents) / 100).toFixed(2);
     const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
     const confirmationProgress = state => ({ reserved: 25, starting: 70, running: 100 }[state] || 10);
+    const confirmationLabel = progress => progress >= 100 ? 'Lights confirmed on.' : progress >= 70
+        ? 'Confirming the Shelly timer…' : progress >= 25 ? 'Court reserved. Waiting for the worker…' : 'Sending your request…';
+    function updateConfirmationProgress(container, progress) {
+        if (!container) return;
+        const ring = container.querySelector('.confirmation-ring');
+        ring?.style.setProperty('--progress', progress + '%');
+        const value = container.querySelector('.session-progress-value, .confirmation-ring strong');
+        if (value) value.textContent = progress + '%';
+        const step = container.querySelector('.confirmation-step');
+        if (step) step.textContent = confirmationLabel(progress);
+        const bar = container.querySelector('.session-progress-bar');
+        if (bar) { bar.value = progress; bar.textContent = progress + '%'; }
+        container.setAttribute('aria-label', 'Switch-on confirmation ' + progress + '%. ' + confirmationLabel(progress));
+    }
     function showNotice(message, error = false) {
         notice.hidden = !message;
         notice.classList.toggle('error', error);
@@ -34,10 +48,7 @@
             const progressPanel = panel.querySelector('.session-progress');
             if (progressPanel) {
                 progressPanel.hidden = billing;
-                progressPanel.querySelector('.session-progress-value').textContent = progress + '%';
-                const progressBar = progressPanel.querySelector('.session-progress-bar');
-                progressBar.value = progress;
-                progressBar.textContent = progress + '%';
+                updateConfirmationProgress(progressPanel, progress);
             }
             panel.querySelector('.session-court').textContent = state.courts.find(c => c.id === session.court_id)?.name || 'Court';
             const heading = panel.querySelector('.session-heading');
@@ -58,6 +69,9 @@
             if (!card) continue;
             const startPending = pendingActions.has('start:' + court.id) || court.pending_action === 'on';
             const stopPending = court.pending_action === 'off';
+            const courtSession = sessions.find(session => session.court_id === court.id);
+            const startProgress = courtSession ? confirmationProgress(courtSession.control_state)
+                : pendingActions.has('start:' + court.id) ? 10 : court.pending_action === 'on' ? 25 : 0;
             card.classList.toggle('is-on', !!court.is_on);
             card.classList.toggle('is-pending', startPending || stopPending);
             card.querySelector('.court-rate').textContent = money(court.rate_cents);
@@ -68,6 +82,11 @@
             if (note) note.textContent = court.hardware_output === true
                 ? 'Cloud last reported this relay ON' + (court.hardware_stale ? ' — status is older than two minutes' : '')
                 : court.control_reason;
+            const courtProgress = card.querySelector('.court-switch-progress');
+            if (courtProgress) {
+                courtProgress.hidden = !startPending;
+                updateConfirmationProgress(courtProgress, startProgress);
+            }
             const start = card.querySelector('.court-start');
             if (!start) continue;
             const adopting = start.closest('form')?.dataset.actionKind === 'adopt';

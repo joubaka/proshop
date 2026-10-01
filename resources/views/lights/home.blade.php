@@ -47,7 +47,7 @@
             <div class="section-title"><h2 class="session-heading"><span class="live-dot"></span>Lights are on</h2><span class="tag session-court"></span></div>
             <div class="session-metrics"><div><span>Session cost</span><strong class="session-cost">R 0.00</strong></div><div><span class="session-time-label">Time remaining</span><strong class="session-remaining">—</strong></div></div>
             <div class="session-progress" role="status" aria-live="polite" hidden><div class="confirmation-progress-layout"><div class="confirmation-ring" style="--progress:0%" aria-hidden="true"><strong class="session-progress-value">0%</strong></div><div><strong class="confirmation-title">Switch-on confirmation</strong><small class="confirmation-step">Sending your request safely…</small><small>Waiting for the worker and Shelly to confirm that the court lights are on.</small></div></div><progress class="session-progress-bar visually-hidden" max="100" value="0">0%</progress></div>
-            <p class="muted">The server keeps counting if you close this page. The displayed balance is an estimate between updates.</p>
+            <p class="muted session-status-note">The server keeps counting if you close this page. The displayed balance is an estimate between updates.</p>
             <form class="stop-session-form" method="POST" action="{{ route('lights.stop', $activeSession->id) }}" data-light-action>@csrf<button class="button danger full">Switch off {{ optional($state['courts']->firstWhere('id', $activeSession->court_id))->name ?? 'court' }} &amp; finish</button></form>
         </section>
         @endforeach

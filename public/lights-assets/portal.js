@@ -32,10 +32,15 @@
         const age = (performance.now() - received) / 1000;
         const now = state.server_time + Math.floor(age);
         const sessions = state.sessions || (state.session ? [state.session] : []);
+        // Polling can complete a session after the action's short confirmation loop ends.
+        const activeIds = new Set(sessions.map(session => String(session.id)));
+        document.querySelectorAll('[data-session]').forEach(panel => {
+            if (!activeIds.has(panel.dataset.session)) panel.remove();
+        });
         let estimate = state.balance_cents;
         for (const session of sessions) {
             const billing = session.billing_started !== false && session.started_at !== null && session.deadline_at !== null;
-            const elapsed = billing ? Math.max(0, Math.min(now, session.deadline_at) - session.started_at) : 0;
+            const elapsed = billing ? Math.max(0, Math.min(now, session.deadline_at, session.stop_requested_at ?? Infinity) - session.started_at) : 0;
             const charged = billing ? Math.max(session.charged_cents, Math.min(session.budget_cents, Math.ceil(elapsed * session.rate_cents / 3600))) : session.charged_cents;
             estimate -= charged - session.charged_cents;
             const panel = document.querySelector('[data-session="' + session.id + '"]');
@@ -43,25 +48,44 @@
             panel.querySelector('.session-cost').textContent = money(charged);
             const seconds = billing ? Math.max(0, session.deadline_at - now) : null;
             const progress = confirmationProgress(session.control_state);
-            panel.querySelector('.session-time-label').textContent = billing ? 'Time remaining' : 'Confirmation';
-            panel.querySelector('.session-remaining').textContent = billing ? Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0') : progress + '%';
+            const review = session.control_state === 'review';
+            const stopping = !review && (session.control_state === 'stopping' || session.stop_requested_at != null);
+            const attention = review || session.uncertain;
+            const confirming = !stopping && !attention && ['reserved', 'starting'].includes(session.control_state);
+            panel.querySelector('.session-time-label').textContent = attention || stopping ? 'Control status' : billing ? 'Time remaining' : 'Confirmation';
+            panel.querySelector('.session-remaining').textContent = review ? 'Check court' : stopping ? 'Awaiting OFF' : attention ? 'Unconfirmed' : billing ? Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0') : progress + '%';
             const progressPanel = panel.querySelector('.session-progress');
             if (progressPanel) {
-                progressPanel.hidden = billing;
+                progressPanel.hidden = !confirming;
                 updateConfirmationProgress(progressPanel, progress);
             }
             panel.querySelector('.session-court').textContent = state.courts.find(c => c.id === session.court_id)?.name || 'Court';
             const heading = panel.querySelector('.session-heading');
-            if (heading) heading.innerHTML = ['reserved', 'starting'].includes(session.control_state)
+            if (heading) heading.innerHTML = review ? '<span class="live-dot warning"></span>Safety review required'
+                : stopping ? '<span class="live-dot warning"></span>Confirming lights are off'
+                : attention ? '<span class="live-dot warning"></span>Status needs attention'
+                : ['reserved', 'starting'].includes(session.control_state)
                 ? '<span class="live-dot warning"></span>Switching on' : session.control_state && session.control_state !== 'running'
                     ? '<span class="live-dot warning"></span>Status needs attention' : '<span class="live-dot"></span>Lights are on';
             panel.querySelector('.stop-session-form').action = '/lights/sessions/' + session.id + '/stop';
             const stopButton = panel.querySelector('.stop-session-form button');
-            const stopPending = pendingActions.has('stop:' + session.id) || session.control_state === 'stopping';
+            const stopPending = pendingActions.has('stop:' + session.id) || stopping || review;
             if (stopButton) {
                 stopButton.disabled = stopPending;
-                stopButton.textContent = stopPending ? 'Switching off…' : (stopButton.dataset.label || stopButton.textContent);
+                stopButton.dataset.label ||= stopButton.textContent;
+                stopButton.textContent = review ? 'Awaiting administrator review' : stopPending ? 'Awaiting OFF confirmation…' : stopButton.dataset.label;
             }
+            const statusNote = panel.querySelector('.session-status-note');
+            if (statusNote) statusNote.textContent = review
+                ? 'The command outcome needs an administrator to check the physical court and release the reservation. Do not switch on again. Billing is frozen.'
+                : stopping ? (!state.worker_seen_at || now - state.worker_seen_at >= 15
+                    ? 'Switch-off is waiting for the safety worker, which is not reporting. Billing is frozen. Contact an administrator and check the physical court.'
+                    : 'Switch-off has been requested. Billing is frozen while the safety worker confirms OFF. Check that the court lights are physically off.')
+                : attention ? 'The light status is unconfirmed. Check the physical court and contact an administrator.'
+                : confirming ? (!state.worker_seen_at || now - state.worker_seen_at >= 15
+                    ? 'Switch-on is waiting for the safety worker, which is not reporting. No ON confirmation has been received. Contact an administrator.'
+                    : 'Billing starts only after the worker and Shelly confirm ON and the safety timer.')
+                : 'The server keeps counting if you close this page. The displayed balance is an estimate between updates.';
         }
         document.getElementById('wallet-balance').textContent = money(estimate);
         for (const court of state.courts) {

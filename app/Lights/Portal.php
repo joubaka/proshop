@@ -295,6 +295,7 @@ class Portal
                     'charged_cents' => $customer->charged_cents, 'started_at' => $customer->started_at,
                     'deadline_at' => $customer->deadline_at, 'control_state' => $customer->state,
                     'billing_started' => $customer->started_at !== null, 'uncertain' => (bool) $customer->uncertain,
+                    'stop_requested_at' => $customer->stop_requested_at,
                 ]);
             }
             $lastStartFailure = $customerControl && $this->db()->getSchemaBuilder()->hasColumn('lights_control_sessions', 'court_id')

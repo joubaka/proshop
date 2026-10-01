@@ -78,7 +78,7 @@ class LightsPortalTest extends RegressionTestCase
 
         $this->get('/lights/login')->assertOk()
             ->assertSee('/lights-assets/portal.css?v=15', false)
-            ->assertSee('/lights-assets/portal.js?v=12', false);
+            ->assertSee('/lights-assets/portal.js?v=13', false);
         $this->credit($this->player);
         $this->portal->start($this->player->id, 1);
         $this->actingAs($this->player, 'lights')->get('/lights')->assertOk()

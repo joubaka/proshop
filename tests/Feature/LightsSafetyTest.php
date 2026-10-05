@@ -46,6 +46,46 @@ class LightsSafetyTest extends RegressionTestCase
     {
         return $this->safety->start($this->admin->id, $channel, $key ?? (string) Str::uuid(), 6000, 'rehearsal');
     }
+    public function test_diagnostics_capture_lifecycle_and_transport_without_private_payloads(): void
+    {
+        $entries = [];
+        $logger = \Mockery::mock(\Psr\Log\LoggerInterface::class);
+        $logger->shouldReceive('log')->andReturnUsing(function ($level, $event, $context) use (&$entries) {
+            $entries[] = compact('level', 'event', 'context');
+        });
+        \Illuminate\Support\Facades\Log::shouldReceive('channel')->with('lights')->andReturn($logger);
+        $id = $this->start();
+        $driver = $this->driver();
+        $this->safety->tick($driver);
+        $this->safety->stop($this->admin->id, $id);
+        $driver->failOff = true;
+        $this->safety->tick($driver);
+        $this->assertSame('review', $this->controlSession($id)->state);
+        $this->assertContains('Lights session: on_timer_confirmed', array_column($entries, 'event'));
+        $this->assertContains('Lights session: uncertain', array_column($entries, 'event'));
+        $client = new CloudControl('private-test-key', function () {
+            throw new \RuntimeException('auth_key=private-test-key private-provider-body');
+        });
+        try { $client->off(0); } catch (\RuntimeException) {}
+        $encoded = json_encode($entries);
+        $this->assertStringContainsString('switch', $encoded);
+        $this->assertStringNotContainsString('private-test-key', $encoded);
+        $this->assertStringNotContainsString('private-provider-body', $encoded);
+        $this->assertStringNotContainsString('sensitive-provider-detail', $encoded);
+    }
+    public function test_logging_failure_does_not_prevent_switching_or_safety_review(): void
+    {
+        \Illuminate\Support\Facades\Log::shouldReceive('channel')->with('lights')->andThrow(new \RuntimeException('Log unavailable'));
+        $id = $this->start();
+        $driver = $this->driver();
+        $this->safety->tick($driver);
+        $this->assertSame('running', $this->controlSession($id)->state);
+        $this->safety->stop($this->admin->id, $id);
+        $driver->failOff = true;
+        $this->safety->tick($driver);
+        $this->assertSame('review', $this->controlSession($id)->state);
+        $this->assertSame(1, $driver->offs);
+    }
     private function controlSession(string $id): object { return $this->portal->db()->table('lights_control_sessions')->find($id); }
     private function driver(): RelayDriver
     {

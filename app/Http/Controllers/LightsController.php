@@ -134,7 +134,7 @@ class LightsController extends Controller
                     'member_id' => $this->member()->id,
                     'court_id' => $court,
                     'exception' => $error::class,
-                    'message' => $error->getMessage(),
+                    'reason' => 'Request failed before completion; private exception text omitted.',
                 ]);
             } catch (\Throwable) {
                 // Logging must never replace the original control failure.

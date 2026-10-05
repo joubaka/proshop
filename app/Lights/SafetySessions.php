@@ -26,9 +26,22 @@ class SafetySessions
     {
         abort_unless($this->db()->table('lights_users')->where('id', $actor)->where('is_admin', true)->where('active', true)->exists(), 403);
     }
-    private function fail(string $message): never { throw ValidationException::withMessages(['lights' => $message]); }
+    private function fail(string $message): never
+    {
+        Diagnostics::write('Lights request rejected.', ['reason' => $message]);
+        throw ValidationException::withMessages(['lights' => $message]);
+    }
     private function event(string $kind, object $session, ?int $actor = null): void
     {
+        $current = $this->db()->table('lights_control_sessions')->find($session->id) ?? $session;
+        Diagnostics::write('Lights session: '.$kind, [
+            'session_id' => $session->id, 'court_id' => $current->court_id ?? null,
+            'channel' => (int) $session->channel, 'driver' => $session->driver,
+            'previous_state' => $session->state, 'state' => $current->state,
+            'uncertain' => (bool) $current->uncertain,
+            'command_at' => $current->command_at, 'deadline_at' => $current->deadline_at,
+            'stop_requested_at' => $current->stop_requested_at,
+        ]);
         $this->db()->table('lights_events')->insert(['actor_id' => $actor, 'kind' => 'control_'.$kind,
             'details' => json_encode(['session' => $session->id, 'channel' => (int) $session->channel, 'driver' => $session->driver]), 'created_at' => $this->now()]);
     }
@@ -105,6 +118,7 @@ class SafetySessions
     }
     private function startCustomerSession(int $user, int $courtId, string $key, int $quotedRate, bool $adopt, ?int $actor = null): string
     {
+        Diagnostics::write('Lights customer start requested.', ['court_id' => $courtId, 'adoption' => $adopt]);
         $acceptance = app()->environment('acceptance');
         abort_unless(config('lights.control.live_enabled') && config('lights.control.customer_enabled')
             && ($acceptance || (config('lights.mode') === 'live' && app()->environment(['production', 'staging']))),
@@ -189,6 +203,7 @@ class SafetySessions
     }
     public function stopCustomer(int $user, string $id): void
     {
+        Diagnostics::write('Lights customer stop requested.', ['session_id' => $id]);
         $this->lock(function () use ($user, $id) {
             $s = $this->db()->table('lights_control_sessions')->where('id', $id)->where('user_id', $user)
                 ->whereIn('driver', ['customer_cloud', 'cloud_customer'])->firstOrFail();
@@ -291,6 +306,10 @@ class SafetySessions
                         $requiresReview = $s->uncertain || $s->driver === 'cloud'
                             || ($s->driver === 'cloud_customer' && config('lights.control.local_approval_required'));
                         if ($requiresReview) {
+                            Diagnostics::write('Lights safety review required after OFF acknowledgement.', [
+                                'session_id' => $s->id, 'channel' => (int) $s->channel, 'state' => 'review',
+                                'reason' => $s->uncertain ? 'Earlier command outcome was uncertain.' : 'Supervised control requires physical OFF confirmation.',
+                            ]);
                             $this->db()->table('lights_control_sessions')->where('id', $s->id)->update(['state' => 'review', 'stopped_at' => $this->now(),
                                 'note' => 'OFF acknowledged. Confirm the physical court is off before releasing its reservation.']);
                         } else { $this->complete($s); }
@@ -324,18 +343,14 @@ class SafetySessions
     }
     private function logControlFailure(string $message, object $session, \Throwable $error): void
     {
-        try {
-            \Illuminate\Support\Facades\Log::channel('lights')->error($message, [
+            Diagnostics::write($message, [
                 'session_id' => $session->id,
                 'court_id' => $session->court_id ?? null,
                 'channel' => (int) $session->channel,
                 'state' => $session->state,
                 'exception' => $error::class,
-                'message' => $error->getMessage(),
-            ]);
-        } catch (\Throwable) {
-            // Safety processing must continue even if the log destination is unavailable.
-        }
+                'reason' => 'Command failed; see preceding Shelly request/status entries for transport evidence.',
+            ], $error);
     }
     private function complete(object $s): void
     {

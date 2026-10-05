@@ -16,11 +16,21 @@ class TickLights extends Command
     public function handle(Portal $portal, SafetySessions $safety, ManualSwitches $manual, StatusSynchronizer $status): int
     {
         if (!$portal->enabled()) { return self::SUCCESS; }
-        $portal->tick(true);
-        $safety->tick();
-        $manual->enforceMidnightCutoff();
-        $manual->tick();
-        $status->refreshIfDue();
+        $stage = 'accounting';
+        try {
+            $portal->tick(true);
+            $stage = 'session_control';
+            $safety->tick();
+            $stage = 'midnight_cutoff';
+            $manual->enforceMidnightCutoff();
+            $stage = 'manual_control';
+            $manual->tick();
+            $stage = 'status_refresh';
+            $status->refreshIfDue();
+        } catch (\Throwable $error) {
+            \App\Lights\Diagnostics::write('Lights worker failed.', ['stage' => $stage], $error);
+            throw $error;
+        }
         return self::SUCCESS;
     }
 }

@@ -47,7 +47,8 @@ class StatusSynchronizer
             $this->status->record($report);
             $this->manual->reconcileConfirmedOff($report);
             $this->sessions->reconcileConfirmedOff($report);
-        } catch (\Throwable) {
+        } catch (\Throwable $error) {
+            \App\Lights\Diagnostics::write('Lights background status refresh failed; last known status retained.', [], $error);
             // Preserve the last known status. Staleness is visible in the portal and monitoring.
         }
     }

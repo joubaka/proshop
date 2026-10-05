@@ -62,6 +62,8 @@ class ManualSwitches
                 'created_at' => $now,
             ]);
 
+            Diagnostics::write('Lights manual command queued.', ['command_id' => $id, 'channel' => $channel,
+                'action' => $action, 'duration_seconds' => $seconds]);
             return $this->db()->table('lights_manual_commands')->find($id);
         }, 3);
     }
@@ -163,12 +165,15 @@ class ManualSwitches
     {
         if (!$this->db()->getSchemaBuilder()->hasTable('lights_manual_commands')) { return; }
         $now = $this->portal->now();
-        $this->db()->table('lights_manual_commands')->where('state', 'sending')
+        $interrupted = $this->db()->table('lights_manual_commands')->where('state', 'sending')
             ->where('command_at', '<', $now - 40)->update([
                 'state' => 'uncertain',
                 'note' => 'The command worker was interrupted. Check the court; ON is never replayed automatically.',
                 'completed_at' => $now,
             ]);
+        if ($interrupted) {
+            Diagnostics::write('Lights manual worker interrupted; check physical courts; ON never replayed.', ['state' => 'review', 'commands' => $interrupted]);
+        }
 
         $command = $this->db()->transaction(function () use ($now) {
             $this->db()->table('lights_locks')->where('id', 1)->lockForUpdate()->firstOrFail();
@@ -195,6 +200,8 @@ class ManualSwitches
             return $this->db()->table('lights_manual_commands')->find($queued->id);
         }, 3);
         if (!$command) { return; }
+        Diagnostics::write('Lights manual command dispatch.', ['command_id' => $command->id,
+            'channel' => (int) $command->channel, 'action' => $command->action, 'duration_seconds' => $command->duration_seconds]);
 
         try {
             if (app()->environment(['production', 'staging']) && config('lights.control.customer_enabled')) {
@@ -209,15 +216,19 @@ class ManualSwitches
             $note = $command->action === 'on'
                 ? 'Shelly acknowledged ON with a '.(int) $command->duration_seconds.'-second automatic cutoff.'
                 : 'Shelly acknowledged OFF and reported the channel off.';
-        } catch (CommandNotSent) {
+        } catch (CommandNotSent $error) {
+            Diagnostics::write('Lights manual command rejected before switching.', ['command_id' => $command->id, 'channel' => (int) $command->channel], $error);
             $status = 'rejected';
             $note = 'Shelly preflight rejected ON. No switching command was sent; refresh live status before retrying.';
-        } catch (\Throwable) {
+        } catch (\Throwable $error) {
+            Diagnostics::write('Lights manual command outcome uncertain.', ['command_id' => $command->id, 'channel' => (int) $command->channel], $error);
             $status = 'uncertain';
             $note = 'Command outcome is uncertain. Check the court before sending another ON command.';
         }
 
         $completedAt = $this->portal->now();
+        Diagnostics::write('Lights manual command result.', ['command_id' => $command->id,
+            'channel' => (int) $command->channel, 'action' => $command->action, 'state' => $status, 'reason' => $note]);
         $this->db()->table('lights_manual_commands')->where('id', $command->id)->where('state', 'sending')
             ->update(['state' => $status, 'note' => $note, 'completed_at' => $completedAt]);
         $this->db()->table('lights_events')->insert([

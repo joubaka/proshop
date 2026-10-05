@@ -19,21 +19,28 @@ class CloudStatus
                 ? ($this->transport)($body, $secret)
                 : $this->request($body, $secret);
         } catch (ConnectionFailure $error) {
+            \App\Lights\Diagnostics::write('Shelly status transport failed.', ['curl_errno' => $error->getCode(), 'reason' => $error->getMessage()], $error);
             // Our own fixed numeric-code mapping is safe; discard the exception chain.
             throw new RuntimeException($error->getMessage());
-        } catch (\Throwable) {
+        } catch (\Throwable $error) {
+            \App\Lights\Diagnostics::write('Shelly status transport failed.', [], $error);
             // Never propagate transport errors: URLs may contain the authorization key.
             throw new RuntimeException('Shelly could not be reached securely. No switching command was sent.');
         }
+        \App\Lights\Diagnostics::write('Shelly status HTTP response.', ['http_status' => $code]);
         if (in_array($code, [401, 403], true)) { throw new RuntimeException('Shelly rejected the key. Check the key and cloud server in the Shelly app.'); }
         if ($code === 429) { throw new RuntimeException('Shelly rate limit reached. Wait before checking again.'); }
         if ($code !== 200) { throw new RuntimeException('Shelly did not return a successful status response.'); }
         $data = json_decode($raw, true);
-        if (!is_array($data) || !array_is_list($data) || count($data) !== 1) { throw new RuntimeException('Unexpected Shelly status response.'); }
+        if (!is_array($data) || !array_is_list($data) || count($data) !== 1) {
+            \App\Lights\Diagnostics::write('Shelly status rejected: unexpected response structure.', ['state' => 'review']);
+            throw new RuntimeException('Unexpected Shelly status response.');
+        }
         $device = $data[0];
         if (!is_array($device) || ($device['id'] ?? null) !== PrivateSettings::DEVICE
             || ($device['code'] ?? null) !== 'SPSW-202PE12UL' || ($device['gen'] ?? null) !== 'G2'
             || !in_array($device['online'] ?? null, [0, 1], true)) {
+            \App\Lights\Diagnostics::write('Shelly status rejected: device identity, model or online field mismatch.', ['state' => 'review']);
             throw new RuntimeException('Device identity or model did not match the confirmed Shelly Pro 2 PM.');
         }
         $channels = [];

@@ -493,6 +493,81 @@ class LightsSafetyTest extends RegressionTestCase
         $this->assertSame(['id' => PrivateSettings::DEVICE, 'channel' => 1, 'on' => false], $calls[3][1]);
         $this->assertCount(5, $calls);
     }
+    public function test_slow_switch_acknowledgement_has_more_time_without_replaying_on(): void
+    {
+        $calls = []; $output = false; $clock = 0.0;
+        $client = new CloudControl('synthetic-test-key', function ($endpoint, $body, $timeoutMs) use (&$calls, &$output, &$clock) {
+            $calls[] = $endpoint;
+            if ($endpoint === '/set/switch') {
+                // A six-second provider acknowledgement exceeded the old four-second limit.
+                if ($timeoutMs < 6000) { throw new \RuntimeException('Timeout'); }
+                $clock += 6; $output = $body['on'];
+                return [200, ''];
+            }
+            return [200, json_encode([['id' => PrivateSettings::DEVICE, 'code' => 'SPSW-202PE12UL', 'gen' => 'G2', 'online' => 1,
+                'status' => ['switch:0' => ['output' => $output, 'timer_duration' => 60, 'timer_started_at' => now()->timestamp]]]])];
+        }, function () use (&$clock) { return $clock; });
+        $this->assertTrue($client->on(0, 60)['output']);
+        $this->assertSame(['/get', '/set/switch', '/get'], $calls);
+    }
+    public function test_lost_off_acknowledgement_is_resolved_by_healthy_status_without_resending(): void
+    {
+        $calls = [];
+        $client = new CloudControl('synthetic-test-key', function ($endpoint) use (&$calls) {
+            $calls[] = $endpoint;
+            if ($endpoint === '/set/switch') { throw new \RuntimeException('Lost acknowledgement'); }
+            return [200, json_encode([['id' => PrivateSettings::DEVICE, 'code' => 'SPSW-202PE12UL', 'gen' => 'G2', 'online' => 1,
+                'status' => ['switch:0' => ['output' => false]]]])];
+        });
+        $client->off(0);
+        $this->assertSame(['/set/switch', '/get'], $calls);
+    }
+    public function test_offline_cached_off_status_cannot_resolve_a_lost_off_acknowledgement(): void
+    {
+        $calls = [];
+        $client = new CloudControl('synthetic-test-key', function ($endpoint) use (&$calls) {
+            $calls[] = $endpoint;
+            if ($endpoint === '/set/switch') { throw new \RuntimeException('Timeout'); }
+            return [200, json_encode([['id' => PrivateSettings::DEVICE, 'code' => 'SPSW-202PE12UL', 'gen' => 'G2', 'online' => 0,
+                'status' => ['switch:0' => ['output' => false]]]])];
+        });
+        try { $client->off(0); $this->fail('Offline status accepted as OFF evidence'); }
+        catch (\RuntimeException $error) { $this->assertSame('OFF status could not be confirmed.', $error->getMessage()); }
+        $this->assertSame(1, count(array_filter($calls, fn ($endpoint) => $endpoint === '/set/switch')));
+    }
+    public function test_control_operation_budget_stops_network_calls_before_interrupted_window(): void
+    {
+        $calls = []; $clock = 0.0;
+        $client = new CloudControl('synthetic-test-key', function ($endpoint) use (&$calls, &$clock) {
+            $calls[] = $endpoint; $clock += 25;
+            throw new \RuntimeException('Timeout');
+        }, function () use (&$clock) { return $clock; });
+        try { $client->off(0); $this->fail('Exhausted budget accepted'); } catch (\RuntimeException) {}
+        $this->assertSame(['/set/switch'], $calls);
+    }
+    public function test_lost_on_acknowledgement_never_replays_on_or_starts_billing(): void
+    {
+        $calls = [];
+        $client = new CloudControl('synthetic-test-key', function ($endpoint) use (&$calls) {
+            $calls[] = $endpoint;
+            if ($endpoint === '/set/switch') { throw new \RuntimeException('Timeout'); }
+            return [200, json_encode([['id' => PrivateSettings::DEVICE, 'code' => 'SPSW-202PE12UL', 'gen' => 'G2', 'online' => 1,
+                'status' => ['switch:0' => ['output' => false]]]])];
+        });
+        $driver = new class($client) implements RelayDriver {
+            public function __construct(private CloudControl $client) {}
+            public function on(object $s): array { return $this->client->on((int) $s->channel, (int) $s->duration_seconds); }
+            public function adopt(object $s): array { return $this->on($s); }
+            public function off(object $s): void { $this->client->off((int) $s->channel); }
+        };
+        $id = $this->start();
+        $this->safety->tick($driver);
+        $session = $this->controlSession($id);
+        $this->assertTrue((bool) $session->uncertain);
+        $this->assertNull($session->started_at);
+        $this->assertSame(0, (int) $session->charged_cents);
+        $this->assertSame(['/get', '/set/switch'], $calls);
+    }
     public function test_cloud_preflight_unknown_output_sends_no_switch_command(): void
     {
         $calls = [];

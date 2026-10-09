@@ -10,6 +10,8 @@ The review must identify a supplier, location and product variation for every li
 
 Confirmed supplier codes/descriptions and pack sizes are retained as supplier-specific mappings for later invoices.
 
+The review shows an attention summary and reasons beside each affected item: unreadable values, uncertain product matches, unconfirmed pack sizes, changed purchase costs and inconsistent totals. Use **Show only items needing attention** to focus the review; all items remain available by clearing the filter. The warnings describe the saved scan and refresh when the review is saved. Editing a saved review disables receiving until the changes are saved again. Processing and posted scans cannot be edited on the review screen.
+
 ## Production configuration
 
 Set these only in the server environment, never in source control:

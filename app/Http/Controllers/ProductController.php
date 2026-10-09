@@ -204,6 +204,9 @@ class ProductController extends Controller
                         if (auth()->user()->can('product.update')) {
                             $html .=
                             '<li><a href="' . action('App\Http\Controllers\ProductController@edit', [$row->id]) . '"><i class="glyphicon glyphicon-edit"></i> ' . __("messages.edit") . '</a></li>';
+                            if (in_array($row->type, ['single', 'variable', 'combo'], true)) {
+                                $html .= '<li><a href="'.route('products.barcode.edit', $row->id).'"><i class="fa fa-barcode"></i> Update barcode</a></li>';
+                            }
                         }
 
                         if (auth()->user()->can('product.delete')) {

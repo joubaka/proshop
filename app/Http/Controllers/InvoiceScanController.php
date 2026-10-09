@@ -125,7 +125,8 @@ class InvoiceScanController extends Controller
                 $remaining = max(0, (float) $line->quantity - (float) $line->po_quantity_purchased);
                 return [$line->id => ($line->transaction->ref_no ?: '#'.$line->transaction_id).' · '.$line->product->name.' · remaining '.$remaining];
             });
-        return view('invoice_scans.show', compact('scan', 'suppliers', 'locations', 'purchaseOrderLines'));
+        $review = app(\App\InvoiceScanning\InvoiceReview::class)->issues($scan);
+        return view('invoice_scans.show', compact('scan', 'suppliers', 'locations', 'purchaseOrderLines', 'review'));
     }
 
     public function process(Request $request, string $uuid)

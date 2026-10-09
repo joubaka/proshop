@@ -1,5 +1,11 @@
 # Inventory control and purchasing workflow
 
+## Quick barcode updates
+
+Open **Products > List products > Actions > Update barcode**, or use **Scan / update barcode** from the product edit screen. Select the variation when applicable, then scan into **Scan replacement barcode**. Scanners that send Enter save immediately; typed codes can be saved with **Save barcode**. This workflow uses the existing `product.update` permission and checks business and permitted product locations on both read and write.
+
+Leading zeros are retained. Single-product updates keep the product SKU and variation barcode together; variable-product updates change only the selected variation barcode. Barcode labels use Code 128. Duplicate product/variation codes and stale edits are rejected. Changes record the actor and previous/new identifiers in the activity log, without changing stock or prices. If a save cannot be confirmed, reload to inspect the current barcode before retrying.
+
 ## End-to-end operating routine
 
 1. Open **Purchases > Stock control**, choose a location and sales window, and recalculate.

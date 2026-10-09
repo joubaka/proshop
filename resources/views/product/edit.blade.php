@@ -6,6 +6,9 @@
 <!-- Content Header (Page header) -->
 <section class="content-header">
     <h1>@lang('product.edit_product')</h1>
+    @if(in_array($product->type, ['single', 'variable', 'combo'], true))
+        <a class="btn btn-primary" style="min-height:44px" href="{{ route('products.barcode.edit', $product->id) }}"><i class="fa fa-barcode"></i> Scan / update barcode</a>
+    @endif
     <!-- <ol class="breadcrumb">
         <li><a href="#"><i class="fa fa-dashboard"></i> Level</a></li>
         <li class="active">Here</li>

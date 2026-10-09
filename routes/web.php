@@ -92,6 +92,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
 
     Route::resource('variation-templates', \App\Http\Controllers\VariationTemplateController::class);
 
+    Route::get('/products/{product}/barcode', [\App\Http\Controllers\ProductBarcodeController::class, 'edit'])->name('products.barcode.edit');
+    Route::put('/products/{product}/barcode', [\App\Http\Controllers\ProductBarcodeController::class, 'update'])->name('products.barcode.update');
     Route::get('/products/stock-history/{id}', 'App\Http\Controllers\ProductController@productStockHistory');
     Route::delete('/delete-media/{media_id}', 'App\Http\Controllers\ProductController@deleteMedia');
     Route::post('/products/mass-deactivate', 'App\Http\Controllers\ProductController@massDeactivate');

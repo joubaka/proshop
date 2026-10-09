@@ -2,11 +2,15 @@
 @section('title', 'Scan supplier invoices')
 
 @section('content')
+<style>
+#invoice_photo, #invoice_documents { min-height:44px; height:auto; }
+</style>
 <section class="content-header">
     <h1><i class="fas fa-camera"></i> Scan supplier invoices</h1>
 </section>
 
 <section class="content">
+    <p>Photograph a stock slip, review the filled-in purchase details and resolve highlighted issues. Stock is received only after your final approval.</p>
     @if($errors->any())
         <div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
     @endif
@@ -26,9 +30,12 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="invoice_documents">Photograph or upload invoice *</label>
-                            <input id="invoice_documents" type="file" name="documents[]" class="form-control" accept="image/jpeg,image/png,application/pdf" capture="environment" multiple required>
+                            <label for="invoice_photo">Take a photo of the slip</label>
+                            <input id="invoice_photo" type="file" name="documents[]" class="form-control" accept="image/jpeg,image/png" capture="environment">
+                            <label for="invoice_documents">Or choose photos / a PDF</label>
+                            <input id="invoice_documents" type="file" name="documents[]" class="form-control" accept="image/jpeg,image/png,application/pdf" multiple>
                             <p class="help-block">Use a clear, straight photo in good light. You can select multiple pages or one PDF.</p>
+                            <p id="scan-upload-status" class="help-block" role="status"></p>
                         </div>
                         @unless(config('invoice_scanning.enabled'))
                             <div class="alert alert-warning">Scanning is not enabled on this server yet. Uploads will be stored safely and can be processed after configuration.</div>
@@ -67,4 +74,21 @@
         </div>
     </div>
 </section>
+@endsection
+@section('javascript')
+<script>
+$('#invoice_photo, #invoice_documents').on('change', function () {
+    var count = $('#invoice_photo')[0].files.length + $('#invoice_documents')[0].files.length;
+    $('#scan-upload-status').text(count ? count + ' page(s) selected for scanning.' : 'Choose a photo or PDF to scan.');
+});
+$('#invoice_photo').closest('form').on('submit', function (event) {
+    if (!$('#invoice_photo')[0].files.length && !$('#invoice_documents')[0].files.length) {
+        event.preventDefault();
+        $('#scan-upload-status').text('Choose a photo or PDF to scan.');
+        $('#invoice_photo').trigger('focus');
+        return;
+    }
+    $(this).find('button[type="submit"]').prop('disabled', true).text('Uploading slip…');
+});
+</script>
 @endsection

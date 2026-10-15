@@ -49,11 +49,14 @@
             const seconds = billing ? Math.max(0, session.deadline_at - now) : null;
             const progress = confirmationProgress(session.control_state);
             const review = session.control_state === 'review';
+            const recoverySeconds = review && session.recovery_check_after != null
+                ? Math.max(0, Math.ceil(session.recovery_check_after - now)) : 0;
+            const recoveryCurrent = connected && age <= 15;
             const stopping = !review && (session.control_state === 'stopping' || session.stop_requested_at != null);
             const attention = review || session.uncertain;
             const confirming = !stopping && !attention && ['reserved', 'starting'].includes(session.control_state);
-            panel.querySelector('.session-time-label').textContent = attention || stopping ? 'Control status' : billing ? 'Time remaining' : 'Confirmation';
-            panel.querySelector('.session-remaining').textContent = review ? 'Check court' : stopping ? 'Awaiting OFF' : attention ? 'Unconfirmed' : billing ? Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0') : progress + '%';
+            panel.querySelector('.session-time-label').textContent = review ? 'Safety check' : attention || stopping ? 'Control status' : billing ? 'Time remaining' : 'Confirmation';
+            panel.querySelector('.session-remaining').textContent = review ? (!recoveryCurrent ? 'Reconnecting…' : recoverySeconds > 0 ? recoverySeconds + 's' : 'Checking OFF…') : stopping ? 'Awaiting OFF' : attention ? 'Unconfirmed' : billing ? Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0') : progress + '%';
             const progressPanel = panel.querySelector('.session-progress');
             if (progressPanel) {
                 progressPanel.hidden = !confirming;
@@ -61,7 +64,7 @@
             }
             panel.querySelector('.session-court').textContent = state.courts.find(c => c.id === session.court_id)?.name || 'Court';
             const heading = panel.querySelector('.session-heading');
-            if (heading) heading.innerHTML = review ? '<span class="live-dot warning"></span>Safety review required'
+            if (heading) heading.innerHTML = review ? '<span class="live-dot warning"></span>Checking lights are off'
                 : stopping ? '<span class="live-dot warning"></span>Confirming lights are off'
                 : attention ? '<span class="live-dot warning"></span>Status needs attention'
                 : ['reserved', 'starting'].includes(session.control_state)
@@ -73,11 +76,17 @@
             if (stopButton) {
                 stopButton.disabled = stopPending;
                 stopButton.dataset.label ||= stopButton.textContent;
-                stopButton.textContent = review ? 'Awaiting administrator review' : stopPending ? 'Awaiting OFF confirmation…' : stopButton.dataset.label;
+                stopButton.textContent = review ? 'Waiting for safe recovery…' : stopPending ? 'Awaiting OFF confirmation…' : stopButton.dataset.label;
             }
             const statusNote = panel.querySelector('.session-status-note');
             if (statusNote) statusNote.textContent = review
-                ? 'The command outcome needs an administrator to check the physical court and release the reservation. Do not switch on again. Billing is frozen.'
+                ? (!recoveryCurrent
+                    ? 'Reconnecting to update the safety check. Billing is frozen. The court stays reserved until Shelly confirms OFF.'
+                    : !state.worker_seen_at || now - state.worker_seen_at >= 15
+                        ? 'Automatic recovery is delayed because the safety worker is not reporting. Billing is frozen. Contact venue support if this continues.'
+                        : recoverySeconds > 0
+                            ? 'Billing is frozen. The safety window ends in ' + recoverySeconds + ' seconds. We will then check Shelly; the court becomes available automatically once it confirms OFF with no faults.'
+                            : 'Billing is frozen. Waiting for Shelly to reconnect and confirm OFF with no faults. The court will then become available automatically. Contact venue support if this continues.')
                 : stopping ? (!state.worker_seen_at || now - state.worker_seen_at >= 15
                     ? 'Switch-off is waiting for the safety worker, which is not reporting. Billing is frozen. Contact an administrator and check the physical court.'
                     : 'Switch-off has been requested. Billing is frozen while the safety worker confirms OFF. Check that the court lights are physically off.')

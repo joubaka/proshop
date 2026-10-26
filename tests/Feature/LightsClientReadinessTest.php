@@ -25,6 +25,18 @@ class LightsClientReadinessTest extends RegressionTestCase
         DB::purge('lights');
         foreach (glob(database_path('migrations/lights/*.php')) as $file) { (require $file)->up(); }
         $this->portal = app(Portal::class);
+        // Every status request in this suite is simulated; never contact a real controller.
+        $report = function () {
+            $channels = [];
+            foreach ([0, 1] as $channel) {
+                $row = $this->portal->db()->table('lights_hardware_status')->where('channel', $channel)->first();
+                $channels[] = ['channel' => $channel, 'output' => (bool) ($row->output ?? false), 'has_errors' => false];
+            }
+            return ['online' => true, 'checked_at' => time(), 'channels' => $channels];
+        };
+        config(['lights.shelly.auth_key' => 'fake-test-key-for-status-only']);
+        $this->mock(\App\Lights\Shelly\CloudStatus::class)->shouldReceive('check')->andReturnUsing($report);
+        $this->mock(\App\Lights\Shelly\Probe::class)->shouldReceive('run')->andReturnUsing($report);
         $this->admin = Member::create(['name' => 'Admin', 'email' => 'admin@test.test', 'password' => bcrypt('TestPassword!2026')]);
         $this->admin->forceFill(['is_admin' => true, 'email_verified_at' => time(), 'terms_accepted_at' => time()])->save();
         $this->member = Member::create(['name' => 'Member', 'email' => 'member@test.test', 'password' => bcrypt('TestPassword!2026')]);
@@ -277,6 +289,67 @@ class LightsClientReadinessTest extends RegressionTestCase
 
         $this->assertSame(0, $this->portal->db()->table('lights_topups')->count());
         $this->assertSame(0, $this->portal->db()->table('lights_sessions')->count());
+    }
+
+    public function test_connection_failures_do_not_reserve_or_charge_and_a_safe_retry_is_idempotent(): void
+    {
+        $this->app['env'] = 'production';
+        config(['lights.mode' => 'live', 'lights.control.live_enabled' => true, 'lights.control.customer_enabled' => true]);
+        $this->member->forceFill(['email_verified_at' => time(), 'balance_cents' => 1000])->save();
+        $this->portal->db()->table('lights_worker')->insert(['id' => 1, 'seen_at' => $this->portal->now()]);
+        $this->actingAs($this->member, 'lights');
+        $key = (string) Str::uuid();
+        $payload = ['_token' => 'connection-csrf', 'request_key' => $key, 'quoted_rate_cents' => 6000];
+        $good = ['online' => true, 'checked_at' => time(),
+            'channels' => [['channel' => 0, 'output' => false, 'has_errors' => false]]];
+        foreach ([null, array_replace($good, ['online' => false]),
+            array_replace($good, ['checked_at' => time() - 60]),
+            array_replace($good, ['channels' => []]),
+            array_replace($good, ['channels' => [['channel' => 0, 'output' => false, 'has_errors' => true]]]),
+            array_replace($good, ['channels' => [['channel' => 0, 'output' => true, 'has_errors' => false]]]),
+        ] as $report) {
+            $status = $this->mock(\App\Lights\Shelly\CloudStatus::class);
+            $status->shouldReceive('check')->once()->andReturnUsing(function () use ($report) {
+                $this->assertSame(0, $this->portal->db()->transactionLevel());
+                if ($report === null) { throw new \RuntimeException('private-provider-error'); }
+                return $report;
+            });
+            $response = $this->withSession(['_token' => 'connection-csrf'])->postJson(route('lights.start', 1), $payload);
+            $response->assertUnprocessable()->assertJsonValidationErrors('lights')->assertDontSee('private-provider-error');
+            $this->assertStringContainsString('No session was started.', $response->json('errors.lights.0'));
+            if ($report === null || !($report['online'] ?? false)) {
+                $this->assertStringContainsString('power, Wi-Fi and internet', $response->json('errors.lights.0'));
+            }
+            $this->assertSame(0, $this->portal->db()->table('lights_control_sessions')->count());
+            $this->assertSame(0, $this->portal->db()->table('lights_events')->where('kind', 'control_customer_reserved')->count());
+            $this->assertSame(1000, $this->member->fresh()->balance_cents);
+        }
+        $this->mock(\App\Lights\Shelly\CloudStatus::class)->shouldReceive('check')->once()->andReturn($good);
+        $first = $this->withSession(['_token' => 'connection-csrf'])->postJson(route('lights.start', 1), $payload)->assertOk();
+        $this->withSession(['_token' => 'connection-csrf'])->postJson(route('lights.start', 1), $payload)
+            ->assertOk()->assertJsonPath('session_id', $first->json('session_id'));
+        $this->assertSame(1, $this->portal->db()->table('lights_control_sessions')->count());
+        $this->assertNull($this->portal->db()->table('lights_control_sessions')->first()->started_at);
+        $this->assertSame(1000, $this->member->fresh()->balance_cents);
+    }
+
+    public function test_member_access_is_rechecked_after_the_read_only_connection_check(): void
+    {
+        $this->app['env'] = 'production';
+        config(['lights.mode' => 'live', 'lights.control.live_enabled' => true, 'lights.control.customer_enabled' => true]);
+        $this->member->forceFill(['email_verified_at' => time(), 'balance_cents' => 1000])->save();
+        $this->portal->db()->table('lights_worker')->insert(['id' => 1, 'seen_at' => $this->portal->now()]);
+        $this->mock(\App\Lights\Shelly\CloudStatus::class)->shouldReceive('check')->once()->andReturnUsing(function () {
+            $this->member->forceFill(['active' => false])->save();
+            return ['online' => true, 'checked_at' => time(),
+                'channels' => [['channel' => 0, 'output' => false, 'has_errors' => false]]];
+        });
+        $this->actingAs($this->member, 'lights');
+        $this->withSession(['_token' => 'race-csrf'])->postJson(route('lights.start', 1), [
+            '_token' => 'race-csrf', 'request_key' => (string) Str::uuid(), 'quoted_rate_cents' => 6000,
+        ])->assertForbidden();
+        $this->assertSame(0, $this->portal->db()->table('lights_control_sessions')->count());
+        $this->assertSame(1000, $this->member->fresh()->balance_cents);
     }
 
     public function test_explicit_local_customer_hardware_mode_does_not_require_repeated_pilot_arming(): void

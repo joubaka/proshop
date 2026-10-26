@@ -24,9 +24,18 @@ class StatusSynchronizer
         }
         if ($this->portal->db()->getSchemaBuilder()->hasTable('lights_control_sessions')
             && $this->portal->db()->table('lights_control_sessions')->whereNotNull('active_user_id')
-                ->whereIn('state', ['reserved', 'starting', 'running', 'stopping'])->exists()) {
+                ->where(function ($query) {
+                    $query->whereIn('state', ['reserved', 'starting', 'stopping'])
+                        ->orWhere(function ($running) {
+                            $running->where('state', 'running')->where(function ($pending) {
+                                $pending->whereNotNull('stop_requested_at')
+                                    ->orWhere('deadline_at', '<=', $this->portal->now());
+                            });
+                        });
+                })->exists()) {
             // Control confirmation has priority over background/read-only polling. Successful
-            // commands update HardwareStatus directly; review state can resume cloud polling.
+            // commands update HardwareStatus directly. A steady running court must not
+            // prevent another court from obtaining fresh OFF evidence for self-recovery.
             return;
         }
 
@@ -42,11 +51,12 @@ class StatusSynchronizer
             } elseif (config('lights.mode') === 'live' && app()->environment(['production', 'staging'])) {
                 $secret = config('lights.shelly.auth_key');
                 if (!is_string($secret) || !preg_match('/\A[A-Za-z0-9+\/_=.-]{16,4096}\z/D', $secret)) { return; }
-                $report = (new CloudStatus)->check($secret);
+                $report = app(CloudStatus::class)->check($secret);
             } else { return; }
             $this->status->record($report);
             $this->manual->reconcileConfirmedOff($report);
             $this->sessions->reconcileConfirmedOff($report);
+            $this->sessions->retryCustomerSafetyOff($report);
         } catch (\Throwable $error) {
             \App\Lights\Diagnostics::write('Lights background status refresh failed; last known status retained.', [], $error);
             // Preserve the last known status. Staleness is visible in the portal and monitoring.

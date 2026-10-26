@@ -92,6 +92,7 @@ class LightsSafetyTest extends RegressionTestCase
         return new class implements RelayDriver {
             public int $ons = 0; public int $offs = 0;
             public bool $failOn = false; public bool $failOff = false; public bool $badTimer = false; public bool $reject = false;
+            public float $timerClockOffset = 0;
             public ?\Closure $callback = null;
             public function on(object $s): array
             {
@@ -100,12 +101,42 @@ class LightsSafetyTest extends RegressionTestCase
                 if ($this->callback) { ($this->callback)(); }
                 if ($this->reject) { throw new CommandNotSent(); }
                 if ($this->failOn) { throw new \RuntimeException('sensitive-provider-detail'); }
-                return ['output' => true, 'timer_started_at' => now()->getTimestamp(), 'timer_duration' => $this->badTimer ? 999 : $s->duration_seconds];
+                return ['output' => true, 'timer_started_at' => now()->getTimestamp() + $this->timerClockOffset, 'timer_duration' => $this->badTimer ? 999 : $s->duration_seconds];
             }
             public function adopt(object $s): array { return $this->on($s); }
             public function off(object $s): void { $this->offs++; if ($this->failOff) { throw new \RuntimeException('sensitive-provider-detail'); } }
         };
     }
+    public static function timerClockOffsets(): array
+    {
+        return [
+            'logged court 3 clock difference' => [0, 3.11, true],
+            'logged court 4 clock difference' => [1, 2.78, true],
+            'device slightly behind' => [0, -3.11, true],
+            'positive boundary' => [0, 10.0, true],
+            'negative boundary' => [0, -10.0, true],
+            'future timer outside allowance' => [0, 10.01, false],
+            'stale timer outside allowance' => [0, -10.01, false],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('timerClockOffsets')]
+    public function test_timer_clock_difference_is_bounded_without_replaying_on(int $channel, float $offset, bool $accepted): void
+    {
+        $id = $this->start($channel); $driver = $this->driver();
+        $driver->timerClockOffset = $offset;
+        $this->safety->tick($driver);
+        $session = $this->controlSession($id);
+        $this->assertSame(!$accepted, (bool) $session->uncertain);
+        $this->assertSame($accepted, $session->started_at !== null);
+        $this->assertSame($accepted, $session->stop_requested_at === null);
+        $this->assertSame(0, (int) $session->charged_cents);
+        $this->assertSame($accepted ? 1 : 0, $this->portal->db()->table('lights_events')->where('kind', 'control_on_timer_confirmed')->count());
+        $this->safety->tick($driver);
+        $this->assertSame(1, $driver->ons, 'ON must never be replayed.');
+        $this->assertSame($accepted ? 0 : 1, $driver->offs, 'Valid timer evidence must not trigger safety OFF.');
+    }
+
     public function test_rehearsal_confirms_timer_before_billing_and_stop_is_idempotent(): void
     {
         $id = $this->start(); $driver = $this->driver();
@@ -478,6 +509,69 @@ class LightsSafetyTest extends RegressionTestCase
             ->where('kind', 'control_status_confirmed_off_released')->count());
         $this->assertSame(0, $this->safety->reconcileConfirmedOff($report(false)));
     }
+    public function test_customer_recovery_retries_only_safety_off_and_releases_without_an_admin(): void
+    {
+        config(['lights.control.local_approval_required' => false]);
+        $id = $this->start(0); $driver = $this->driver();
+        $this->portal->db()->table('lights_control_sessions')->where('id', $id)->update(['driver' => 'customer_cloud']);
+        $this->safety->tick($driver);
+        $this->travel(12)->seconds();
+        $this->safety->stopCustomer($this->admin->id, $id);
+        $driver->failOff = true; $this->safety->tick($driver);
+        $charged = (int) $this->controlSession($id)->charged_cents;
+        $report = fn ($output) => ['online' => true, 'checked_at' => now()->timestamp,
+            'channels' => [['channel' => 0, 'output' => $output, 'has_errors' => false]]];
+        $this->assertSame(0, $this->safety->retryCustomerSafetyOff($report(true)));
+        $this->travel(30)->seconds();
+        $this->portal->db()->table('lights_control_sessions')->where('id', $id)->update(['driver' => 'cloud']);
+        $this->assertSame(0, $this->safety->retryCustomerSafetyOff($report(true)), 'Supervised pilots retain operator control.');
+        config(['lights.control.local_approval_required' => true]);
+        $this->portal->db()->table('lights_control_sessions')->where('id', $id)->update(['driver' => 'cloud_customer']);
+        $this->assertSame(0, $this->safety->retryCustomerSafetyOff($report(true)));
+        config(['lights.control.local_approval_required' => false]);
+        $this->portal->db()->table('lights_control_sessions')->where('id', $id)->update(['driver' => 'customer_cloud']);
+        $this->assertSame(0, $this->safety->retryCustomerSafetyOff(array_replace($report(true), ['online' => false])));
+        $this->assertSame(0, $this->safety->retryCustomerSafetyOff(array_replace($report(true), ['checked_at' => now()->timestamp - 16])));
+        $this->assertSame(0, $this->safety->retryCustomerSafetyOff(['online' => true, 'checked_at' => now()->timestamp,
+            'channels' => [['channel' => 0, 'output' => true, 'has_errors' => true]]]));
+        $this->assertSame(1, $this->safety->retryCustomerSafetyOff($report(true)));
+        $this->assertSame(0, $this->safety->retryCustomerSafetyOff($report(true)));
+        $driver->failOff = false; $this->safety->tick($driver);
+        $this->assertSame(1, $driver->ons);
+        $this->assertSame(2, $driver->offs);
+        $this->assertSame('review', $this->controlSession($id)->state);
+        $this->travel(30)->seconds();
+        $this->assertSame(0, $this->safety->reconcileConfirmedOff(array_replace($report(false), ['checked_at' => now()->timestamp + 60])));
+        $this->assertSame(1, $this->safety->reconcileConfirmedOff($report(false)));
+        $this->assertSame('completed', $this->controlSession($id)->state);
+        $this->assertNull($this->controlSession($id)->active_channel);
+        $this->assertSame($charged, (int) $this->controlSession($id)->charged_cents);
+        $this->assertSame(1, $this->portal->db()->table('lights_events')->where('kind', 'control_automatic_safety_off_requested')->count());
+    }
+
+    public function test_running_other_court_does_not_block_automatic_status_recovery(): void
+    {
+        $id = $this->start(0);
+        $other = $this->safety->start($this->other->id, 1, (string) Str::uuid(), 6000, 'rehearsal');
+        $driver = $this->driver(); $this->safety->tick($driver);
+        $this->safety->stop($this->admin->id, $id);
+        $driver->failOff = true; $this->safety->tick($driver);
+        $this->travel(30)->seconds();
+        $this->app['env'] = 'acceptance'; config(['lights.control.live_enabled' => true]);
+        $this->portal->tick(true);
+        $this->mock(Probe::class)->shouldReceive('run')->once()->andReturn([
+            'online' => true, 'checked_at' => now()->timestamp, 'channels' => [
+                ['channel' => 0, 'output' => false, 'has_errors' => false],
+                ['channel' => 1, 'output' => true, 'has_errors' => false],
+            ],
+        ]);
+        app(StatusSynchronizer::class)->refreshIfDue();
+        $this->assertSame('completed', $this->controlSession($id)->state);
+        $this->assertSame('running', $this->controlSession($other)->state);
+        $this->assertSame(2, $driver->ons);
+        $this->assertSame(1, $driver->offs);
+    }
+
     public function test_cloud_commands_use_exact_channel_timer_and_never_toggle_or_retry(): void
     {
         $calls = []; $output = false;

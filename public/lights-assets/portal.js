@@ -5,11 +5,12 @@
     const notice = document.getElementById('connection-notice');
     let state = initial ? JSON.parse(initial.textContent) : null, received = performance.now(), syncing = false, connected = true;
     const pendingActions = new Set();
+    let actionError = '';
     const money = cents => 'R ' + (Math.max(0, cents) / 100).toFixed(2);
     const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
     const confirmationProgress = state => ({ reserved: 25, starting: 70, running: 100 }[state] || 10);
     const confirmationLabel = progress => progress >= 100 ? 'Lights confirmed on.' : progress >= 70
-        ? 'Confirming the Shelly timer…' : progress >= 25 ? 'Court reserved. Waiting for the worker…' : 'Sending your request…';
+        ? 'Confirming the Shelly timer…' : progress >= 25 ? 'Court reserved. Waiting for the worker…' : 'Checking connection…';
     function updateConfirmationProgress(container, progress) {
         if (!container) return;
         const ring = container.querySelector('.confirmation-ring');
@@ -86,11 +87,11 @@
                         ? 'Automatic recovery is delayed because the safety worker is not reporting. Billing is frozen. Contact venue support if this continues.'
                         : recoverySeconds > 0
                             ? 'Billing is frozen. The safety window ends in ' + recoverySeconds + ' seconds. We will then check Shelly; the court becomes available automatically once it confirms OFF with no faults.'
-                            : 'Billing is frozen. Waiting for Shelly to reconnect and confirm OFF with no faults. The court will then become available automatically. Contact venue support if this continues.')
+                            : 'Billing is frozen. We are checking the connection and will reset this session automatically once Shelly confirms the lights are OFF with no faults. You can then try again.')
                 : stopping ? (!state.worker_seen_at || now - state.worker_seen_at >= 15
                     ? 'Switch-off is waiting for the safety worker, which is not reporting. Billing is frozen. Contact an administrator and check the physical court.'
                     : 'Switch-off has been requested. Billing is frozen while the safety worker confirms OFF. Check that the court lights are physically off.')
-                : attention ? 'The light status is unconfirmed. Check the physical court and contact an administrator.'
+                : attention ? 'Billing is frozen. Automatic safety recovery is in progress. We will check that the lights are OFF before resetting the session so you can try again.'
                 : confirming ? (!state.worker_seen_at || now - state.worker_seen_at >= 15
                     ? 'Switch-on is waiting for the safety worker, which is not reporting. No ON confirmation has been received. Contact an administrator.'
                     : 'Billing starts only after the worker and Shelly confirm ON and the safety timer.')
@@ -102,6 +103,7 @@
             if (!card) continue;
             const startPending = pendingActions.has('start:' + court.id) || court.pending_action === 'on';
             const stopPending = court.pending_action === 'off';
+            const checkingConnection = pendingActions.has('start:' + court.id) && !court.pending_action;
             const courtSession = sessions.find(session => session.court_id === court.id);
             const startProgress = courtSession ? confirmationProgress(courtSession.control_state)
                 : pendingActions.has('start:' + court.id) ? 10 : court.pending_action === 'on' ? 25 : 0;
@@ -110,7 +112,7 @@
             card.querySelector('.court-rate').textContent = money(court.rate_cents);
             const quotedRate = card.querySelector('[name=quoted_rate_cents]');
             if (quotedRate) quotedRate.value = court.rate_cents;
-            card.querySelector('.court-status').textContent = startPending ? 'Switching on…' : stopPending ? 'Switching off…' : !court.active ? 'Unavailable' : court.is_on ? 'Lights ON' : court.in_use ? 'In use' : !court.control_ready ? 'Temporarily offline' : 'Available';
+            card.querySelector('.court-status').textContent = checkingConnection ? 'Checking connection…' : startPending ? 'Switching on…' : stopPending ? 'Switching off…' : !court.active ? 'Unavailable' : court.is_on ? 'Lights ON' : court.in_use ? 'In use' : !court.control_ready ? 'Temporarily offline' : 'Available';
             const note = card.querySelector('.court-note');
             if (note) note.textContent = court.hardware_output === true
                 ? 'Cloud last reported this relay ON' + (court.hardware_stale ? ' — status is older than two minutes' : '')
@@ -123,7 +125,7 @@
             const start = card.querySelector('.court-start');
             if (!start) continue;
             const adopting = start.closest('form')?.dataset.actionKind === 'adopt';
-            start.textContent = startPending ? (adopting ? 'Taking over…' : 'Switching on…') : adopting ? 'Take over ' + court.name : 'Switch on';
+            start.textContent = checkingConnection ? 'Checking connection…' : startPending ? (adopting ? 'Taking over…' : 'Switching on…') : adopting ? 'Take over ' + court.name : 'Switch on';
             start.disabled = startPending || !state.email_verified || !connected || age > 15 || !court.active
                 || (adopting ? !court.adoptable : court.in_use) || !court.control_ready || estimate < 1;
         }
@@ -141,7 +143,7 @@
             if (response.status === 401) { location.assign('/lights/login'); return; }
             if (!response.ok) throw new Error('Could not refresh court status.');
             const next = await response.json();
-            state = next; received = performance.now(); connected = true; showNotice(''); render();
+            state = next; received = performance.now(); connected = true; showNotice(actionError, !!actionError); render();
         } catch (error) { connected = false; showNotice('Could not refresh status. Reconnect before starting a session.', true); render(); }
         finally { syncing = false; }
     }
@@ -155,12 +157,13 @@
         const courtId = starting ? form.closest('[data-court]')?.dataset.court : null;
         const actionKey = starting ? 'start:' + courtId : 'stop:' + stoppingId;
         if (pendingActions.has(actionKey)) return;
+        actionError = ''; showNotice('');
         pendingActions.add(actionKey);
-        button.disabled = true; button.dataset.label = button.textContent; button.textContent = starting ? (adopting ? 'Taking over…' : 'Switching on…') : 'Switching off…'; render();
+        button.disabled = true; button.dataset.label = button.textContent; button.textContent = starting ? 'Checking connection…' : 'Switching off…'; render();
         let accepted = false;
         let terminalFailure = false;
         try {
-            const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
+            const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(20000) });
             const data = await response.json();
             if (!response.ok) throw new Error(Object.values(data.errors || {}).flat().join(' ') || data.message || 'Request failed.');
             form.querySelector('[name=request_key]')?.setAttribute('value', crypto.randomUUID());
@@ -180,7 +183,8 @@
                 await pause(750);
             }
         } catch (error) {
-            showNotice(error.name === 'TimeoutError' ? 'Request timed out. Refreshing to check its outcome—do not start another session.' : error.message, true);
+            actionError = error.name === 'TimeoutError' ? 'Request timed out. Refreshing to check its outcome—do not start another session.' : error.message;
+            showNotice(actionError, true);
             // Fetch authoritative state after an uncertain result, never replay the mutation.
             setTimeout(refresh, 1500);
         } finally {

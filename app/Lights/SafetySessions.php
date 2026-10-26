@@ -11,6 +11,10 @@ use Illuminate\Validation\ValidationException;
 /** Durable relay-control and billing state machine for supervised and customer sessions. */
 class SafetySessions
 {
+    // Shelly's clock and the server clock can differ by a few seconds. Keep a
+    // bounded allowance in both directions; output and timer duration still must match.
+    private const TIMER_CLOCK_SKEW_SECONDS = 10;
+
     public function __construct(private Portal $portal) {}
     private function db() { return $this->portal->db(); }
     private function now(): int { return $this->portal->now(); }
@@ -127,7 +131,10 @@ class SafetySessions
             && $this->db()->getSchemaBuilder()->hasColumn('lights_control_sessions', 'court_id')
             && $this->db()->getSchemaBuilder()->hasColumn('lights_control_sessions', 'adopted_at'),
             503, 'Court control is awaiting a database update. No command was sent.');
-        return $this->lock(function () use ($user, $courtId, $key, $quotedRate, $acceptance, $adopt, $actor) {
+        $channel = null;
+        $checkedChannel = null;
+        $checkedAt = null;
+        $reserve = function (bool $checked) use ($user, $courtId, $key, $quotedRate, $acceptance, $adopt, $actor, &$channel, &$checkedChannel, &$checkedAt) {
             if ($actor !== null) { $this->admin($actor); }
             $member = $this->db()->table('lights_users')->where('active', true)->find($user);
             abort_unless($member, 403);
@@ -173,6 +180,11 @@ class SafetySessions
             if ($fundedSeconds < 1) { $this->fail('Top up your wallet before switching on.'); }
             $seconds = app(OperatingHours::class)->limitSeconds($fundedSeconds);
             if ($seconds < 1) { $this->fail('The venue is closing at midnight; this court cannot be switched on now.'); }
+            $channel = (int) $court->channel;
+            if (!$checked) { return null; }
+            if ($channel !== $checkedChannel || time() - $checkedAt > 15) {
+                $this->fail('The court changed or its connection check expired. Please try again. No session was started.');
+            }
             if ($activeForUser->isNotEmpty()) {
                 $sharedDeadline = $this->now() + $seconds;
                 foreach ($activeForUser as $activeSession) {
@@ -189,7 +201,14 @@ class SafetySessions
             $session = $this->db()->table('lights_control_sessions')->find($id);
             $this->event($adopt ? 'customer_adoption_reserved' : 'customer_reserved', $session, $actor ?? $user);
             return $id;
-        });
+        };
+        // Network checks must not hold the database lock. Revalidate before reserving.
+        $existing = $this->lock(fn () => $reserve(false));
+        if ($existing !== null) { return $existing; }
+        app(\App\Lights\Shelly\StartConnection::class)->check($channel, $adopt);
+        $checkedChannel = $channel;
+        $checkedAt = time();
+        return $this->lock(fn () => $reserve(true));
     }
     public function stop(int $actor, string $id): void
     {
@@ -294,7 +313,8 @@ class SafetySessions
                     if ($current->state !== $s->state || $current->command_at !== $s->command_at) { return; }
                     if ($s->state === 'starting') {
                         if (($receipt['output'] ?? null) !== true || !is_numeric($receipt['timer_started_at'] ?? null)
-                            || $receipt['timer_started_at'] < $s->sent_at - 10 || $receipt['timer_started_at'] > $this->now() + 2
+                            || $receipt['timer_started_at'] < $s->sent_at - self::TIMER_CLOCK_SKEW_SECONDS
+                            || $receipt['timer_started_at'] > $this->now() + self::TIMER_CLOCK_SKEW_SECONDS
                             || ($receipt['timer_duration'] ?? null) != $s->duration_seconds || $this->now() >= $s->deadline_at) {
                             throw new \RuntimeException('Missing fresh ON/timer evidence.');
                         }
@@ -383,12 +403,12 @@ class SafetySessions
     {
         if (!$this->available() || !($report['online'] ?? false)) { return 0; }
         $checkedAt = (int) ($report['checked_at'] ?? 0);
-        if ($checkedAt < 1) { return 0; }
+        if ($checkedAt < $this->now() - 15 || $checkedAt > $this->now() + 5) { return 0; }
 
         $offChannels = collect($report['channels'] ?? [])->filter(fn ($channel) =>
             in_array($channel['channel'] ?? null, [0, 1], true)
             && ($channel['output'] ?? null) === false
-            && !($channel['has_errors'] ?? false)
+            && ($channel['has_errors'] ?? null) === false
         )->pluck('channel')->all();
         if (!$offChannels) { return 0; }
 
@@ -411,6 +431,33 @@ class SafetySessions
                 $resolved++;
             }
             return $resolved;
+        });
+    }
+    public function retryCustomerSafetyOff(array $report): int
+    {
+        $checkedAt = (int) ($report['checked_at'] ?? 0);
+        if (!$this->available() || ($report['online'] ?? null) !== true
+            || $checkedAt < $this->now() - 15 || $checkedAt > $this->now() + 5) { return 0; }
+        $onChannels = collect($report['channels'] ?? [])->filter(fn ($channel) =>
+            in_array($channel['channel'] ?? null, [0, 1], true)
+            && ($channel['output'] ?? null) === true && ($channel['has_errors'] ?? null) === false
+        )->pluck('channel')->all();
+        if (!$onChannels) { return 0; }
+        return $this->lock(function () use ($onChannels, $checkedAt) {
+            $queued = 0;
+            $drivers = config('lights.control.local_approval_required') ? ['customer_cloud'] : ['customer_cloud', 'cloud_customer'];
+            foreach ($this->db()->table('lights_control_sessions')->where('state', 'review')
+                ->whereNotNull('active_user_id')->whereIn('driver', $drivers)->whereIn('active_channel', $onChannels)->get() as $session) {
+                if ($checkedAt < max((int) $session->command_at, (int) $session->stopped_at) + 30) { continue; }
+                // Requeue only OFF after fresh ON evidence. Never retry ON or resume billing.
+                $this->db()->table('lights_control_sessions')->where('id', $session->id)->update([
+                    'state' => 'running', 'stop_requested_at' => $session->stop_requested_at ?? $this->now(),
+                    'note' => 'Automatic recovery queued safety OFF after fresh online status confirmed the lights were still on.',
+                ]);
+                $this->event('automatic_safety_off_requested', $session);
+                $queued++;
+            }
+            return $queued;
         });
     }
     public function rows() { return $this->db()->table('lights_control_sessions')->orderByDesc('created_at')->limit(30)->get(); }

@@ -27,7 +27,11 @@ class CloudStatus
             // Never propagate transport errors: URLs may contain the authorization key.
             throw new RuntimeException('Shelly could not be reached securely. No switching command was sent.');
         }
-        \App\Lights\Diagnostics::write('Shelly status HTTP response.', ['http_status' => $code]);
+        // Healthy background polling is deliberately quiet. Control operations have
+        // their own request/confirmation logs; retain unsuccessful status responses.
+        if ($code !== 200) {
+            \App\Lights\Diagnostics::write('Shelly status HTTP response.', ['http_status' => $code, 'state' => 'review']);
+        }
         if (in_array($code, [401, 403], true)) { throw new RuntimeException('Shelly rejected the key. Check the key and cloud server in the Shelly app.'); }
         if ($code === 429) { throw new RuntimeException('Shelly rate limit reached. Wait before checking again.'); }
         if ($code !== 200) { throw new RuntimeException('Shelly did not return a successful status response.'); }

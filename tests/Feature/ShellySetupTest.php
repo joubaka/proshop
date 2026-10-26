@@ -160,6 +160,24 @@ class ShellySetupTest extends RegressionTestCase
         $this->assertTrue($report['channels'][1]['has_errors']);
     }
 
+    public function test_healthy_status_polls_are_quiet_but_failures_are_logged(): void
+    {
+        $entries = [];
+        $logger = \Mockery::mock(\Psr\Log\LoggerInterface::class);
+        $logger->shouldReceive('log')->andReturnUsing(function ($level, $event, $context) use (&$entries) {
+            $entries[] = compact('level', 'event', 'context');
+        });
+        \Illuminate\Support\Facades\Log::shouldReceive('channel')->with('lights')->andReturn($logger);
+        for ($poll = 0; $poll < 20; $poll++) { $this->client($this->device())->check(self::KEY); }
+        $this->assertSame([], $entries);
+        try { (new CloudStatus(fn () => [429, self::KEY]))->check(self::KEY); }
+        catch (\RuntimeException) {}
+        $this->assertCount(1, $entries);
+        $this->assertSame('warning', $entries[0]['level']);
+        $this->assertSame(429, $entries[0]['context']['http_status']);
+        $this->assertStringNotContainsString(self::KEY, json_encode($entries));
+    }
+
     public function test_cloud_failures_are_sanitized_and_never_retried(): void
     {
         foreach ([301, 401, 403, 429, 500] as $code) {

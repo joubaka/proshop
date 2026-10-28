@@ -39,6 +39,6 @@ class Probe
         return new Process([PHP_BINARY, '-d', 'xdebug.mode=off', '-d', 'display_errors=0',
             '-d', 'log_errors=0', '-d', 'zend.exception_ignore_args=1',
             '-d', 'disable_functions=', '-d', 'allow_url_fopen=0',
-            base_path('scripts/local-acceptance/shelly-status.php')], base_path(), $environment, null, 12);
+            base_path('scripts/local-acceptance/shelly-status.php')], base_path(), $environment, null, 22);
     }
 }

@@ -72,6 +72,11 @@ class CloudStatus
 
     private function request(string $body, #[\SensitiveParameter] string $secret): array
     {
+        return app(RequestCoordinator::class)->run(fn () => $this->performRequest($body, $secret));
+    }
+
+    private function performRequest(string $body, #[\SensitiveParameter] string $secret): array
+    {
         if (!function_exists('curl_exec')) { throw new ConnectionFailure(0); }
         $handle = curl_init(PrivateSettings::SERVER.'/v2/devices/api/get?auth_key='.rawurlencode($secret));
         $raw = '';

@@ -488,6 +488,46 @@ class LightsClientReadinessTest extends RegressionTestCase
         )->assertForbidden();
     }
 
+    public function test_both_customer_courts_confirm_on_without_replaying_or_safety_off(): void
+    {
+        $this->app['env'] = 'acceptance';
+        config(['lights.control.live_enabled' => true, 'lights.control.customer_enabled' => true, 'lights.control.local_approval_required' => false]);
+        $this->portal->saveCourt($this->admin->id, null, ['name' => 'Court 4', 'rate_cents' => 6000,
+            'device_label' => 'demo', 'channel' => 1, 'active' => true]);
+        $this->member->forceFill(['balance_cents' => 1000])->save();
+        $this->portal->db()->table('lights_worker')->insert(['id' => 1, 'seen_at' => $this->portal->now()]);
+        $safety = app(SafetySessions::class);
+        $ids = [$safety->startCustomer($this->member->id, 1, (string) Str::uuid(), 6000),
+            $safety->startCustomer($this->member->id, 2, (string) Str::uuid(), 6000)];
+        $channels = [['output' => false], ['output' => false]]; $switches = [];
+        $client = new \App\Lights\Shelly\CloudControl('synthetic-key', function ($endpoint, $body) use (&$channels, &$switches) {
+            if ($endpoint === '/set/switch') {
+                $switches[] = $body;
+                $channels[$body['channel']] = ['output' => $body['on'], 'timer_started_at' => time() + 3.11,
+                    'timer_duration' => $body['toggle_after'] ?? null];
+                return [200, ''];
+            }
+            return [200, json_encode([['id' => \App\Lights\Shelly\PrivateSettings::DEVICE,
+                'code' => 'SPSW-202PE12UL', 'gen' => 'G2', 'online' => 1,
+                'status' => ['switch:0' => $channels[0], 'switch:1' => $channels[1]]]])];
+        });
+        $driver = new class($client) implements \App\Lights\Shelly\RelayDriver {
+            public function __construct(private \App\Lights\Shelly\CloudControl $client) {}
+            public function on(object $session): array { return $this->client->on((int) $session->channel, (int) $session->duration_seconds); }
+            public function adopt(object $session): array { return $this->client->adopt((int) $session->channel, (int) $session->duration_seconds); }
+            public function off(object $session): void { $this->client->off((int) $session->channel); }
+        };
+        $safety->tick($driver); $safety->tick($driver);
+        foreach ($ids as $id) {
+            $session = $this->portal->db()->table('lights_control_sessions')->find($id);
+            $this->assertSame('running', $session->state); $this->assertNotNull($session->started_at);
+            $this->assertFalse((bool) $session->uncertain); $this->assertNull($session->stop_requested_at);
+        }
+        $this->assertCount(2, $switches);
+        $this->assertSame([true, true], array_column($switches, 'on'));
+        $this->assertEqualsCanonicalizing([0, 1], array_column($switches, 'channel'));
+    }
+
     public function test_customer_can_reserve_both_physical_courts_with_one_wallet(): void
     {
         $this->app['env'] = 'acceptance';

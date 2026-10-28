@@ -105,13 +105,20 @@ class CloudControl
     }
     private function request(string $endpoint, string $body): array
     {
+        // Injected transports are deterministic simulators; real requests share the
+        // same lock and pacing as standalone status checks in every PHP process.
+        if ($this->transport) { return $this->performRequest($endpoint, $body); }
+        return app(RequestCoordinator::class)->run(fn () => $this->performRequest($endpoint, $body), $this->deadline - $this->time());
+    }
+
+    private function performRequest(string $endpoint, string $body): array
+    {
         $started = microtime(true);
         $safeBody = json_decode($body, true);
         $context = ['stage' => $endpoint === '/get' ? 'status' : 'switch',
             'channel' => $safeBody['channel'] ?? null, 'on' => $safeBody['on'] ?? null];
         Diagnostics::write('Shelly request started.', $context);
         try {
-            if (!$this->transport) { usleep(1100000); }
             $remainingMs = (int) floor(($this->deadline - $this->time()) * 1000);
             if ($remainingMs <= 0) { throw new RuntimeException('Shelly operation time budget exhausted.'); }
             $timeoutMs = min($endpoint === '/get' ? 4000 : 10000, $remainingMs);
@@ -121,8 +128,7 @@ class CloudControl
                 Diagnostics::write('Shelly response received.', $context + ['http_status' => $result[0]]);
                 return $result;
             }
-            // The helper holds the same per-account lock used by read-only probes. Pace all
-            // requests, including preflight and confirmation, below Shelly's 1 request/sec limit.
+            // RequestCoordinator has acquired the shared status/control request slot.
             $handle = curl_init(PrivateSettings::SERVER.'/v2/devices/api'.$endpoint.'?auth_key='.rawurlencode($this->secret));
             $raw = '';
             try {

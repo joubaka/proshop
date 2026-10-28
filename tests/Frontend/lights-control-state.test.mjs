@@ -3,6 +3,68 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+test('overlapping court starts wait for their own session confirmations on phone and desktop', async () => {
+    const browser = await chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
+    const script = await readFile('public/lights-assets/portal.js', 'utf8');
+    const css = await readFile('public/lights-assets/portal.css', 'utf8');
+    try {
+        for (const width of [375, 1440]) {
+            const page = await browser.newPage({ viewport: { width, height: 900 }, serviceWorkers: 'block' });
+            const courts = [1, 2].map(id => ({ id, name: 'Court ' + (id + 2), active: true, rate_cents: 6000,
+                control_ready: true, control_reason: 'Ready', in_use: false, pending_action: null }));
+            const initial = { server_time: 100, balance_cents: 10000, worker_seen_at: 100, email_verified: true, courts, sessions: [] };
+            const cards = courts.map(court => `<article class="panel court" data-court="${court.id}"><h3>${court.name}</h3><span class="court-status"></span><p class="court-rate"></p><p class="court-note"></p>
+                <div class="court-switch-progress" role="status" hidden><div class="confirmation-ring"><strong></strong></div><small class="confirmation-step"></small></div>
+                <form action="https://lights.test/lights/courts/${court.id}/start" data-light-action data-action-kind="start"><input type="hidden" name="request_key" value="key-${court.id}"><input type="hidden" name="quoted_rate_cents" value="6000"><button class="court-start button primary full">Switch on</button></form></article>`).join('');
+            let navigations = 0;
+            // Every network route is intercepted. No application or real provider is contacted.
+            await page.route('**/*', route => { navigations++; return route.fulfill({ contentType: 'text/html', body: `<style>${css}</style><main class="shell"><div id="connection-notice" role="alert" hidden></div><div id="wallet-balance"></div><div id="worker-status"></div>${cards}</main><script id="lights-state" type="application/json">${JSON.stringify(initial)}</script>` }); });
+            await page.goto('https://lights.test/');
+            await page.evaluate(state => {
+                window.nextState = state; window.posts = []; window.startResolvers = {}; window.pollWaiters = [];
+                window.setInterval = () => 0;
+                const originalTimeout = window.setTimeout;
+                window.setTimeout = (callback, ms) => ms === 750 ? window.pollWaiters.push(callback) : originalTimeout(callback, ms);
+                window.fetch = async (url, options) => {
+                    if (options.method === 'POST') {
+                        const id = Number(url.match(/courts\/(\d+)/)[1]); window.posts.push(id);
+                        await new Promise(resolve => { window.startResolvers[id] = resolve; });
+                        return { ok: true, status: 200, json: async () => ({ session_id: 'session-' + id }) };
+                    }
+                    return { ok: true, status: 200, json: async () => structuredClone(window.nextState) };
+                };
+            }, initial);
+            await page.addScriptTag({ content: script });
+            await page.locator('[data-court="1"] button').click();
+            await page.locator('[data-court="2"] button').click();
+            await page.waitForFunction(() => window.posts.length === 2);
+            await page.evaluate(() => {
+                window.nextState.sessions = [1, 2].map(id => ({ id: 'session-' + id, court_id: id,
+                    control_state: id === 1 ? 'running' : 'reserved', uncertain: false,
+                    started_at: id === 1 ? 100 : null, deadline_at: 400, rate_cents: 6000, charged_cents: 0, budget_cents: 10000 }));
+                window.nextState.courts.forEach(court => { court.in_use = true; court.pending_action = court.id === 2 ? 'on' : null; court.is_on = court.id === 1; });
+                window.startResolvers[1](); window.startResolvers[2]();
+            });
+            await page.waitForFunction(() => window.pollWaiters.length > 0);
+            assert.equal(navigations, 1, 'The first court must not trigger a reload while the second is reserved.');
+            assert.equal(await page.locator('[data-court="2"] button').isDisabled(), true);
+            assert.match(await page.locator('[data-court="2"] .confirmation-step').innerText(), /Waiting for the worker/);
+            assert.deepEqual(await page.evaluate(() => window.posts), [1, 2]);
+            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+            await page.screenshot({ path: `tests/.cache/lights-dual-start-${width}.png` });
+            const reload = page.waitForEvent('load');
+            await page.evaluate(() => {
+                window.nextState.sessions[1].control_state = 'running'; window.nextState.sessions[1].started_at = 100;
+                window.nextState.courts[1].pending_action = null; window.nextState.courts[1].is_on = true;
+                while (window.pollWaiters.length) window.pollWaiters.shift()();
+            });
+            await reload;
+            assert.equal(navigations, 2, 'Reload only after the second court has its own ON confirmation.');
+            await page.close();
+        }
+    } finally { await browser.close(); }
+});
+
 test('connection check disables duplicate starts and retains the facility warning on phone and desktop', async () => {
     const browser = await chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
     const script = await readFile('public/lights-assets/portal.js', 'utf8');

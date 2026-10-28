@@ -152,7 +152,6 @@
         const button = form.querySelector('button');
         const starting = !!form.closest('[data-court]');
         const adopting = form.dataset.actionKind === 'adopt';
-        const beforeIds = new Set((state.sessions || (state.session ? [state.session] : [])).map(session => session.id));
         const stoppingId = starting ? null : form.closest('[data-session]')?.dataset.session;
         const courtId = starting ? form.closest('[data-court]')?.dataset.court : null;
         const actionKey = starting ? 'start:' + courtId : 'stop:' + stoppingId;
@@ -178,7 +177,7 @@
                     showNotice(state.last_start_failure.note || 'Shelly rejected the switch-on. No charge was made.', true);
                     break;
                 }
-                if ((starting && activeSessions.some(session => !beforeIds.has(session.id) && session.control_state === 'running'))
+                if ((starting && activeSessions.some(session => session.id === data.session_id && session.control_state === 'running' && !session.uncertain && session.stop_requested_at == null))
                     || (!starting && !activeIds.has(stoppingId))) break;
                 await pause(750);
             }
